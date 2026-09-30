@@ -24,6 +24,13 @@ import {
 export const MODEL = process.env.AI_MODEL || 'openai/gpt-5';
 
 /**
+ * Low reasoning effort keeps each workflow step well inside a function's
+ * max duration; the evidence ledger does the heavy lifting, not deliberation.
+ * Ignored by providers that don't support it.
+ */
+const FAST = { openai: { reasoningEffort: 'low' } } as const;
+
+/**
  * ------------------------------------------------------------
  * Research agent (lead-agent's Agent + Exa tools, with structured output)
  * ------------------------------------------------------------
@@ -95,7 +102,8 @@ export async function research(
     instructions: RESEARCH_INSTRUCTIONS,
     tools: researchTools(retrieved),
     output: Output.object({ schema: researchSchema }),
-    stopWhen: isStepCount(14)
+    stopWhen: isStepCount(14),
+    providerOptions: FAST
   });
 
   const { output } = await researchAgent.generate({
@@ -128,6 +136,7 @@ export async function qualify(
 
   let { output } = await generateText({
     model: MODEL,
+    providerOptions: FAST,
     system: QUALIFY_INSTRUCTIONS,
     prompt,
     output: Output.object({ schema: qualificationSchema })
@@ -138,6 +147,7 @@ export async function qualify(
   if (bad.length) {
     ({ output } = await generateText({
       model: MODEL,
+      providerOptions: FAST,
       system: QUALIFY_INSTRUCTIONS,
       prompt: `${prompt}\n\nYour previous answer cited ids that are NOT in the ledger: ${bad.join(', ')}. Redo it using only ledger ids, and remove any claim you can't support.`,
       output: Output.object({ schema: qualificationSchema })
@@ -192,6 +202,7 @@ export async function writeDraft(
 
   let { output } = await generateText({
     model: MODEL,
+    providerOptions: FAST,
     system: DRAFT_INSTRUCTIONS,
     prompt,
     output: Output.object({ schema: draftSchema })
@@ -201,6 +212,7 @@ export async function writeDraft(
   if (issues.bad.length || issues.numbers.length) {
     ({ output } = await generateText({
       model: MODEL,
+      providerOptions: FAST,
       system: DRAFT_INSTRUCTIONS,
       prompt: [
         prompt,
