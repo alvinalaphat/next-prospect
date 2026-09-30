@@ -135,7 +135,13 @@ EMAIL — written as a Vercel solutions engineer, to the likely buyer:
   3. One plain-language thing Vercel does for Next.js sites like theirs
      (e.g. serving pages from servers close to each visitor, caching pages so
      they don't rebuild on every visit, resizing images automatically).
-  4. One easy ask in your own words. Vary it; no stock phrasing.
+  4. The close: invite a short intro conversation about FIXING this problem
+     by getting their site on Vercel. It should point toward a next step with
+     Vercel, not just offer an explanation or a diagnosis. Low pressure, one
+     question, in your own words. Vary the phrasing. Spirit (don't copy):
+     "Open to a quick intro call about getting that fixed on Vercel?" /
+     "Worth 20 minutes to talk through moving it over to Vercel?"
+     Not: "Happy to show you where the wait comes from."
 - Tone: a friendly, helpful person sharing something they noticed. Not a
   salesperson, not a performance report. No hype words ("revolutionize",
   "supercharge", "game-changer"), no filler ("I hope this finds you well",
