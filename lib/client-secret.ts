@@ -13,12 +13,22 @@ export function getSecret(): string {
 
 export function setSecret(value: string) {
   try {
-    localStorage.setItem(KEY, value);
+    localStorage.setItem(KEY, cleanSecret(value));
   } catch {
     // storage unavailable — the caller still has the value for this request
   }
 }
 
+/** Mirrors the server's cleanup so a pasted `RUN_SECRET=…` line or stray whitespace still works. */
+export function cleanSecret(value: string): string {
+  return value
+    .trim()
+    .replace(/^RUN_SECRET\s*=\s*/i, '')
+    .replace(/^["']|["']$/g, '')
+    .trim();
+}
+
 export function authHeaders(secret: string): HeadersInit {
-  return secret ? { authorization: `Bearer ${secret}` } : {};
+  const s = cleanSecret(secret);
+  return s ? { authorization: `Bearer ${s}` } : {};
 }
