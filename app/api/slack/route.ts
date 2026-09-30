@@ -1,33 +1,51 @@
 import { createHandler } from '@vercel/slack-bolt';
-import { slackApp, receiver } from '@/lib/slack';
-import { sendEmail } from '@/lib/services';
+import { getProspect } from '@/lib/db';
+import { ACTIONS, editModal, receiver, slackApp } from '@/lib/slack';
+import { approvalHook } from '@/workflows/outbound/hooks';
+
+const domainFromToken = (token: string) => token.split(':')[1] ?? '';
 
 // Only set up event handlers if Slack is initialized
 if (slackApp && receiver) {
-  slackApp.event('app_mention', async ({ event, client, logger }) => {
-    await client.chat.postMessage({
-      channel: event.channel,
-      thread_ts: event.ts,
-      text: `Hello <@${event.user}>!`
-    });
+  slackApp.action(ACTIONS.approve, async ({ ack, body, action, logger }) => {
+    await ack();
+    if (action.type !== 'button' || !action.value) return;
+    await approvalHook
+      .resume(action.value, { decision: 'approved', by: body.user.name ?? body.user.id, via: 'slack' })
+      .catch((err) => logger.warn(`resume failed (already decided?): ${err}`));
   });
 
-  slackApp.action(
-    'lead_approved',
-    async ({ body, action, ack, client, logger }) => {
-      await ack();
-      // in production, grab email from database or storage
-      await sendEmail('Send email to the lead');
-    }
-  );
+  slackApp.action(ACTIONS.reject, async ({ ack, body, action, logger }) => {
+    await ack();
+    if (action.type !== 'button' || !action.value) return;
+    await approvalHook
+      .resume(action.value, { decision: 'rejected', by: body.user.name ?? body.user.id, via: 'slack' })
+      .catch((err) => logger.warn(`resume failed (already decided?): ${err}`));
+  });
 
-  slackApp.action(
-    'lead_rejected',
-    async ({ body, action, ack, client, logger }) => {
-      await ack();
-      // take action for feedback from human
-    }
-  );
+  slackApp.action(ACTIONS.edit, async ({ ack, body, action, client }) => {
+    await ack();
+    if (action.type !== 'button' || !action.value || body.type !== 'block_actions') return;
+    const prospect = await getProspect(domainFromToken(action.value));
+    if (!prospect) return;
+    await client.views.open({ trigger_id: body.trigger_id, view: editModal(prospect, action.value) });
+  });
+
+  slackApp.view(ACTIONS.editModal, async ({ ack, body, view, logger }) => {
+    await ack();
+    const values = view.state.values;
+    await approvalHook
+      .resume(view.private_metadata, {
+        decision: 'approved',
+        by: body.user.name ?? body.user.id,
+        via: 'slack',
+        editedDraft: {
+          subject: values.subject.value.value ?? '',
+          body: values.body.value.value ?? ''
+        }
+      })
+      .catch((err) => logger.warn(`resume failed (already decided?): ${err}`));
+  });
 }
 
 export const POST =
