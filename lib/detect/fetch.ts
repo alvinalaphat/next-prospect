@@ -1,8 +1,8 @@
 import { isAllowedByRobots } from './robots';
 
 export const USER_AGENT =
-  'OutboundAgentBot/0.1 (+https://github.com/alvinalaphat/outbound-agent; research prototype)';
-const ROBOTS_TOKEN = 'OutboundAgentBot';
+  'NextProspectBot/0.1 (+https://nextprospect.vercel.app/about; research prototype)';
+const ROBOTS_TOKEN = 'NextProspectBot';
 
 const ROBOTS_TIMEOUT_MS = 5_000;
 const PAGE_TIMEOUT_MS = 10_000;

@@ -1,6 +1,6 @@
 import Link from 'next/link';
 
-export const metadata = { title: 'About · Outbound Agent' };
+export const metadata = { title: 'About · Next Prospect' };
 
 const STAGES: { n: string; title: string; tech: string; body: string; stop?: string }[] = [
   {
@@ -49,7 +49,7 @@ export default function About() {
       <header className="space-y-4">
         <p className="text-muted-foreground font-mono text-xs uppercase tracking-widest">Prototype · weekend build</p>
         <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-          Outbound excellence agent
+          Next Prospect
         </h1>
         <p className="text-muted-foreground text-lg leading-relaxed">
           Vercel&apos;s <a className="text-foreground underline underline-offset-4" href="https://github.com/vercel-labs/lead-agent">lead-agent</a>,
@@ -128,7 +128,7 @@ export default function About() {
             <thead className="text-muted-foreground border-b bg-zinc-50 text-left text-xs dark:bg-zinc-900/50">
               <tr>
                 <th className="px-4 py-2 font-medium">lead-agent</th>
-                <th className="px-4 py-2 font-medium">outbound-agent</th>
+                <th className="px-4 py-2 font-medium">Next Prospect</th>
               </tr>
             </thead>
             <tbody className="divide-y">

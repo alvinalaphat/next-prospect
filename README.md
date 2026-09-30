@@ -1,6 +1,6 @@
-# Outbound Agent
+# Next Prospect ▲
 
-An **outbound excellence agent**: it encodes how a top outbound rep finds and researches
+**Next Prospect** is an outbound excellence agent: it encodes how a top outbound rep finds and researches
 companies running **Next.js on non-Vercel hosting**, then drafts personalized, fully
 cited outreach for **human approval**.
 
@@ -86,7 +86,7 @@ Every observation becomes an `EvidenceItem` with a stable id:
 
 ### Differences from lead-agent
 
-| lead-agent | outbound-agent |
+| lead-agent | Next Prospect |
 |---|---|
 | Form → `start(workflowInbound)` | CSV / dashboard → `start(workflowOutbound)` per domain |
 | Research agent returns free text | Same agent + Exa tools, **structured output**, grounded URLs |
@@ -227,7 +227,7 @@ rather than a benchmark (see `eval/README.md`).
 
 ### End-to-end runs (seed batch, production)
 
-Run from `data/seed.csv` on https://outbound-agent-gold.vercel.app with `openai/gpt-5`
+Run from `data/seed.csv` on https://nextprospect.vercel.app with `openai/gpt-5`
 (low reasoning effort) via AI Gateway, Exa research and PSI. Each qualified prospect was
 posted to Slack for approval.
 

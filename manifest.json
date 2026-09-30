@@ -1,12 +1,12 @@
 {
   "display_information": {
-    "name": "Outbound Agent",
+    "name": "Next Prospect",
     "description": "Grounded outbound drafts for human approval",
     "background_color": "#000000"
   },
   "features": {
     "bot_user": {
-      "display_name": "outbound-agent",
+      "display_name": "Next Prospect",
       "always_online": true
     }
   },
@@ -18,7 +18,7 @@
   "settings": {
     "interactivity": {
       "is_enabled": true,
-      "request_url": "https://outbound-agent-gold.vercel.app/api/slack"
+      "request_url": "https://nextprospect.vercel.app/api/slack"
     },
     "org_deploy_enabled": false,
     "socket_mode_enabled": false,

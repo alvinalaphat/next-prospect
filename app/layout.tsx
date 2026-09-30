@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Outbound Agent',
+  title: 'Next Prospect',
   description:
     'Finds companies running Next.js off Vercel, researches them, and drafts grounded outreach for human approval.'
 };
@@ -38,7 +38,7 @@ export default function RootLayout({
                   <path d="M37.5 0L75 65H0z" fill="currentColor" />
                 </svg>
                 <span className="text-muted-foreground font-normal">/</span>
-                Outbound Agent
+                Next Prospect
               </Link>
               <nav className="flex items-center gap-1 text-sm">
                 <NavLink href="/">Prospects</NavLink>

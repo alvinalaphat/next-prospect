@@ -1,6 +1,6 @@
 'use client';
 
-const KEY = 'outbound-agent:run-secret';
+const KEY = 'next-prospect:run-secret';
 
 /** RUN_SECRET is kept in this browser only, for authorizing runs/decisions. */
 export function getSecret(): string {
