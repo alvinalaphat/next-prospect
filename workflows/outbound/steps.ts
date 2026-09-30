@@ -3,7 +3,7 @@ import { detect, detectionEvidence } from '@/lib/detect';
 import { getProspect, upsertProspect } from '@/lib/db';
 import { researchEvidence } from '@/lib/grounding';
 import { emptyPerfResult, perfEvidence, PsiRateLimitError, runPsi } from '@/lib/psi';
-import { qualify, research, writeDraft } from '@/lib/services';
+import { qualify, research, ResearchAuthError, writeDraft } from '@/lib/services';
 import { postApprovalRequest, updateApprovalMessage } from '@/lib/slack';
 import type {
   Approval,
@@ -80,12 +80,19 @@ export const stepResearch = async (domain: string, detection: Detection) => {
 
   if (!process.env.EXA_API_KEY) {
     await upsertProspect(domain, { status: 'qualifying' });
-    return { evidence: [] as EvidenceItem[], dropped: [] as string[] };
+    return { evidence: [] as EvidenceItem[], dropped: [] as string[], warning: 'EXA_API_KEY not set — research skipped' };
   }
 
-  const result = await research(domain, detection);
-  await upsertProspect(domain, { status: 'qualifying', research: result.research });
-  return { evidence: researchEvidence(result.research), dropped: result.dropped };
+  try {
+    const result = await research(domain, detection);
+    await upsertProspect(domain, { status: 'qualifying', research: result.research });
+    return { evidence: researchEvidence(result.research), dropped: result.dropped, warning: null };
+  } catch (err) {
+    // A bad key won't fix itself on retry: continue without research, loudly.
+    if (!(err instanceof ResearchAuthError)) throw err;
+    await upsertProspect(domain, { status: 'qualifying' });
+    return { evidence: [] as EvidenceItem[], dropped: [] as string[], warning: err.message };
+  }
 };
 
 /**
@@ -144,11 +151,17 @@ export const stepRequestApproval = async (domain: string, token: string) => {
 /**
  * step: record the human decision (or expiry)
  */
-export const stepRecordDecision = async (domain: string, approval: Approval | null) => {
+export const stepRecordDecision = async (
+  domain: string,
+  runId: string,
+  approval: Approval | null
+) => {
   'use step';
 
   const prospect = await getProspect(domain);
   if (!prospect) throw new FatalError(`Prospect ${domain} missing`);
+  // The domain was re-run since this card was posted; don't clobber the new run.
+  if (prospect.runId !== runId) return { stale: true };
 
   const status: ProspectStatus = !approval ? 'expired' : approval.decision;
   const draft =
@@ -160,6 +173,7 @@ export const stepRecordDecision = async (domain: string, approval: Approval | nu
   if (prospect.slack) {
     await updateApprovalMessage({ ...prospect, status, approval, draft });
   }
+  return { stale: false };
 };
 
 /**

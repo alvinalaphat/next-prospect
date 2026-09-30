@@ -39,11 +39,17 @@ const FAST = { openai: { reasoningEffort: 'low' } } as const;
  */
 
 /** Surface tool failures in function logs (the model only sees a generic error). */
-async function logToolErrors<T>(name: string, fn: () => Promise<T>): Promise<T> {
+async function logToolErrors<T>(
+  name: string,
+  state: { authFailed: boolean },
+  fn: () => Promise<T>
+): Promise<T> {
   try {
     return await fn();
   } catch (err) {
-    console.error(`[research] ${name} failed:`, err instanceof Error ? err.message : err);
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[research] ${name} failed:`, message);
+    if (/invalid api key|unauthorized|401/i.test(message)) state.authFailed = true;
     throw err;
   }
 }
@@ -52,7 +58,7 @@ async function logToolErrors<T>(name: string, fn: () => Promise<T>): Promise<T> 
  * Tools close over `retrieved`, recording every URL they return so
  * groundResearch() can reject citations the agent never actually saw.
  */
-function researchTools(retrieved: Set<string>) {
+function researchTools(retrieved: Set<string>, state: { authFailed: boolean }) {
   const search = tool({
     description: 'Search the web. Returns titles, URLs, dates, and relevant highlights.',
     inputSchema: z.object({
@@ -64,7 +70,7 @@ function researchTools(retrieved: Set<string>) {
       recentOnly: z.boolean().optional().describe('Only results from the last 12 months')
     }),
     execute: async ({ query, category, recentOnly }) => {
-      const res = await logToolErrors('search', () => exa().search(query, {
+      const res = await logToolErrors('search', state, () => exa().search(query, {
         numResults: 5,
         type: 'auto',
         category,
@@ -91,7 +97,7 @@ function researchTools(retrieved: Set<string>) {
       url: z.string().describe('Absolute URL, including https://')
     }),
     execute: async ({ url }) => {
-      const res = await logToolErrors('fetchUrl', () =>
+      const res = await logToolErrors('fetchUrl', state, () =>
         exa().getContents(url, { text: { maxCharacters: 6_000 } })
       );
       const page = res.results[0];
@@ -105,18 +111,22 @@ function researchTools(retrieved: Set<string>) {
   return { search, fetchUrl };
 }
 
+export class ResearchAuthError extends Error {}
+
 export async function research(
   domain: string,
   detection: Detection
-): Promise<{ research: Research; dropped: string[]; retrieved: string[] }> {
+): Promise<{ research: Research; dropped: string[]; retrieved: string[]; error?: string }> {
   const retrieved = new Set<string>();
+  const state = { authFailed: false };
 
   const researchAgent = new ToolLoopAgent({
     model: MODEL,
     instructions: RESEARCH_INSTRUCTIONS,
-    tools: researchTools(retrieved),
+    tools: researchTools(retrieved, state),
     output: Output.object({ schema: researchSchema }),
-    stopWhen: isStepCount(14),
+    // Stop immediately on a bad key instead of burning 14 steps on errors.
+    stopWhen: [isStepCount(14), () => state.authFailed],
     providerOptions: FAST
   });
 
@@ -127,6 +137,10 @@ export async function research(
       `Detected: Next.js (${detection.nextjs.router ?? 'unknown'} router), hosted on ${detection.host.primary}${detection.host.cdn ? ` behind ${detection.host.cdn}` : ''}.`
     ].join('\n')
   });
+
+  if (state.authFailed) {
+    throw new ResearchAuthError('Exa rejected EXA_API_KEY (invalid key) — research skipped');
+  }
 
   const grounded = groundResearch(output, retrieved);
   return { ...grounded, retrieved: [...retrieved] };

@@ -41,9 +41,12 @@ export const workflowOutbound = async (domain: string, startDelaySeconds = 0) =>
     const { qualification, warnings } = await stepQualify(domain, evidence);
     if (qualification.verdict === 'disqualified') return { domain, stopped: 'qualify' };
 
-    const researchWarnings = researched.dropped.length
-      ? [`Research: dropped ${researched.dropped.length} item(s) with unretrieved sources`]
-      : [];
+    const researchWarnings = [
+      ...(researched.warning ? [researched.warning] : []),
+      ...(researched.dropped.length
+        ? [`Research: dropped ${researched.dropped.length} item(s) with unretrieved sources`]
+        : [])
+    ];
     await stepDraft(domain, evidence, qualification, [...researchWarnings, ...warnings]);
 
     // Human in the loop. The run suspends here — no compute — until someone
@@ -55,7 +58,7 @@ export const workflowOutbound = async (domain: string, startDelaySeconds = 0) =>
       hook.then((a): Approval => a),
       sleep('7d').then(() => null)
     ]);
-    await stepRecordDecision(domain, approval);
+    await stepRecordDecision(domain, workflowRunId, approval);
 
     return { domain, decision: approval?.decision ?? 'expired' };
   } catch (err) {
