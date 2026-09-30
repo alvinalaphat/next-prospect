@@ -49,13 +49,17 @@ Use the tools to find:
 - Size and funding signals (headcount, customers, funding rounds, investors).
 - Recent news from the last ~12 months: launches, funding, replatforming,
   notable engineering hires.
-- The KEY STAKEHOLDER: the person who owns the web platform — typically VP
-  Engineering, Head/Director of Web or Frontend Platform, or CTO at smaller
-  companies. Use findPeople with 2–3 fitting roles, prefer a current,
-  senior, hands-on web/platform leader over a generic CTO at large companies,
-  and put their linkedin.com/in URL in linkedinUrl. List up to 2 alternates.
-  Only name someone whose name appears in a result you retrieved; if nobody
-  fits, leave name null and just give the ideal role.
+- The KEY STAKEHOLDER: the person who owns the website's platform. Use
+  findPeople with 2–3 fitting roles, then choose by this priority:
+  1. Head / Director / VP of Web, Web Platform, Web Engineering, Frontend,
+     Digital Experience or Web Experiences.
+  2. VP / Head of Engineering or Platform Engineering (mid-size companies).
+  3. CTO or co-founder, only at small companies (roughly under 200 people).
+  Prefer current roles, full names (not "Jane D."), and people whose
+  profile mentions the web/marketing site, frontend or Next.js. Put their
+  linkedin.com/in URL in linkedinUrl and list up to 2 alternates. Only name
+  someone whose name appears in a result you retrieved; if nobody fits,
+  leave name null and just give the ideal role.
 - "Why now" reasons to reach out this quarter.
 
 Rules:
@@ -85,7 +89,20 @@ ${PLAYBOOK}
 TASK: Draft a first-touch email and a rep brief.
 
 EMAIL — written as a Vercel solutions engineer, to the likely buyer:
-- Subject: under 8 words, specific, lowercase is fine, no clickbait.
+- Subject: the reason they open it. Write it like a sharp engineer's note to a
+  peer, not marketing:
+  - 3–8 words, lowercase is fine, about THEIR site and a specific finding.
+  - Spark curiosity with something concrete and slightly surprising: a real
+    number, a moment their users experience, or a question they'll want
+    answered. Numbers must match the ledger.
+  - Never: "Vercel", "partnership", "opportunity", "quick question", "boost",
+    "improve your", "Re:"/"Fwd:", emojis, ALL CAPS, false urgency.
+  - Good: "mobile users wait 7.9s for mongodb.com", "the 785ms before
+    linear.app says anything", "something odd in plaid.com's CrUX data".
+  - Bad: "Improve your site performance", "field lcp 4.38 s mobile",
+    "Next.js hosting opportunity".
+  - Write 3 genuinely different subjectOptions (e.g. a number, a user moment,
+    a question), then put the most compelling one in subject.
 - Body: 4–5 short sentences, 50–90 words total. Plain text, no bullets, no
   exclamation marks. Simple words; one idea per sentence.
 - FORMAT: each core sentence is its own paragraph, separated by a blank line
@@ -96,7 +113,8 @@ EMAIL — written as a Vercel solutions engineer, to the likely buyer:
   3. One concrete thing Vercel does for Next.js teams on their current host
      (e.g. managed ISR/RSC caching, image optimization, global edge network,
      preview deployments, fluid compute).
-  4. One low-friction ask (e.g. "Worth a 20-minute look at the trace together?").
+  4. One low-friction ask in your own words (e.g. offering to walk through the
+     trace together). Don't reuse the same stock phrasing every time.
 - Tone: helpful engineer sharing a finding, not a salesperson. No hype words
   ("revolutionize", "supercharge", "game-changer"), no filler ("I hope this
   finds you well", "I wanted to reach out"), no fake familiarity.

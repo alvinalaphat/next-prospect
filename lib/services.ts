@@ -312,7 +312,7 @@ export async function writeDraft(
   });
   const check = (d: z.infer<typeof draftSchema>) => ({
     bad: unknownCitations([...d.emailCitations, ...d.talkingPoints.flatMap((t) => t.citations)], ledger),
-    numbers: unverifiedNumbers(`${d.subject}\n${d.body}`, ledger)
+    numbers: unverifiedNumbers(`${d.subjectOptions.join('\n')}\n${d.subject}\n${d.body}`, ledger)
   });
 
   let { output } = await generateText({
@@ -354,6 +354,7 @@ export async function writeDraft(
   output = {
     ...output,
     subject: fillPlaceholders(output.subject, firstName),
+    subjectOptions: output.subjectOptions.map((o) => fillPlaceholders(o, firstName)),
     body: formatEmailBody(fillPlaceholders(stripCitationLeaks(output.body), firstName))
   };
   if (!firstName) warnings.push('No verified stakeholder — fill in {{first_name}} before sending');

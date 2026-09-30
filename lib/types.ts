@@ -197,7 +197,11 @@ export type Qualification = z.infer<typeof qualificationSchema>;
  */
 
 export const draftSchema = z.object({
-  subject: z.string(),
+  subjectOptions: z
+    .array(z.string())
+    .length(3)
+    .describe('Three genuinely different subject lines'),
+  subject: z.string().describe('The most compelling of subjectOptions'),
   body: z.string(),
   emailCitations: z
     .array(z.string())

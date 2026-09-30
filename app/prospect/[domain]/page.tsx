@@ -153,6 +153,15 @@ export default async function ProspectPage({ params }: { params: Promise<{ domai
                 <div className="border-b px-4 py-2 text-sm">
                   <span className="text-muted-foreground">Subject: </span>
                   {draft.subject}
+                  {draft.subjectOptions && draft.subjectOptions.filter((o) => o !== draft.subject).length > 0 && (
+                    <div className="text-muted-foreground mt-1 text-xs">
+                      Alternatives:{' '}
+                      {draft.subjectOptions
+                        .filter((o) => o !== draft.subject)
+                        .map((o) => `“${o}”`)
+                        .join(' · ')}
+                    </div>
+                  )}
                 </div>
                 <div className="px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap">{draft.body}</div>
               </div>
