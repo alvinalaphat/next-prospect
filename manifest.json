@@ -1,10 +1,12 @@
 {
   "display_information": {
-    "name": "lead-agent"
+    "name": "Outbound Agent",
+    "description": "Grounded outbound drafts for human approval",
+    "background_color": "#000000"
   },
   "features": {
     "bot_user": {
-      "display_name": "lead-agent",
+      "display_name": "outbound-agent",
       "always_online": true
     }
   },
@@ -16,13 +18,9 @@
   "settings": {
     "interactivity": {
       "is_enabled": true,
-      "request_url": "https://your-lead-agent-app-url.com/api/slack"
+      "request_url": "https://your-outbound-agent.vercel.app/api/slack"
     },
-    "event_subscriptions": {
-      "request_url": "https://your-lead-agent-app-url.com/api/slack",
-      "bot_events": []
-    },
-    "org_deploy_enabled": true,
+    "org_deploy_enabled": false,
     "socket_mode_enabled": false,
     "token_rotation_enabled": false
   }

@@ -1,177 +1,213 @@
-# Lead Agent
+# Outbound Agent
 
-<img width="1819" height="1738" alt="hero" src="https://github.com/user-attachments/assets/347757fd-ad00-487d-bdd8-97113f13878b" />
+An **outbound excellence agent**: it encodes how a top outbound rep finds and researches
+companies running **Next.js on non-Vercel hosting**, then drafts personalized, fully
+cited outreach for **human approval**.
 
-An inbound lead qualification and research agent built with [Next.js](http://nextjs.org/), [AI SDK](https://ai-sdk.dev/), [Workflow DevKit](https://useworkflow.dev/), and the [Vercel Slack Adapter](https://github.com/vercel-labs/slack-bolt). Hosted on the [Vercel AI Cloud](https://vercel.com/blog/the-ai-cloud-a-unified-platform-for-ai-workloads).
+It's [vercel-labs/lead-agent](https://github.com/vercel-labs/lead-agent) pointed at outbound.
+It uses the same stack and patterns (Workflow DevKit, AI SDK + AI Gateway, the Agent
+class, Exa, Slack Bolt on Vercel) and the git history starts from an unmodified import
+of lead-agent, so every change is reviewable as a diff.
 
-**_This is meant to serve as a reference architecture to be adapted to the needs of your specific organization._**
+> Nothing is ever sent. "Approve" only marks a draft approved.
 
-## Overview
+## What it does
 
-Lead agent app that captures a lead in a contact sales form and then kicks off a qualification workflow and deep research agent. It integrates with Slack to send and receive messages for human-in-the-loop feedback.
+For each domain in a CSV, one durable workflow:
 
-- **Immediate Response** - Returns a success response to the user upon submission
-- **Workflows** - Uses Workflow DevKit to kick off durable background tasks
-  - **Deep Research Agent** - Conducts comprehensive research on the lead with a deep research agent
-  - **Qualify Lead** - Uses `generateObject` to categorize the lead based on the lead data and research report
-  - **Write Email** - Generates a personalized response email
-  - **Human-in-the-Loop** - Sends to Slack for human approval before sending
-  - **Slack Webhook** - Catches a webhook event from Slack to approve or deny the email
-
-## Deploy with Vercel
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvercel-labs%2Flead-agent&env=AI_GATEWAY_API_KEY,SLACK_BOT_TOKEN,SLACK_SIGNING_SECRET,SLACK_CHANNEL_ID,EXA_API_KEY&project-name=lead-agent&repository-name=lead-agent)
+1. **Detect**: one polite homepage fetch (robots.txt respected, identifying UA, timeouts,
+   no headless browser) plus DNS. It scores Next.js confidence from `__NEXT_DATA__`,
+   `self.__next_f`, `/_next/static`, `x-powered-by`, `x-nextjs-*` and `Vary: RSC`, and
+   identifies the host (Vercel, Netlify, Cloudflare, AWS/CloudFront/Amplify, Fastly,
+   Akamai, GCP, Azure, Render, Fly, …). **Already on Vercel → skip.**
+2. **Measure**: PageSpeed Insights for mobile and desktop. Lighthouse lab LCP/CLS/TTFB/TBT
+   and CrUX real-user p75 LCP/INP/CLS/TTFB are kept separate. Cached for 24h.
+3. **Research**: lead-agent's Exa research agent with structured output: summary,
+   size/funding, recent news, likely buyer, and why now. **Every item must cite a URL the
+   tools actually returned.**
+4. **Qualify**: fit score 0–100, reasoning, and the single strongest angle. Every claim
+   cites evidence-ledger ids, and unknown ids are rejected in code.
+5. **Draft**: a 60–120 word email in a helpful-engineer tone, plus 3 rep talking points.
+   Numbers are checked against the ledger.
+6. **Approve**: the workflow **suspends on a durable hook** until someone clicks
+   Approve / Edit / Reject in Slack or on the dashboard.
 
 ## Architecture
 
-<img width="1778" height="1958" alt="architecture" src="https://github.com/user-attachments/assets/53943961-4692-4b42-8e8d-47b03a01d233" />
+```mermaid
+flowchart TD
+    CSV[CSV / dashboard] -->|POST /api/run| RUN[start workflowOutbound × N<br/>staggered 4s apart]
+    RUN --> D
 
-```
-User submits form
-     ↓
-start(workflow) ← (Workflow DevKit)
-     ↓
-Research agent ← (AI SDK Agent)
-     ↓
-Qualify lead ← (AI SDK generateObject)
-     ↓
-Generate email ← (AI SDK generateText)
-     ↓
-Slack approval (human-in-the-loop) ← (Slack integration)
-     ↓
-Send email (on approval)
-```
+    subgraph WF["workflowOutbound(domain) — 'use workflow'"]
+        D["stepDetect<br/>robots.txt + 1 GET + DNS"] -->|on Vercel / not Next.js /<br/>blocked / unreachable| STOP1([skip])
+        D --> P["stepPerf<br/>PageSpeed Insights ×2"]
+        P --> R["stepResearch<br/>ToolLoopAgent + Exa search/fetch"]
+        R --> Q["stepQualify<br/>Output.object + citation check"]
+        Q -->|disqualified| STOP2([stop])
+        Q --> DR["stepDraft<br/>email + talking points"]
+        DR --> H["stepRequestApproval<br/>Slack card"]
+        H --> HOOK{{"await approvalHook<br/>(suspended, 7d timeout)"}}
+        HOOK --> REC[stepRecordDecision]
+    end
 
-## Tech Stack
+    D & P & R -.->|append| LEDGER[(Evidence ledger)]
+    LEDGER -.->|only citable ids| Q & DR
 
-- **Framework**: [Next.js 16](https://nextjs.org)
-- **Durable execution**: [Workflow DevKit](http://useworkflow.dev/)
-- **AI**: [Vercel AI SDK](https://ai-sdk.dev/) with [AI Gateway](https://vercel.com/ai-gateway)
-- **Human-in-the-Loop**: [Slack Bolt + Vercel Slack Bolt adapter](https://vercel.com/templates/ai/slack-agent-template)
-- **Web Search**: [Exa.ai](https://exa.ai/)
+    SLACK[Slack: Approve / Edit / Reject] -->|approvalHook.resume| HOOK
+    DASH[Dashboard: Approve / Edit / Reject] -->|approvalHook.resume| HOOK
 
-## Slack Integration
-
-This repo uses [Slack's Bolt for JavaScript](https://docs.slack.dev/tools/bolt-js/) with the [Vercel Slack Bolt adapter](https://vercel.com/changelog/build-slack-agents-with-vercel-slack-bolt).
-
-Slack's Bolt is the recommended way to build Slack apps with the latest platform features. While Bolt was designed for traditional long-running Node servers, Vercel's `@vercel/slack-bolt` adapter allows use of it in a serverless environment. Combining Slack's Bolt with Vercel's adapter reduces complexity and makes it easy to subscribe to Slack events and perform actions in your app.
-
-## Using this template
-
-This repo contains various empty functions to serve as placeholders. To fully use this template, fill out empty functions in `lib/services.ts`.
-
-Example: Add a custom implementation of searching your own knowledge base in `queryKnowledgeBase`.
-
-Additionally, update prompts to meet the needs of your specific business function.
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js 20+
-- pnpm (recommended) or npm
-- Slack workspace with bot token and signing secret
-  - Reference the [Vercel Slack agent template docs](https://github.com/vercel-partner-solutions/slack-agent-template) for creating a Slack app
-  - You can set the permissions and configuration for your Slack app in the `manifest.json` file in the root of this repo. Paste this manifest file into the Slack dashboard when creating the app
-  - **Be sure to update the request URL for interactivity and event subscriptions to be your production domain URL**
-  - If Slack environment variables are not set, the app will still run with the Slack bot disabled
-- [Vercel AI Gateway API Key](https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai%2Fapi-keys%3Futm_source%3Dai_gateway_landing_page&title=Get+an+API+Key)
-- [Exa API key](https://exa.ai/)
-
-### Installation
-
-1. Clone the repository:
-
-```bash
-git clone https://github.com/vercel-labs/lead-agent.git
-cd lead-agent
+    WF --> DB[(Neon Postgres)]
+    DB --> UI["/ dashboard · /prospect/[domain] · /about"]
 ```
 
-2. Install dependencies:
+### The evidence ledger (how "never invent facts" is enforced)
+
+Every observation becomes an `EvidenceItem` with a stable id:
+
+```
+[detect.host.x-amz-cf-id]  x-amz-cf-id header (CloudFront) → aws: x-amz-cf-id: MQ4R…
+[psi.mobile.field.ttfb]    Real-user TTFB, field p75 (mobile): 1840 ms
+[research.news.0]          News (2026-06-12): Acme raises $40M Series B (source: https://…)
+```
+
+- `lib/grounding.ts` **drops research items** whose `sourceUrl` wasn't returned by a tool call.
+- Qualification and draft claims must cite ledger ids. Unknown ids trigger **one repair
+  pass**, then the claims are pruned.
+- Numbers in the email that don't appear in the ledger are retried once, then shown to the
+  reviewer as warnings.
+- The UI renders every citation as a chip that jumps to the ledger row.
+
+### Differences from lead-agent
+
+| lead-agent | outbound-agent |
+|---|---|
+| Form → `start(workflowInbound)` | CSV / dashboard → `start(workflowOutbound)` per domain |
+| Research agent returns free text | Same agent + Exa tools, **structured output**, grounded URLs |
+| `techStackAnalysis` tool is a stub | Real detector + eval |
+| `generateObject` category | `Output.object`: fit score, angle, cited claims |
+| Slack post, then the workflow ends; buttons don't reach the run | Workflow **suspends on a hook**; Slack buttons carry the token and resume it |
+| No storage | Neon Postgres (Marketplace) / PGlite locally |
+| `workflow@4.0.1-beta`, `ai@5` | `workflow@4.8`, `ai@7` (`ToolLoopAgent`, `Output.object`) |
+
+## Project structure
+
+```
+app/
+  page.tsx                      dashboard (sortable/filterable, live-refreshing)
+  prospect/[domain]/page.tsx    full brief: evidence, CWV, research, reasoning, draft
+  about/page.tsx                pitch write-up
+  api/run/route.ts              POST CSV/list → one workflow per domain
+  api/slack/route.ts            Approve / Edit (modal) / Reject → approvalHook.resume
+  api/prospects/[domain]/decision/route.ts   dashboard approvals
+workflows/outbound/
+  index.ts                      the durable workflow
+  steps.ts                      'use step' functions (persist each stage)
+  hooks.ts                      defineHook approval schema
+lib/
+  detect/                       fetch (robots, caps), nextjs + host rules, DNS
+  psi.ts                        PageSpeed Insights + cache + CWV thresholds
+  services.ts                   research agent, qualify, draft
+  prompts.ts                    the rep playbook — tune behaviour here
+  grounding.ts                  evidence ledger enforcement
+  slack.ts                      Block Kit card + edit modal
+  db/                           Drizzle schema (prospects, psi_cache)
+eval/                           15 labelled domains + precision/recall script
+```
+
+## Run it
+
+Prerequisites: Node 20+, pnpm.
 
 ```bash
 pnpm install
-```
-
-3. Set up environment variables:
-
-```bash
-cp .env.example .env.local
-```
-
-Configure the following variables:
-
-```bash
-# Vercel AI Gateway API Key
-AI_GATEWAY_API_KEY
-
-# Slack Bot
-SLACK_BOT_TOKEN
-SLACK_SIGNING_SECRET
-SLACK_CHANNEL_ID
-
-# Exa API Key
-EXA_API_KEY
-```
-
-4. Run the development server:
-
-```bash
+cp .env.example .env.local        # fill in keys (see below)
+pnpm db:migrate                   # Neon if DATABASE_URL is set, else local PGlite
 pnpm dev
 ```
 
-5. Open [http://localhost:3000](http://localhost:3000) to see the application and submit a test lead.
+Start a batch from the dashboard (**Run domains**) or the CLI:
 
-## Project Structure
-
-```
-lead-agent/
-├── app/
-│   ├── api/
-│   │   ├── submit/       # Form submission endpoint that kicks off workflow
-│   │   └── slack/        # Slack webhook handler (receives slack events)
-│   └── page.tsx          # Home page
-├── lib/
-│   ├── services.ts       # Core business logic (qualify, research, email)
-│   ├── slack.ts          # Slack integration
-│   └── types.ts          # TypeScript schemas and types
-├── components/
-│   ├── lead-form.tsx     # Main form component
-└── workflows/
-    └── inbound/          # Inbound lead workflow
-        ├── index.ts      # Exported workflow function
-        └── steps.ts      # Workflow steps
+```bash
+pnpm run:csv data/seed.csv
 ```
 
-## Key Features
+Other scripts:
 
-### Workflow durable execution with `use workflow`
+```bash
+pnpm detect nike.com linear.app   # detector only, no keys needed
+pnpm eval                         # detection precision/recall
+npx workflow web                  # inspect workflow runs locally
+```
 
-This project uses [Workflow DevKit](https://useworkflow.dev) to kick off a workflow that runs the agent, qualification, and other actions.
+### Environment
 
-### AI-Powered Qualification
+| Var | Needed for | Notes |
+|---|---|---|
+| `AI_GATEWAY_API_KEY` | qualify, draft, research | Optional on Vercel / after `vercel env pull` (OIDC). The team needs a card on file to unlock AI Gateway's free credits. |
+| `AI_MODEL` | — | Any Gateway model id; default `openai/gpt-5` (lead-agent's). |
+| `EXA_API_KEY` | research | If unset, research is skipped and qualification uses detection + perf only. |
+| `PSI_API_KEY` | performance | Keyless quota is effectively zero. After retries the run continues without perf. |
+| `DATABASE_URL` | storage | Added by the Neon Marketplace integration. Falls back to PGlite in dev. |
+| `SLACK_BOT_TOKEN`, `SLACK_SIGNING_SECRET`, `SLACK_CHANNEL_ID` | Slack approvals | Optional; the dashboard can approve too. |
+| `RUN_SECRET` | prod | Required to start runs and approve from the dashboard. |
+| `APP_URL` | Slack links | Defaults to the Vercel production URL. |
 
-Leads are automatically categorized (QUALIFIED, FOLLOW_UP, SUPPORT, etc.) using the latest OpenAI model via the Vercel AI SDK and `generateObject`. Reasoning is also provided for each qualification decision. Edit the qualification categories by changing the `qualificationCategorySchema` in `lib/types.ts`.
+### Slack
 
-### AI SDK Agent class
+1. Create an app **from manifest** using `manifest.json`, and set the interactivity URL to
+   `https://<your-deployment>/api/slack`.
+2. Install to your workspace, invite the bot to a channel, and set the three `SLACK_*` vars.
+3. Qualified prospects are posted as a card with **Approve / Edit / Reject**. Edit opens a
+   modal; submitting it saves the edit and approves.
 
-Uses the [AI SDK Agent class](https://ai-sdk.dev/docs/agents/overview) to create an autonomous research agent. Create new tools for the Agent and edit prompts in `lib/services.ts`.
+### Deploy
 
-### Human-in-the-Loop Workflow
+```bash
+vercel link
+vercel integration add neon --plan free_v3    # free Postgres, sets DATABASE_URL
+vercel env add EXA_API_KEY / PSI_API_KEY / RUN_SECRET / SLACK_*
+pnpm db:migrate
+vercel deploy --prod
+```
 
-Generated emails are sent to Slack with approve/reject buttons, ensuring human oversight before any outbound communication.
+## Results
 
-The Slack message is defined with [Slack's Block Kit](https://docs.slack.dev/block-kit/). It can be edited in `lib/slack.ts`.
+### Detection eval (`pnpm eval`)
 
-### Extensible Architecture
+15 domains hand-labelled in a real browser (JS executed; DOM checked for
+`#__NEXT_DATA__` / `self.__next_f` / `/_next/` scripts; headers from a same-origin fetch).
+The detector only gets **one plain GET**.
 
-- Add new qualification categories in the `qualificationCategorySchema` in `types.ts`
-- Adjust the prompts and configuration for all AI calls in `lib/services.ts`
-- Alter the agent by tuning parameters in `lib/services.ts`
-- Add new service functions if needed in `lib/services.ts`
-- Follow [Vercel Workflow docs](https://useworkflow.dev) to add new steps to the workflow
-- Create new workflows for other qualification flows, outbound outreach, etc.
+| Metric | Result |
+|---|---|
+| Next.js precision / recall | **100% / 90%** (tp 9, fp 0, fn 1) |
+| On-Vercel precision / recall | **100% / 75%** (tp 3, fp 0, fn 1) |
+| Host accuracy | **93%** (14/15) |
+
+The single miss (openai.com) is a Cloudflare bot challenge in front of a Next.js site on
+Vercel: the plain GET only sees the challenge page. The pipeline marks that as
+`blocked` and doesn't draft, so the miss can't turn into outreach to an existing
+customer. Caveat: most eval domains are well-known sites, so treat this as a sanity check
+rather than a benchmark (see `eval/README.md`).
+
+### Sample detections
+
+| Domain | Next.js | Host |
+|---|---|---|
+| mongodb.com | 0.98, Pages Router | AWS (CloudFront) |
+| nike.com | 0.95, Pages Router | Akamai |
+| ticketmaster.com | 0.95, Pages Router | Fastly |
+| zillow.com | 0.90, Pages Router | AWS (CloudFront) |
+| plaid.com | 0.90, Pages Router | AWS (ELB + CloudFront) |
+| linear.app | 0.86, App Router | Cloudflare |
+| supabase.com | 0.97, App Router | Vercel → skipped as customer |
+
+### End-to-end runs
+
+_Pending API keys (AI Gateway, Exa, PSI). Detection and workflow orchestration are verified
+locally; qualification and draft output will be added here after the first full batch._
 
 ## License
 
-MIT
+MIT, as is the original [lead-agent](https://github.com/vercel-labs/lead-agent).
