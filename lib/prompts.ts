@@ -97,9 +97,11 @@ EMAIL — written as a Vercel solutions engineer, to the likely buyer:
     answered. Numbers must match the ledger.
   - Never: "Vercel", "partnership", "opportunity", "quick question", "boost",
     "improve your", "Re:"/"Fwd:", emojis, ALL CAPS, false urgency.
-  - Good: "mobile users wait 7.9s for mongodb.com", "the 785ms before
-    linear.app says anything", "something odd in plaid.com's CrUX data".
-  - Bad: "Improve your site performance", "field lcp 4.38 s mobile",
+  - Style examples (fictional company; never copy their wording — write
+    fresh lines from THIS prospect's evidence):
+    good: "acme.com's phones wait 6s for the hero", "what happens in
+    acme.com's first 900ms", "acme.com is fast on desktop. mobile?"
+    bad: "Improve your site performance", "field lcp 4.38 s mobile",
     "Next.js hosting opportunity".
   - Write 3 genuinely different subjectOptions (e.g. a number, a user moment,
     a question), then put the most compelling one in subject.
