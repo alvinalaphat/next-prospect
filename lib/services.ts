@@ -255,6 +255,10 @@ export async function qualify(
   };
 }
 
+/** Terms a non-specialist buyer won't parse; allowed in rep talking points only. */
+const EMAIL_JARGON =
+  /\b(CrUX|p75|percentile|LCP|INP|CLS|TTFB|Core Web Vitals|Lighthouse|field data|lab data|ISR|RSC|CDN|edge network|SSR|hydration|rated slow)\b/gi;
+
 /** Sender name for sign-offs (REP_NAME); placeholders stay if unknown. */
 export function fillPlaceholders(text: string, firstName: string | null): string {
   let out = text;
@@ -310,7 +314,13 @@ export async function writeDraft(
     emailCitations: [...new Set(d.emailCitations.map(normalizeId))],
     talkingPoints: d.talkingPoints.map(normalizeCitations)
   });
+  const jargon = (d: z.infer<typeof draftSchema>) => [
+    ...new Set(
+      [...`${d.subject}\n${d.body}`.matchAll(EMAIL_JARGON)].map((m) => m[0].toLowerCase())
+    )
+  ];
   const check = (d: z.infer<typeof draftSchema>) => ({
+    jargon: jargon(d),
     bad: unknownCitations([...d.emailCitations, ...d.talkingPoints.flatMap((t) => t.citations)], ledger),
     numbers: unverifiedNumbers(`${d.subjectOptions.join('\n')}\n${d.subject}\n${d.body}`, ledger)
   });
@@ -325,7 +335,7 @@ export async function writeDraft(
   output = normalize(output);
 
   let issues = check(output);
-  if (issues.bad.length || issues.numbers.length) {
+  if (issues.bad.length || issues.numbers.length || issues.jargon.length) {
     ({ output } = await generateText({
       model: MODEL,
       providerOptions: FAST,
@@ -336,6 +346,7 @@ export async function writeDraft(
         'Your previous draft had problems. Fix them:',
         issues.bad.length ? `- Cited ids not in the ledger: ${issues.bad.join(', ')}` : '',
         issues.numbers.length ? `- Numbers not found in the ledger: ${issues.numbers.join(', ')}` : '',
+        issues.jargon.length ? `- Technical jargon in the email (rewrite in plain English): ${issues.jargon.join(', ')}` : '',
         '',
         `Previous draft:\nSubject: ${output.subject}\n${output.body}`
       ].join('\n'),
@@ -348,6 +359,7 @@ export async function writeDraft(
   const warnings: string[] = [];
   if (issues.bad.length) warnings.push(`Unknown citations: ${issues.bad.join(', ')}`);
   if (issues.numbers.length) warnings.push(`Numbers not found in evidence: ${issues.numbers.join(', ')}`);
+  if (issues.jargon.length) warnings.push(`Jargon in email: ${issues.jargon.join(', ')}`);
   // Fill the greeting from the verified stakeholder only; otherwise leave the
   // placeholder for the rep.
   const firstName = stakeholderFirstName(research);

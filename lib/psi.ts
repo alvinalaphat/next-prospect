@@ -126,6 +126,14 @@ export function rate(metric: keyof typeof CWV, value: number | null) {
 export function perfEvidence(perf: Perf, url: string): EvidenceItem[] {
   const items: EvidenceItem[] = [];
   const psiUrl = `https://pagespeed.web.dev/analysis?url=${encodeURIComponent(url)}`;
+  // Published thresholds, so emails can give plain-English contrast
+  // ("Google counts anything over 2.5 seconds as slow") without inventing one.
+  const cwvUrl = 'https://web.dev/articles/vitals';
+  items.push(
+    { id: 'benchmark.lcp', source: 'psi', label: "Google's 'good' threshold for main content to appear (LCP)", value: '2.5 s or less; over 4 s is poor', url: cwvUrl },
+    { id: 'benchmark.ttfb', source: 'psi', label: "Google's 'good' threshold for server response (TTFB)", value: '0.8 s or less; over 1.8 s is poor', url: 'https://web.dev/articles/ttfb' },
+    { id: 'benchmark.inp', source: 'psi', label: "Google's 'good' threshold for responding to a tap (INP)", value: '200 ms or less; over 500 ms is poor', url: cwvUrl }
+  );
   for (const r of [perf.mobile, perf.desktop]) {
     const s = r.strategy;
     const add = (id: string, label: string, value: number | string | null, unit = '') => {

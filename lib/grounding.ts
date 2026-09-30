@@ -196,7 +196,7 @@ export function unverifiedNumbers(text: string, ledger: EvidenceItem[]): string[
     ledgerNums.some(
       (l) =>
         Math.abs(l - n) <= Math.max(0.01, Math.abs(l) * 0.05) || // same unit
-        Math.abs(l / 1000 - n) <= 0.05 || // ms → s
+        Math.abs(l / 1000 - n) <= Math.max(0.05, (l / 1000) * 0.06) || // ms → s, allowing spoken rounding (7930 ms ≈ "about 8 seconds")
         Math.abs(l * 1000 - n) <= 50 // s → ms
     );
 

@@ -106,20 +106,52 @@ EMAIL — written as a Vercel solutions engineer, to the likely buyer:
   - Write 3 genuinely different subjectOptions (e.g. a number, a user moment,
     a question), then put the most compelling one in subject.
 - Body: 4–5 short sentences, 50–90 words total. Plain text, no bullets, no
-  exclamation marks. Simple words; one idea per sentence.
+  exclamation marks.
 - FORMAT: each core sentence is its own paragraph, separated by a blank line
   (a double newline). The reader should be able to skim it in five seconds.
+- PLAIN ENGLISH. Write so a busy VP who isn't a performance engineer gets it
+  instantly. Describe what their visitors experience, not metric names.
+  Banned in the email (fine in talking points): CrUX, p75, percentile, LCP,
+  INP, CLS, TTFB, Core Web Vitals, Lighthouse, field data, lab data, ISR, RSC,
+  CDN, edge network, SSR, hydration, "assessment", "rated SLOW".
+  Translate instead:
+  - p75 of X → "1 in 4 visits wait X or longer" (p75 means 75% are FASTER
+    than X — never say "75% take X").
+  - LCP → "before the main content shows up"; TTFB → "before the server
+    even responds"; INP → "for the page to react to a tap".
+  - Round numbers the way people talk: "about 8 seconds", "almost 1.5
+    seconds" (they must still match the ledger).
+  - Use the benchmark.* ledger items for contrast, e.g. "Google counts
+    anything over 2.5 seconds as slow".
+- NEVER promise or estimate an improvement ("cut it to 2s", "50% faster").
+  There is no evidence for one. Offer to show them instead.
 - Structure, one sentence each:
-  1. One specific, verifiable observation about THEIR site (from the ledger).
-  2. Why it matters (what it costs their users), stated plainly.
-  3. One concrete thing Vercel does for Next.js teams on their current host
-     (e.g. managed ISR/RSC caching, image optimization, global edge network,
-     preview deployments, fluid compute).
-  4. One low-friction ask in your own words (e.g. offering to walk through the
-     trace together). Don't reuse the same stock phrasing every time.
-- Tone: helpful engineer sharing a finding, not a salesperson. No hype words
-  ("revolutionize", "supercharge", "game-changer"), no filler ("I hope this
-  finds you well", "I wanted to reach out"), no fake familiarity.
+  1. What their visitors experience today, in plain words, with one number.
+  2. Why it matters (the benchmark, or what a slow page costs them).
+  3. One plain-language thing Vercel does for Next.js sites like theirs
+     (e.g. "serves pages from servers close to each visitor", "caches pages
+     so they don't rebuild on every visit", "resizes images automatically").
+  4. One easy ask in your own words (e.g. offering a side-by-side of their
+     homepage). Don't reuse the same stock phrasing every time.
+- Tone: a friendly, helpful person sharing something they noticed. Not a
+  salesperson, not a performance report. No hype words ("revolutionize",
+  "supercharge", "game-changer"), no filler ("I hope this finds you well",
+  "I wanted to reach out"), no fake familiarity.
+- Style example (fictional company; don't copy its wording):
+  "Hi Sam,
+
+  I was looking at acme.com on my phone, and 1 in 4 visits wait 6 seconds or
+  more before the main content shows up.
+
+  Google counts anything over 2.5 seconds as slow, and that's usually where
+  people start bouncing.
+
+  We help Next.js teams serve pages from servers close to each visitor, so
+  that wait gets much shorter.
+
+  Want me to put together a quick side-by-side of your homepage?
+
+  {{rep_name}}"
 - Greet with exactly "Hi {{first_name}}," (the placeholder is filled in by
   code from the verified stakeholder — never write a name yourself), and sign
   off as "{{rep_name}}".
@@ -127,6 +159,7 @@ EMAIL — written as a Vercel solutions engineer, to the likely buyer:
   brackets or source notes in the email body itself.
 
 TALKING POINTS — exactly 3 bullets for the rep's call prep, each citing ids.
+These can be technical (metric names, p75, hosting details): they're for the rep.
 
 Only use facts from the EVIDENCE LEDGER. Numbers must match the ledger
 exactly (you may convert ms ↔ s).
