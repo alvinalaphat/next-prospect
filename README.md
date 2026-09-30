@@ -23,11 +23,14 @@ For each domain in a CSV, one durable workflow:
 2. **Measure**: PageSpeed Insights for mobile and desktop. Lighthouse lab LCP/CLS/TTFB/TBT
    and CrUX real-user p75 LCP/INP/CLS/TTFB are kept separate. Cached for 24h.
 3. **Research**: lead-agent's Exa research agent with structured output: summary,
-   size/funding, recent news, likely buyer, and why now. **Every item must cite a URL the
-   tools actually returned.**
+   size/funding, recent news, why now, and the **key stakeholder**. The stakeholder is
+   found via Exa people (LinkedIn) search, with LinkedIn URL, alternates, and an email
+   only if one is published verbatim on a retrieved page. **Every item must cite a URL the
+   tools actually returned; people must be named on it.**
 4. **Qualify**: fit score 0–100, reasoning, and the single strongest angle. Every claim
    cites evidence-ledger ids, and unknown ids are rejected in code.
-5. **Draft**: a 60–120 word email in a helpful-engineer tone, plus 3 rep talking points.
+5. **Draft**: a 60–120 word email in a helpful-engineer tone, addressed to the verified
+   stakeholder's first name and signed with `REP_NAME`, plus 3 rep talking points.
    Numbers are checked against the ledger.
 6. **Approve**: the workflow **suspends on a durable hook** until someone clicks
    Approve / Edit / Reject in Slack or on the dashboard.
@@ -150,6 +153,7 @@ npx workflow web                  # inspect workflow runs locally
 | `PSI_API_KEY` | performance | Keyless quota is effectively zero. After retries the run continues without perf. |
 | `DATABASE_URL` | storage | Added by the Neon Marketplace integration. Falls back to PGlite in dev. |
 | `SLACK_BOT_TOKEN`, `SLACK_SIGNING_SECRET`, `SLACK_CHANNEL_ID` | Slack approvals | Optional; the dashboard can approve too. |
+| `REP_NAME` | drafts | Name that signs drafts (fills `{{rep_name}}`). |
 | `RUN_SECRET` | prod | Required to start runs and approve from the dashboard. |
 | `APP_URL` | Slack links | Defaults to the Vercel production URL. |
 
@@ -203,10 +207,30 @@ rather than a benchmark (see `eval/README.md`).
 | linear.app | 0.86, App Router | Cloudflare |
 | supabase.com | 0.97, App Router | Vercel → skipped as customer |
 
-### End-to-end runs
+### End-to-end runs (seed batch, production)
 
-_Pending API keys (AI Gateway, Exa, PSI). Detection and workflow orchestration are verified
-locally; qualification and draft output will be added here after the first full batch._
+Run from `data/seed.csv` on https://outbound-agent-gold.vercel.app with `openai/gpt-5`
+(low reasoning effort) via AI Gateway, Exa research and PSI. Each qualified prospect was
+posted to Slack for approval.
+
+| Domain | Outcome | Fit | Strongest angle | Verified stakeholder |
+|---|---|---|---|---|
+| mongodb.com | Needs review | 90 | Real-user CWV pain on AWS-hosted Next.js (field LCP 7.9s mobile) | Lead, Web Experiences |
+| plaid.com | Needs review | 82 | Mobile real-user CWV SLOW on AWS/CloudFront | Head of Platform Engineering |
+| linear.app | Needs review | 82 | Slow real-user LCP/TTFB, App Router behind Cloudflare | Head of Engineering |
+| zillow.com | Needs review | 82 | Real-user TTFB on AWS CloudFront | SVP Engineering |
+| supabase.com | Skipped: already on Vercel | – | – | – |
+| ticketmaster.com | Skipped: bot-blocked from Vercel's IPs | – | – | – |
+
+All four drafts passed grounding with zero warnings: every citation resolved and every
+number was found in the ledger. Each stakeholder was confirmed via a LinkedIn result that
+names them. No published emails were found, which is expected, and addresses are never
+guessed.
+
+Things the first production run caught, now fixed:
+- The model echoed `[id]` ledger formatting, so valid citations were rejected. Citations are now normalized first.
+- An invalid Exa key made the agent loop on tool errors. It now fails fast and flags the brief.
+- Citation ids leaked into an email body. They're stripped, and the prompt forbids them.
 
 ## License
 
