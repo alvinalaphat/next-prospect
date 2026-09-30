@@ -272,6 +272,19 @@ export function stripCitationLeaks(body: string): string {
 }
 
 /**
+ * House style: every paragraph separated by exactly one blank line, so each
+ * core sentence stands alone. Models often use single newlines; fix that.
+ */
+export function formatEmailBody(body: string): string {
+  return body
+    .replace(/\r\n/g, '\n')
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .join('\n\n');
+}
+
+/**
  * ------------------------------------------------------------
  * Draft email + rep brief
  * ------------------------------------------------------------
@@ -341,7 +354,7 @@ export async function writeDraft(
   output = {
     ...output,
     subject: fillPlaceholders(output.subject, firstName),
-    body: fillPlaceholders(stripCitationLeaks(output.body), firstName)
+    body: formatEmailBody(fillPlaceholders(stripCitationLeaks(output.body), firstName))
   };
   if (!firstName) warnings.push('No verified stakeholder — fill in {{first_name}} before sending');
 
@@ -351,7 +364,7 @@ export async function writeDraft(
     : null;
 
   const words = output.body.split(/\s+/).filter(Boolean).length;
-  if (words > 140) warnings.push(`Email is ${words} words (target ≤120)`);
+  if (words > 110) warnings.push(`Email is ${words} words (target 50–90)`);
 
   return {
     ...output,

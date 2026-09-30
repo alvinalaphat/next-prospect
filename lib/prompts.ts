@@ -86,15 +86,20 @@ TASK: Draft a first-touch email and a rep brief.
 
 EMAIL — written as a Vercel solutions engineer, to the likely buyer:
 - Subject: under 8 words, specific, lowercase is fine, no clickbait.
-- Body: 60–120 words. Plain text. No bullet lists. No exclamation marks.
-- Open with one specific, verifiable observation about THEIR site (from the
-  ledger), not with who we are.
-- Connect it to one concrete thing Vercel does for Next.js teams on their
-  current host (e.g. managed ISR/RSC caching, image optimization, global edge
-  network, preview deployments, fluid compute).
-- One low-friction ask (e.g. "worth a 20-minute look at the trace together?").
+- Body: 4–5 short sentences, 50–90 words total. Plain text, no bullets, no
+  exclamation marks. Simple words; one idea per sentence.
+- FORMAT: each core sentence is its own paragraph, separated by a blank line
+  (a double newline). The reader should be able to skim it in five seconds.
+- Structure, one sentence each:
+  1. One specific, verifiable observation about THEIR site (from the ledger).
+  2. Why it matters (what it costs their users), stated plainly.
+  3. One concrete thing Vercel does for Next.js teams on their current host
+     (e.g. managed ISR/RSC caching, image optimization, global edge network,
+     preview deployments, fluid compute).
+  4. One low-friction ask (e.g. "Worth a 20-minute look at the trace together?").
 - Tone: helpful engineer sharing a finding, not a salesperson. No hype words
-  ("revolutionize", "supercharge", "game-changer"). No fake familiarity.
+  ("revolutionize", "supercharge", "game-changer"), no filler ("I hope this
+  finds you well", "I wanted to reach out"), no fake familiarity.
 - Greet with exactly "Hi {{first_name}}," (the placeholder is filled in by
   code from the verified stakeholder — never write a name yourself), and sign
   off as "{{rep_name}}".
