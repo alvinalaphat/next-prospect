@@ -76,6 +76,16 @@ export function researchEvidence(r: Research): EvidenceItem[] {
   return items;
 }
 
+/**
+ * Models often echo the prompt's "[id]" formatting back as the citation.
+ * Normalize before checking so valid citations aren't rejected.
+ */
+export const normalizeId = (id: string) => id.trim().replace(/^\[+|\]+$/g, '').trim();
+
+export function normalizeCitations<T extends { citations: string[] }>(c: T): T {
+  return { ...c, citations: [...new Set(c.citations.map(normalizeId))] };
+}
+
 /** Which of these citation ids don't exist in the ledger? */
 export function unknownCitations(ids: string[], ledger: EvidenceItem[]): string[] {
   const known = new Set(ledger.map((e) => e.id));

@@ -4,6 +4,8 @@ import { exa } from '@/lib/exa';
 import {
   formatLedger,
   groundResearch,
+  normalizeCitations,
+  normalizeId,
   pruneClaims,
   unknownCitations,
   unverifiedNumbers
@@ -36,6 +38,16 @@ const FAST = { openai: { reasoningEffort: 'low' } } as const;
  * ------------------------------------------------------------
  */
 
+/** Surface tool failures in function logs (the model only sees a generic error). */
+async function logToolErrors<T>(name: string, fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (err) {
+    console.error(`[research] ${name} failed:`, err instanceof Error ? err.message : err);
+    throw err;
+  }
+}
+
 /**
  * Tools close over `retrieved`, recording every URL they return so
  * groundResearch() can reject citations the agent never actually saw.
@@ -52,7 +64,7 @@ function researchTools(retrieved: Set<string>) {
       recentOnly: z.boolean().optional().describe('Only results from the last 12 months')
     }),
     execute: async ({ query, category, recentOnly }) => {
-      const res = await exa().search(query, {
+      const res = await logToolErrors('search', () => exa().search(query, {
         numResults: 5,
         type: 'auto',
         category,
@@ -60,7 +72,7 @@ function researchTools(retrieved: Set<string>) {
           ? new Date(Date.now() - 365 * 24 * 3600 * 1000).toISOString()
           : undefined,
         contents: { highlights: true }
-      });
+      }));
       return res.results.map((r) => {
         retrieved.add(r.url);
         return {
@@ -79,7 +91,9 @@ function researchTools(retrieved: Set<string>) {
       url: z.string().describe('Absolute URL, including https://')
     }),
     execute: async ({ url }) => {
-      const res = await exa().getContents(url, { text: { maxCharacters: 6_000 } });
+      const res = await logToolErrors('fetchUrl', () =>
+        exa().getContents(url, { text: { maxCharacters: 6_000 } })
+      );
       const page = res.results[0];
       if (!page) return { url, error: 'No content' };
       retrieved.add(page.url);
@@ -129,6 +143,11 @@ export async function qualify(
   ledger: EvidenceItem[]
 ): Promise<{ qualification: Qualification; warnings: string[] }> {
   const prompt = `Prospect: ${domain}\n\nEVIDENCE LEDGER:\n${formatLedger(ledger)}`;
+  const normalize = (q: Qualification): Qualification => ({
+    ...q,
+    strongestAngle: normalizeCitations(q.strongestAngle),
+    claims: q.claims.map(normalizeCitations)
+  });
   const cites = (q: Qualification) => [
     ...q.strongestAngle.citations,
     ...q.claims.flatMap((c) => c.citations)
@@ -141,6 +160,7 @@ export async function qualify(
     prompt,
     output: Output.object({ schema: qualificationSchema })
   });
+  output = normalize(output);
 
   // One repair pass if the model cited ids that don't exist.
   const bad = unknownCitations(cites(output), ledger);
@@ -152,6 +172,7 @@ export async function qualify(
       prompt: `${prompt}\n\nYour previous answer cited ids that are NOT in the ledger: ${bad.join(', ')}. Redo it using only ledger ids, and remove any claim you can't support.`,
       output: Output.object({ schema: qualificationSchema })
     }));
+    output = normalize(output);
   }
 
   const warnings: string[] = [];
@@ -195,6 +216,11 @@ export async function writeDraft(
     formatLedger(ledger)
   ].join('\n');
 
+  const normalize = (d: z.infer<typeof draftSchema>) => ({
+    ...d,
+    emailCitations: [...new Set(d.emailCitations.map(normalizeId))],
+    talkingPoints: d.talkingPoints.map(normalizeCitations)
+  });
   const check = (d: z.infer<typeof draftSchema>) => ({
     bad: unknownCitations([...d.emailCitations, ...d.talkingPoints.flatMap((t) => t.citations)], ledger),
     numbers: unverifiedNumbers(`${d.subject}\n${d.body}`, ledger)
@@ -207,6 +233,7 @@ export async function writeDraft(
     prompt,
     output: Output.object({ schema: draftSchema })
   });
+  output = normalize(output);
 
   let issues = check(output);
   if (issues.bad.length || issues.numbers.length) {
@@ -225,6 +252,7 @@ export async function writeDraft(
       ].join('\n'),
       output: Output.object({ schema: draftSchema })
     }));
+    output = normalize(output);
     issues = check(output);
   }
 
