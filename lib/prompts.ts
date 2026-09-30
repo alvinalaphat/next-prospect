@@ -98,7 +98,8 @@ EMAIL — written as a Vercel solutions engineer, to the likely buyer:
 - Greet with exactly "Hi {{first_name}}," (the placeholder is filled in by
   code from the verified stakeholder — never write a name yourself), and sign
   off as "{{rep_name}}".
-- emailCitations: every ledger id your email relies on.
+- emailCitations: every ledger id your email relies on. Never put ids,
+  brackets or source notes in the email body itself.
 
 TALKING POINTS — exactly 3 bullets for the rep's call prep, each citing ids.
 

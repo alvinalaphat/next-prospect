@@ -255,6 +255,22 @@ export async function qualify(
   };
 }
 
+/** Sender name for sign-offs (REP_NAME); placeholders stay if unknown. */
+export function fillPlaceholders(text: string, firstName: string | null): string {
+  let out = text;
+  if (firstName) out = out.replaceAll('{{first_name}}', firstName);
+  if (process.env.REP_NAME) out = out.replaceAll('{{rep_name}}', process.env.REP_NAME);
+  return out;
+}
+
+/** Citations belong in emailCitations, not the prose: remove "[psi.mobile…]", "[ids below]" etc. */
+export function stripCitationLeaks(body: string): string {
+  return body
+    .replace(/\s*\[(?:[a-z]+\.[\w.-]+(?:,\s*)?)+\]/gi, '')
+    .replace(/\s*\[(?:ids?|sources?|citations?)[^\]]*\]/gi, '')
+    .replace(/[ \t]+\n/g, '\n');
+}
+
 /**
  * ------------------------------------------------------------
  * Draft email + rep brief
@@ -322,8 +338,11 @@ export async function writeDraft(
   // Fill the greeting from the verified stakeholder only; otherwise leave the
   // placeholder for the rep.
   const firstName = stakeholderFirstName(research);
-  const fill = (t: string) => (firstName ? t.replaceAll('{{first_name}}', firstName) : t);
-  output = { ...output, subject: fill(output.subject), body: fill(output.body) };
+  output = {
+    ...output,
+    subject: fillPlaceholders(output.subject, firstName),
+    body: fillPlaceholders(stripCitationLeaks(output.body), firstName)
+  };
   if (!firstName) warnings.push('No verified stakeholder — fill in {{first_name}} before sending');
 
   const b = research?.likelyBuyer;
