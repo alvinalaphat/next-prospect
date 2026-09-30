@@ -56,3 +56,5 @@ next-env.d.ts
 .workflow-data
 .vercel
 .claude/
+.agents/
+skills-lock.json
