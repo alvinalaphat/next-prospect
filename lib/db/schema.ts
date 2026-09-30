@@ -1,4 +1,5 @@
 import { index, integer, jsonb, pgTable, primaryKey, text, timestamp } from 'drizzle-orm/pg-core';
+import type { GmailDraft } from '@/lib/gmail';
 import type {
   Approval,
   Detection,
@@ -39,6 +40,8 @@ export const prospects = pgTable(
     approvalToken: text('approval_token'),
     approval: jsonb('approval').$type<Approval>(),
     slack: jsonb('slack').$type<{ channel: string; ts: string }>(),
+    gmailDraft: jsonb('gmail_draft').$type<GmailDraft>(),
+    gmailError: text('gmail_error'),
 
     error: text('error'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

@@ -7,6 +7,7 @@ import { HostBadge, Pill, Score, StatusBadge } from '@/components/badges';
 import { ApprovalBar } from '@/components/approval-bar';
 import { Citations } from '@/components/citations';
 import { CopyButton } from '@/components/copy-button';
+import { GmailDraftButton } from '@/components/gmail-draft-button';
 import { getProspect } from '@/lib/db';
 import { ms, RATING_TONE, relativeTime, STATUS } from '@/lib/format';
 import { rate } from '@/lib/psi';
@@ -75,6 +76,30 @@ export default async function ProspectPage({ params }: { params: Promise<{ domai
             {STATUS[p.status].label} by <span className="text-foreground">{p.approval.by}</span> via {p.approval.via}
             {p.approval.editedDraft && ' (with edits)'}.
           </p>
+        )}
+        {p.status === 'approved' && (
+          <div className="flex flex-wrap items-center gap-3 rounded-lg border p-3 text-sm">
+            {p.gmailDraft ? (
+              <>
+                <Mail className="size-4" />
+                <span>
+                  Gmail draft created {relativeTime(p.gmailDraft.createdAt)}
+                  {!p.gmailDraft.to && <span className="text-muted-foreground"> · no recipient (no published email). Add one in Gmail.</span>}
+                </span>
+                <a href={p.gmailDraft.url} target="_blank" rel="noreferrer" className="ml-auto font-medium underline underline-offset-4">
+                  Open in Gmail ↗
+                </a>
+              </>
+            ) : (
+              <>
+                <Mail className="text-muted-foreground size-4" />
+                <span className="text-muted-foreground">{p.gmailError ?? 'No Gmail draft yet.'}</span>
+                <div className="ml-auto">
+                  <GmailDraftButton domain={p.domain} label={p.gmailError ? 'Retry Gmail draft' : 'Create Gmail draft'} />
+                </div>
+              </>
+            )}
+          </div>
         )}
       </div>
 

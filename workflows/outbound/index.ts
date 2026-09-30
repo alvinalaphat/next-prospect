@@ -2,6 +2,7 @@ import { getWorkflowMetadata, sleep } from 'workflow';
 import type { Approval } from '@/lib/types';
 import { approvalHook, approvalToken } from './hooks';
 import {
+  stepCreateGmailDraft,
   stepDetect,
   stepDraft,
   stepFail,
@@ -61,7 +62,10 @@ export const workflowOutbound = async (domain: string, startDelaySeconds = 0) =>
       hook.then((a): Approval => a),
       sleep('7d').then(() => null)
     ]);
-    await stepRecordDecision(domain, workflowRunId, approval, card);
+    const recorded = await stepRecordDecision(domain, workflowRunId, approval, card);
+    if (!recorded.stale && approval?.decision === 'approved') {
+      await stepCreateGmailDraft(domain);
+    }
 
     return { domain, decision: approval?.decision ?? 'expired' };
   } catch (err) {

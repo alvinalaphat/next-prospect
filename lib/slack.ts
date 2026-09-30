@@ -131,6 +131,14 @@ function prospectBlocks(p: ProspectRow, token: string | null): KnownBlock[] {
         }
       ]
     });
+    if (p.gmailDraft) {
+      blocks.push({
+        type: 'context',
+        elements: [{ type: 'mrkdwn', text: `✉️ <${p.gmailDraft.url}|Gmail draft ready>${p.gmailDraft.to ? '' : ' — add a recipient before sending'}` }]
+      });
+    } else if (p.gmailError) {
+      blocks.push({ type: 'context', elements: [{ type: 'mrkdwn', text: `⚠️ ${p.gmailError}` }] });
+    }
   } else if (p.status === 'expired') {
     blocks.push({ type: 'context', elements: [{ type: 'mrkdwn', text: '⌛ Expired without a decision' }] });
   }

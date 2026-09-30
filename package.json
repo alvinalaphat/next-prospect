@@ -11,7 +11,8 @@
     "db:migrate": "tsx scripts/migrate.ts",
     "detect": "tsx scripts/detect.ts",
     "run:csv": "tsx scripts/run.ts",
-    "eval": "tsx eval/run.ts"
+    "eval": "tsx eval/run.ts",
+    "gmail:auth": "tsx scripts/gmail-auth.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8",

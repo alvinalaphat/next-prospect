@@ -34,6 +34,9 @@ For each domain in a CSV, one durable workflow:
    Numbers are checked against the ledger.
 6. **Approve**: the workflow **suspends on a durable hook** until someone clicks
    Approve / Edit / Reject in Slack or on the dashboard.
+7. **Gmail draft**: on approval, the final (possibly edited) email becomes a **draft in
+   the rep's Gmail**, linked from Slack and the brief. It uses the `gmail.compose` scope
+   and only calls `drafts.create`, so the rep still reviews it and clicks Send.
 
 ## Architecture
 
@@ -153,6 +156,7 @@ npx workflow web                  # inspect workflow runs locally
 | `PSI_API_KEY` | performance | Keyless quota is effectively zero. After retries the run continues without perf. |
 | `DATABASE_URL` | storage | Added by the Neon Marketplace integration. Falls back to PGlite in dev. |
 | `SLACK_BOT_TOKEN`, `SLACK_SIGNING_SECRET`, `SLACK_CHANNEL_ID` | Slack approvals | Optional; the dashboard can approve too. |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN` | Gmail drafts | Optional; see Gmail drafts below. |
 | `REP_NAME` | drafts | Name that signs drafts (fills `{{rep_name}}`). |
 | `RUN_SECRET` | prod | Required to start runs and approve from the dashboard. |
 | `APP_URL` | Slack links | Defaults to the Vercel production URL. |
@@ -164,6 +168,20 @@ npx workflow web                  # inspect workflow runs locally
 2. Install to your workspace, invite the bot to a channel, and set the three `SLACK_*` vars.
 3. Qualified prospects are posted as a card with **Approve / Edit / Reject**. Edit opens a
    modal; submitting it saves the edit and approves.
+
+### Gmail drafts
+
+1. In Google Cloud console: enable the **Gmail API**. Under **OAuth consent screen**, choose
+   External, add yourself as a test user, and add the `gmail.compose` scope.
+2. **Credentials → Create credentials → OAuth client ID → Desktop app.** Put the ID and
+   secret in `.env.local` as `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`.
+3. `pnpm gmail:auth` opens Google's consent screen and saves `GMAIL_REFRESH_TOKEN` to
+   `.env.local`.
+4. Add all three to Vercel, then redeploy.
+
+While the OAuth app is in *Testing* mode, Google expires refresh tokens after 7 days. When
+that happens, briefs show "re-run `pnpm gmail:auth`". Drafts have no recipient unless the
+stakeholder's email was published on a retrieved page.
 
 ### Deploy
 
