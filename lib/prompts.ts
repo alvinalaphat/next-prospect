@@ -119,39 +119,27 @@ EMAIL — written as a Vercel solutions engineer, to the likely buyer:
     than X — never say "75% take X").
   - LCP → "before the main content shows up"; TTFB → "before the server
     even responds"; INP → "for the page to react to a tap".
-  - Round numbers the way people talk: "about 8 seconds", "almost 1.5
-    seconds" (they must still match the ledger).
-  - Use the benchmark.* ledger items for contrast, e.g. "Google counts
-    anything over 2.5 seconds as slow".
+  - Round numbers the way people talk, in the subject too: "about 8
+    seconds", "over 4 seconds" (they must still match the ledger).
+- Don't cite sources or standards in the email ("Google says", "industry
+  benchmark", "according to"). State the finding plainly and move on.
+- NEVER invent personal experience or actions: no "I was on my phone", "I
+  visited", "I tested", "I noticed while browsing". Say what the data shows
+  ("1 in 4 mobile visits to mongodb.com wait…").
 - NEVER promise or estimate an improvement ("cut it to 2s", "50% faster").
   There is no evidence for one. Offer to show them instead.
-- Structure, one sentence each:
+- Structure, one short sentence each (4 sentences is ideal):
   1. What their visitors experience today, in plain words, with one number.
-  2. Why it matters (the benchmark, or what a slow page costs them).
+  2. Why that matters to them, in a few words (e.g. that's long enough for
+     people to leave before they see anything).
   3. One plain-language thing Vercel does for Next.js sites like theirs
-     (e.g. "serves pages from servers close to each visitor", "caches pages
-     so they don't rebuild on every visit", "resizes images automatically").
-  4. One easy ask in your own words (e.g. offering a side-by-side of their
-     homepage). Don't reuse the same stock phrasing every time.
+     (e.g. serving pages from servers close to each visitor, caching pages so
+     they don't rebuild on every visit, resizing images automatically).
+  4. One easy ask in your own words. Vary it; no stock phrasing.
 - Tone: a friendly, helpful person sharing something they noticed. Not a
   salesperson, not a performance report. No hype words ("revolutionize",
   "supercharge", "game-changer"), no filler ("I hope this finds you well",
   "I wanted to reach out"), no fake familiarity.
-- Style example (fictional company; don't copy its wording):
-  "Hi Sam,
-
-  I was looking at acme.com on my phone, and 1 in 4 visits wait 6 seconds or
-  more before the main content shows up.
-
-  Google counts anything over 2.5 seconds as slow, and that's usually where
-  people start bouncing.
-
-  We help Next.js teams serve pages from servers close to each visitor, so
-  that wait gets much shorter.
-
-  Want me to put together a quick side-by-side of your homepage?
-
-  {{rep_name}}"
 - Greet with exactly "Hi {{first_name}}," (the placeholder is filled in by
   code from the verified stakeholder — never write a name yourself), and sign
   off as "{{rep_name}}".
