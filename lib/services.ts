@@ -6,6 +6,7 @@ import {
   groundResearch,
   normalizeCitations,
   normalizeId,
+  stakeholderFirstName,
   pruneClaims,
   unknownCitations,
   unverifiedNumbers
@@ -55,39 +56,77 @@ async function logToolErrors<T>(
 }
 
 /**
- * Tools close over `retrieved`, recording every URL they return so
- * groundResearch() can reject citations the agent never actually saw.
+ * Tools close over `retrieved` (URL → the text the model was shown) so
+ * groundResearch() can reject citations, people and emails the agent never
+ * actually saw on a page.
  */
-function researchTools(retrieved: Set<string>, state: { authFailed: boolean }) {
+function researchTools(retrieved: Map<string, string>, state: { authFailed: boolean }) {
+  const record = (url: string, ...text: (string | null | undefined)[]) =>
+    retrieved.set(url, [retrieved.get(url), ...text].filter(Boolean).join('\n'));
+
   const search = tool({
     description: 'Search the web. Returns titles, URLs, dates, and relevant highlights.',
     inputSchema: z.object({
       query: z.string().describe('Search query, e.g. "Acme Series B funding"'),
       category: z
-        .enum(['company', 'news', 'people', 'financial report', 'publication'])
+        .enum(['company', 'news', 'financial report', 'publication'])
         .optional()
         .describe('Restrict to a result category'),
       recentOnly: z.boolean().optional().describe('Only results from the last 12 months')
     }),
     execute: async ({ query, category, recentOnly }) => {
-      const res = await logToolErrors('search', state, () => exa().search(query, {
-        numResults: 5,
-        type: 'auto',
-        category,
-        startPublishedDate: recentOnly
-          ? new Date(Date.now() - 365 * 24 * 3600 * 1000).toISOString()
-          : undefined,
-        contents: { highlights: true }
-      }));
+      const res = await logToolErrors('search', state, () =>
+        exa().search(query, {
+          numResults: 5,
+          type: 'auto',
+          category,
+          startPublishedDate: recentOnly
+            ? new Date(Date.now() - 365 * 24 * 3600 * 1000).toISOString()
+            : undefined,
+          contents: { highlights: true }
+        })
+      );
       return res.results.map((r) => {
-        retrieved.add(r.url);
-        return {
-          title: r.title,
-          url: r.url,
-          publishedDate: r.publishedDate ?? null,
-          highlights: (r.highlights ?? []).slice(0, 3)
-        };
+        const highlights = (r.highlights ?? []).slice(0, 3);
+        record(r.url, r.title, ...highlights);
+        return { title: r.title, url: r.url, publishedDate: r.publishedDate ?? null, highlights };
       });
+    }
+  });
+
+  const findPeople = tool({
+    description:
+      'Find people at a company by role using a people (LinkedIn) search. Returns names, headlines and linkedin.com/in URLs. Use this to identify the key technical stakeholder.',
+    inputSchema: z.object({
+      company: z.string().describe('Company name, e.g. "Plaid"'),
+      roles: z
+        .array(z.string())
+        .min(1)
+        .max(3)
+        .describe('Roles to look for, e.g. ["VP Engineering", "Head of Web Platform", "Director of Frontend Engineering"]')
+    }),
+    execute: async ({ company, roles }) => {
+      const results = await Promise.all(
+        roles.map((role) =>
+          logToolErrors('findPeople', state, () =>
+            exa().search(`${role} at ${company}`, {
+              numResults: 5,
+              type: 'auto',
+              category: 'people',
+              contents: { highlights: true }
+            })
+          )
+        )
+      );
+      const seen = new Set<string>();
+      return results
+        .flatMap((r) => r.results)
+        .filter((r) => (seen.has(r.url) ? false : (seen.add(r.url), true)))
+        .map((r) => {
+          const highlights = (r.highlights ?? []).slice(0, 2);
+          record(r.url, r.title, r.author, ...highlights);
+          return { name: r.author ?? null, headline: r.title, url: r.url, highlights };
+        });
     }
   });
 
@@ -102,13 +141,13 @@ function researchTools(retrieved: Set<string>, state: { authFailed: boolean }) {
       );
       const page = res.results[0];
       if (!page) return { url, error: 'No content' };
-      retrieved.add(page.url);
-      retrieved.add(url);
+      record(page.url, page.title, page.text);
+      if (url !== page.url) record(url, page.title, page.text);
       return { url: page.url, title: page.title, text: page.text };
     }
   });
 
-  return { search, fetchUrl };
+  return { search, findPeople, fetchUrl };
 }
 
 export class ResearchAuthError extends Error {}
@@ -116,8 +155,8 @@ export class ResearchAuthError extends Error {}
 export async function research(
   domain: string,
   detection: Detection
-): Promise<{ research: Research; dropped: string[]; retrieved: string[]; error?: string }> {
-  const retrieved = new Set<string>();
+): Promise<{ research: Research; dropped: string[]; retrieved: string[] }> {
+  const retrieved = new Map<string, string>();
   const state = { authFailed: false };
 
   const researchAgent = new ToolLoopAgent({
@@ -125,25 +164,31 @@ export async function research(
     instructions: RESEARCH_INSTRUCTIONS,
     tools: researchTools(retrieved, state),
     output: Output.object({ schema: researchSchema }),
-    // Stop immediately on a bad key instead of burning 14 steps on errors.
-    stopWhen: [isStepCount(14), () => state.authFailed],
+    // Stop immediately on a bad key instead of burning steps on errors.
+    stopWhen: [isStepCount(16), () => state.authFailed],
     providerOptions: FAST
   });
 
-  const { output } = await researchAgent.generate({
-    prompt: [
-      `Company domain: ${domain}`,
-      `Homepage: ${detection.finalUrl ?? `https://${domain}/`}`,
-      `Detected: Next.js (${detection.nextjs.router ?? 'unknown'} router), hosted on ${detection.host.primary}${detection.host.cdn ? ` behind ${detection.host.cdn}` : ''}.`
-    ].join('\n')
-  });
+  const authError = () =>
+    new ResearchAuthError('Exa rejected EXA_API_KEY (invalid key) — research skipped');
 
-  if (state.authFailed) {
-    throw new ResearchAuthError('Exa rejected EXA_API_KEY (invalid key) — research skipped');
+  let output: z.infer<typeof researchSchema>;
+  try {
+    ({ output } = await researchAgent.generate({
+      prompt: [
+        `Company domain: ${domain}`,
+        `Homepage: ${detection.finalUrl ?? `https://${domain}/`}`,
+        `Detected: Next.js (${detection.nextjs.router ?? 'unknown'} router), hosted on ${detection.host.primary}${detection.host.cdn ? ` behind ${detection.host.cdn}` : ''}.`
+      ].join('\n')
+    }));
+  } catch (err) {
+    if (state.authFailed) throw authError();
+    throw err;
   }
+  if (state.authFailed) throw authError();
 
-  const grounded = groundResearch(output, retrieved);
-  return { ...grounded, retrieved: [...retrieved] };
+  const grounded = groundResearch(output, retrieved, domain);
+  return { ...grounded, retrieved: [...retrieved.keys()] };
 }
 
 /**
@@ -219,7 +264,8 @@ export async function qualify(
 export async function writeDraft(
   domain: string,
   ledger: EvidenceItem[],
-  qualification: Qualification
+  qualification: Qualification,
+  research?: Research | null
 ): Promise<Draft> {
   const prompt = [
     `Prospect: ${domain}`,
@@ -273,11 +319,24 @@ export async function writeDraft(
   const warnings: string[] = [];
   if (issues.bad.length) warnings.push(`Unknown citations: ${issues.bad.join(', ')}`);
   if (issues.numbers.length) warnings.push(`Numbers not found in evidence: ${issues.numbers.join(', ')}`);
+  // Fill the greeting from the verified stakeholder only; otherwise leave the
+  // placeholder for the rep.
+  const firstName = stakeholderFirstName(research);
+  const fill = (t: string) => (firstName ? t.replaceAll('{{first_name}}', firstName) : t);
+  output = { ...output, subject: fill(output.subject), body: fill(output.body) };
+  if (!firstName) warnings.push('No verified stakeholder — fill in {{first_name}} before sending');
+
+  const b = research?.likelyBuyer;
+  const to = b?.name
+    ? { name: b.name, title: b.title, email: research?.buyerEmail?.address ?? null, linkedinUrl: b.linkedinUrl }
+    : null;
+
   const words = output.body.split(/\s+/).filter(Boolean).length;
   if (words > 140) warnings.push(`Email is ${words} words (target ≤120)`);
 
   return {
     ...output,
+    to,
     emailCitations: output.emailCitations.filter((id) => !issues.bad.includes(id)),
     talkingPoints: output.talkingPoints.map((t) => ({
       ...t,

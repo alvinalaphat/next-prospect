@@ -47,7 +47,10 @@ export const workflowOutbound = async (domain: string, startDelaySeconds = 0) =>
         ? [`Research: dropped ${researched.dropped.length} item(s) with unretrieved sources`]
         : [])
     ];
-    await stepDraft(domain, evidence, qualification, [...researchWarnings, ...warnings]);
+    await stepDraft(domain, evidence, qualification, researched.research, [
+      ...researchWarnings,
+      ...warnings
+    ]);
 
     // Human in the loop. The run suspends here — no compute — until someone
     // clicks Approve / Edit / Reject in Slack or on the dashboard.

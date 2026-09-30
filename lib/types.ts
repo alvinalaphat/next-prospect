@@ -131,18 +131,35 @@ export const researchSchema = z.object({
   likelyBuyer: z.object({
     role: z
       .string()
-      .describe('e.g. "VP Engineering", "Head of Web Platform"'),
+      .describe('The ideal buyer role, e.g. "VP Engineering", "Head of Web Platform"'),
     name: z
       .string()
       .nullable()
-      .describe('Only if a source explicitly names this person in that role'),
-    sourceUrl: z.string().nullable(),
-    rationale: z.string()
+      .describe('Full name, only if a retrieved page names this person in this role'),
+    title: z.string().nullable().describe('Their current title as shown on the source'),
+    linkedinUrl: z
+      .string()
+      .nullable()
+      .describe('linkedin.com/in/… profile URL returned by a people search'),
+    sourceUrl: z.string().nullable().describe('Page that ties this person to this role'),
+    rationale: z.string().describe('Why this is the best person to contact'),
+    alternates: z
+      .array(
+        z.object({
+          name: z.string(),
+          title: z.string().nullable(),
+          linkedinUrl: z.string().nullable()
+        })
+      )
+      .describe('Up to 2 other plausible contacts, same sourcing rules')
   }),
   whyNow: z.array(sourced).describe('Time-sensitive reasons to reach out now')
 });
 
-export type Research = z.infer<typeof researchSchema>;
+export type Research = z.infer<typeof researchSchema> & {
+  /** Filled in code, never by the model: an address seen verbatim on a retrieved page. */
+  buyerEmail?: { address: string; sourceUrl: string } | null;
+};
 
 /**
  * ------------------------------------------------------------
@@ -191,6 +208,8 @@ export const draftSchema = z.object({
 export type Draft = z.infer<typeof draftSchema> & {
   warnings: string[];
   editedBy?: string;
+  /** Recipient, from grounded research — shown to the reviewer to verify. */
+  to?: { name: string; title: string | null; email: string | null; linkedinUrl: string | null } | null;
 };
 
 /**

@@ -20,6 +20,7 @@ export default async function Dashboard() {
       perf: p.perf,
       fitScore: p.fitScore,
       angle: p.angle,
+      research: p.research,
       updatedAt: p.updatedAt
     })
     .from(p)
@@ -37,6 +38,14 @@ export default async function Dashboard() {
     ttfbMs: r.perf?.mobile.field.ttfbMs ?? r.perf?.mobile.lab.ttfbMs ?? null,
     fitScore: r.fitScore,
     angle: r.angle,
+    stakeholder: r.research?.likelyBuyer?.name
+      ? {
+          name: r.research.likelyBuyer.name,
+          title: r.research.likelyBuyer.title ?? null,
+          linkedinUrl: r.research.likelyBuyer.linkedinUrl ?? null,
+          email: r.research.buyerEmail?.address ?? null
+        }
+      : null,
     updatedAt: r.updatedAt.toISOString()
   }));
 

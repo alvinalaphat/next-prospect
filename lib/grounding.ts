@@ -18,13 +18,18 @@ export function normalizeUrl(u: string): string {
   }
 }
 
-/** Drop research items whose sourceUrl wasn't returned by a tool call. */
+/**
+ * Drop research items whose sourceUrl wasn't returned by a tool call.
+ * `retrieved` maps each URL a tool returned to the text we showed the model,
+ * so people can be checked against what the page actually said.
+ */
 export function groundResearch(
   research: Research,
-  retrievedUrls: Iterable<string>
+  retrieved: Map<string, string>,
+  domain: string
 ): { research: Research; dropped: string[] } {
-  const seen = new Set([...retrievedUrls].map(normalizeUrl));
-  const ok = (u: string | null) => !!u && seen.has(normalizeUrl(u));
+  const content = new Map([...retrieved].map(([u, t]) => [normalizeUrl(u), t]));
+  const ok = (u: string | null | undefined) => !!u && content.has(normalizeUrl(u));
   const dropped: string[] = [];
   const keep = <T extends { text: string; sourceUrl: string }>(items: T[]) =>
     items.filter((i) => (ok(i.sourceUrl) ? true : (dropped.push(i.text), false)));
@@ -32,10 +37,34 @@ export function groundResearch(
   const summaryOk = ok(research.summary.sourceUrl);
   if (!summaryOk) dropped.push(research.summary.text);
 
-  const buyerSourced = ok(research.likelyBuyer.sourceUrl);
-  if (research.likelyBuyer.name && !buyerSourced) {
-    dropped.push(`Buyer name "${research.likelyBuyer.name}"`);
-  }
+  // A person is kept only if a retrieved page (their LinkedIn result or the
+  // cited source) actually contains their name.
+  const namedOn = (name: string, ...urls: (string | null | undefined)[]) =>
+    urls.some((u) => ok(u) && mentions(content.get(normalizeUrl(u!)) ?? '', name));
+  const isLinkedIn = (u: string | null | undefined) => !!u && /linkedin\.com\/in\//i.test(u);
+
+  const b = research.likelyBuyer;
+  const buyerOk = !!b.name && namedOn(b.name, b.linkedinUrl, b.sourceUrl);
+  if (b.name && !buyerOk) dropped.push(`Stakeholder "${b.name}" (not found on a retrieved page)`);
+  const linkedinOk = buyerOk && isLinkedIn(b.linkedinUrl) && ok(b.linkedinUrl);
+
+  const alternates = b.alternates
+    .filter((a) => {
+      const good = namedOn(a.name, a.linkedinUrl);
+      if (!good) dropped.push(`Alternate "${a.name}"`);
+      return good;
+    })
+    .map((a) => ({ ...a, linkedinUrl: isLinkedIn(a.linkedinUrl) ? a.linkedinUrl : null }))
+    .slice(0, 2);
+
+  const likelyBuyer = {
+    ...b,
+    name: buyerOk ? b.name : null,
+    title: buyerOk ? b.title : null,
+    linkedinUrl: linkedinOk ? b.linkedinUrl : null,
+    sourceUrl: buyerOk ? (ok(b.sourceUrl) ? b.sourceUrl : linkedinOk ? b.linkedinUrl : null) : null,
+    alternates
+  };
 
   return {
     research: {
@@ -44,14 +73,58 @@ export function groundResearch(
       sizeSignals: keep(research.sizeSignals),
       news: keep(research.news),
       whyNow: keep(research.whyNow),
-      likelyBuyer: {
-        ...research.likelyBuyer,
-        name: buyerSourced ? research.likelyBuyer.name : null,
-        sourceUrl: buyerSourced ? research.likelyBuyer.sourceUrl : null
-      }
+      likelyBuyer,
+      buyerEmail: likelyBuyer.name ? findPublishedEmail(likelyBuyer.name, domain, retrieved) : null
     },
     dropped
   };
+}
+
+/** Case-insensitive check that a page mentions a person (full name, or every name part). */
+function mentions(text: string, name: string): boolean {
+  const t = text.toLowerCase();
+  const n = name.toLowerCase().trim();
+  if (t.includes(n)) return true;
+  const parts = n.split(/\s+/).filter((p) => p.length >= 3);
+  return parts.length >= 2 && parts.every((p) => t.includes(p));
+}
+
+/**
+ * An email address that appears verbatim on a retrieved page, at the
+ * company's domain, whose local part matches the person's name. We never
+ * guess addresses from patterns.
+ */
+export function findPublishedEmail(
+  name: string,
+  domain: string,
+  retrieved: Map<string, string>
+): { address: string; sourceUrl: string } | null {
+  const root = domain.replace(/^www\./, '').toLowerCase();
+  const parts = name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .split(/\s+/)
+    .filter((p) => p.length >= 3);
+  for (const [url, text] of retrieved) {
+    for (const m of text.matchAll(/[a-z0-9._%+-]+@([a-z0-9.-]+\.[a-z]{2,})/gi)) {
+      const address = m[0].toLowerCase();
+      const host = m[1].toLowerCase();
+      const local = address.split('@')[0];
+      if ((host === root || host.endsWith(`.${root}`)) && parts.some((p) => local.includes(p))) {
+        return { address, sourceUrl: url };
+      }
+    }
+  }
+  return null;
+}
+
+/** First name for the greeting, only when the stakeholder is grounded. */
+export function stakeholderFirstName(r: Research | null | undefined): string | null {
+  const name = r?.likelyBuyer?.name?.trim();
+  if (!name) return null;
+  const first = name.split(/\s+/)[0].replace(/[^\p{L}'-]/gu, '');
+  return first.length >= 2 ? first : null;
 }
 
 export function researchEvidence(r: Research): EvidenceItem[] {
@@ -68,10 +141,20 @@ export function researchEvidence(r: Research): EvidenceItem[] {
   r.whyNow.forEach((s, i) =>
     items.push({ id: `research.whynow.${i}`, source: 'research', label: 'Why now', value: s.text, url: s.sourceUrl })
   );
-  if (r.likelyBuyer.name && r.likelyBuyer.sourceUrl) {
-    items.push({ id: 'research.buyer', source: 'research', label: 'Likely buyer', value: `${r.likelyBuyer.name}, ${r.likelyBuyer.role}`, url: r.likelyBuyer.sourceUrl });
+  const b = r.likelyBuyer;
+  if (b.name) {
+    items.push({
+      id: 'research.buyer',
+      source: 'research',
+      label: 'Key stakeholder',
+      value: `${b.name}${b.title ? `, ${b.title}` : ''}`,
+      url: b.linkedinUrl ?? b.sourceUrl ?? undefined
+    });
   } else {
-    items.push({ id: 'research.buyer', source: 'research', label: 'Likely buyer (role only, inferred)', value: r.likelyBuyer.role });
+    items.push({ id: 'research.buyer', source: 'research', label: 'Target role (no named person found)', value: b.role });
+  }
+  if (r.buyerEmail) {
+    items.push({ id: 'research.buyer.email', source: 'research', label: 'Published email', value: r.buyerEmail.address, url: r.buyerEmail.sourceUrl });
   }
   return items;
 }

@@ -49,9 +49,13 @@ Use the tools to find:
 - Size and funding signals (headcount, customers, funding rounds, investors).
 - Recent news from the last ~12 months: launches, funding, replatforming,
   notable engineering hires.
-- The most likely technical buyer: the leader of web/frontend/platform
-  engineering. Give the ROLE. Only give a NAME if a source you retrieved
-  explicitly names that person in that role.
+- The KEY STAKEHOLDER: the person who owns the web platform — typically VP
+  Engineering, Head/Director of Web or Frontend Platform, or CTO at smaller
+  companies. Use findPeople with 2–3 fitting roles, prefer a current,
+  senior, hands-on web/platform leader over a generic CTO at large companies,
+  and put their linkedin.com/in URL in linkedinUrl. List up to 2 alternates.
+  Only name someone whose name appears in a result you retrieved; if nobody
+  fits, leave name null and just give the ideal role.
 - "Why now" reasons to reach out this quarter.
 
 Rules:
@@ -91,8 +95,9 @@ EMAIL — written as a Vercel solutions engineer, to the likely buyer:
 - One low-friction ask (e.g. "worth a 20-minute look at the trace together?").
 - Tone: helpful engineer sharing a finding, not a salesperson. No hype words
   ("revolutionize", "supercharge", "game-changer"). No fake familiarity.
-- Use "{{first_name}}" as the greeting placeholder unless the buyer's name is
-  in the ledger, and sign off as "{{rep_name}}".
+- Greet with exactly "Hi {{first_name}}," (the placeholder is filled in by
+  code from the verified stakeholder — never write a name yourself), and sign
+  off as "{{rep_name}}".
 - emailCitations: every ledger id your email relies on.
 
 TALKING POINTS — exactly 3 bullets for the rep's call prep, each citing ids.

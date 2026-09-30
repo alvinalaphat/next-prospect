@@ -11,7 +11,8 @@ import type {
   EvidenceItem,
   Perf,
   ProspectStatus,
-  Qualification
+  Qualification,
+  Research
 } from '@/lib/types';
 
 /**
@@ -80,18 +81,18 @@ export const stepResearch = async (domain: string, detection: Detection) => {
 
   if (!process.env.EXA_API_KEY) {
     await upsertProspect(domain, { status: 'qualifying' });
-    return { evidence: [] as EvidenceItem[], dropped: [] as string[], warning: 'EXA_API_KEY not set — research skipped' };
+    return { research: null, evidence: [] as EvidenceItem[], dropped: [] as string[], warning: 'EXA_API_KEY not set — research skipped' };
   }
 
   try {
     const result = await research(domain, detection);
     await upsertProspect(domain, { status: 'qualifying', research: result.research });
-    return { evidence: researchEvidence(result.research), dropped: result.dropped, warning: null };
+    return { research: result.research, evidence: researchEvidence(result.research), dropped: result.dropped, warning: null };
   } catch (err) {
     // A bad key won't fix itself on retry: continue without research, loudly.
     if (!(err instanceof ResearchAuthError)) throw err;
     await upsertProspect(domain, { status: 'qualifying' });
-    return { evidence: [] as EvidenceItem[], dropped: [] as string[], warning: err.message };
+    return { research: null, evidence: [] as EvidenceItem[], dropped: [] as string[], warning: err.message };
   }
 };
 
@@ -120,11 +121,12 @@ export const stepDraft = async (
   domain: string,
   evidence: EvidenceItem[],
   qualification: Qualification,
+  research: Research | null,
   extraWarnings: string[]
 ) => {
   'use step';
 
-  const draft = await writeDraft(domain, evidence, qualification);
+  const draft = await writeDraft(domain, evidence, qualification, research);
   draft.warnings = [...extraWarnings, ...draft.warnings];
   await upsertProspect(domain, { draft });
   return draft;

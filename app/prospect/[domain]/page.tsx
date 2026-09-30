@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, ArrowUpRight, TriangleAlert } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, Mail, TriangleAlert } from 'lucide-react';
+import { LinkedInIcon } from '@/components/linkedin-icon';
 import { AutoRefresh } from '@/components/auto-refresh';
 import { HostBadge, Pill, Score, StatusBadge } from '@/components/badges';
 import { ApprovalBar } from '@/components/approval-bar';
@@ -9,7 +10,7 @@ import { CopyButton } from '@/components/copy-button';
 import { getProspect } from '@/lib/db';
 import { ms, RATING_TONE, relativeTime, STATUS } from '@/lib/format';
 import { rate } from '@/lib/psi';
-import type { EvidenceItem, PerfResult } from '@/lib/types';
+import type { EvidenceItem, PerfResult, Research } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -81,6 +82,8 @@ export default async function ProspectPage({ params }: { params: Promise<{ domai
 
       <div className="grid gap-6 lg:grid-cols-5">
         <div className="space-y-6 lg:col-span-3">
+          {r && <StakeholderCard research={r} />}
+
           {q && (
             <Section title="Qualification" aside={<Pill tone={q.verdict === 'qualified' ? 'green' : q.verdict === 'nurture' ? 'amber' : 'neutral'}>{q.verdict}</Pill>}>
               <div className="rounded-md bg-zinc-50 p-3 dark:bg-zinc-900">
@@ -107,6 +110,21 @@ export default async function ProspectPage({ params }: { params: Promise<{ domai
             >
               {draft.editedBy && <p className="text-muted-foreground mb-2 text-xs">Edited by {draft.editedBy}</p>}
               <div className="rounded-md border">
+                <div className="border-b px-4 py-2 text-sm">
+                  <span className="text-muted-foreground">To: </span>
+                  {draft.to ? (
+                    <>
+                      {draft.to.name}
+                      {draft.to.email ? (
+                        <span className="text-muted-foreground font-mono text-xs"> &lt;{draft.to.email}&gt;</span>
+                      ) : (
+                        <span className="text-muted-foreground text-xs"> (no published email)</span>
+                      )}
+                    </>
+                  ) : (
+                    <span className="text-muted-foreground">no verified stakeholder</span>
+                  )}
+                </div>
                 <div className="border-b px-4 py-2 text-sm">
                   <span className="text-muted-foreground">Subject: </span>
                   {draft.subject}
@@ -144,16 +162,6 @@ export default async function ProspectPage({ params }: { params: Promise<{ domai
               <ResearchList title="Size & funding" items={r.sizeSignals} />
               <ResearchList title="Recent news" items={r.news.map((n) => ({ ...n, text: n.date ? `${n.date} — ${n.text}` : n.text }))} />
               <ResearchList title="Why now" items={r.whyNow} />
-              <div className="mt-5">
-                <h3 className="text-muted-foreground mb-1 text-xs uppercase tracking-wide">Likely buyer</h3>
-                <p className="text-sm">
-                  {r.likelyBuyer.name ? `${r.likelyBuyer.name}, ` : ''}
-                  {r.likelyBuyer.role}
-                  {!r.likelyBuyer.name && <span className="text-muted-foreground"> (role only, no named source)</span>}{' '}
-                  {r.likelyBuyer.sourceUrl && <Source url={r.likelyBuyer.sourceUrl} />}
-                </p>
-                <p className="text-muted-foreground mt-1 text-xs">{r.likelyBuyer.rationale}</p>
-              </div>
             </Section>
           )}
         </div>
@@ -207,6 +215,81 @@ export default async function ProspectPage({ params }: { params: Promise<{ domai
         </div>
       </div>
     </div>
+  );
+}
+
+function StakeholderCard({ research: r }: { research: Research }) {
+  const b = r.likelyBuyer;
+  return (
+    <Section
+      title="Key stakeholder"
+      aside={<span className="text-muted-foreground text-xs">verify before sending</span>}
+    >
+      {b.name ? (
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div className="text-lg font-medium">{b.name}</div>
+              <div className="text-muted-foreground text-sm">{b.title ?? b.role}</div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {b.linkedinUrl && (
+                <a
+                  href={b.linkedinUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="hover:bg-accent inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-sm"
+                >
+                  <LinkedInIcon className="size-3.5 text-[#0a66c2]" /> LinkedIn
+                </a>
+              )}
+              {r.buyerEmail && (
+                <a
+                  href={`mailto:${r.buyerEmail.address}`}
+                  className="hover:bg-accent inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 font-mono text-xs"
+                >
+                  <Mail className="size-3.5" /> {r.buyerEmail.address}
+                </a>
+              )}
+            </div>
+          </div>
+          <p className="text-muted-foreground text-sm">{b.rationale}</p>
+          <div className="text-muted-foreground text-xs">
+            {r.buyerEmail ? (
+              <>Email found on <Source url={r.buyerEmail.sourceUrl} /></>
+            ) : (
+              'No email published on any retrieved page. Emails are never guessed.'
+            )}
+            {b.sourceUrl && b.sourceUrl !== b.linkedinUrl && (
+              <> · Role confirmed on <Source url={b.sourceUrl} /></>
+            )}
+          </div>
+          {b.alternates?.length > 0 && (
+            <div className="border-t pt-3">
+              <div className="text-muted-foreground mb-1.5 text-xs uppercase tracking-wide">Alternates</div>
+              <ul className="space-y-1 text-sm">
+                {b.alternates.map((a) => (
+                  <li key={a.name} className="flex items-center gap-1.5">
+                    {a.name}
+                    {a.title && <span className="text-muted-foreground">· {a.title}</span>}
+                    {a.linkedinUrl && (
+                      <a href={a.linkedinUrl} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-[#0a66c2]">
+                        <LinkedInIcon className="size-3.5" />
+                      </a>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      ) : (
+        <p className="text-sm">
+          <span className="text-muted-foreground">No named person could be verified. Target role:</span> {b.role}
+          <span className="text-muted-foreground block mt-1 text-xs">{b.rationale}</span>
+        </p>
+      )}
+    </Section>
   );
 }
 

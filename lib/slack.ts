@@ -83,7 +83,8 @@ function prospectBlocks(p: ProspectRow, token: string | null): KnownBlock[] {
         { type: 'mrkdwn', text: `*Angle*\n${q?.strongestAngle.label ?? '—'}` }
       ]
     },
-    { type: 'section', text: { type: 'mrkdwn', text: `*Why*\n${q?.reasoning ?? ''}` } }
+    { type: 'section', text: { type: 'mrkdwn', text: `*Why*\n${q?.reasoning ?? ''}` } },
+    { type: 'section', text: { type: 'mrkdwn', text: stakeholderText(p) } }
   ];
 
   if (d) {
@@ -91,7 +92,10 @@ function prospectBlocks(p: ProspectRow, token: string | null): KnownBlock[] {
       { type: 'divider' },
       {
         type: 'section',
-        text: { type: 'mrkdwn', text: `*Draft — ${d.subject}*\n${d.body}`.slice(0, 2900) }
+        text: {
+          type: 'mrkdwn',
+          text: `*Draft — ${d.subject}*\n_To: ${d.to ? `${d.to.name}${d.to.email ? ` <${d.to.email}>` : ''}` : 'no verified stakeholder'}_\n${d.body}`.slice(0, 2900)
+        }
       }
     );
     if (d.warnings.length) {
@@ -132,6 +136,25 @@ function prospectBlocks(p: ProspectRow, token: string | null): KnownBlock[] {
   }
 
   return blocks;
+}
+
+/** Stakeholder line with LinkedIn / email so the reviewer can verify the pick. */
+function stakeholderText(p: ProspectRow): string {
+  const r = p.research;
+  const b = r?.likelyBuyer;
+  if (!b?.name) {
+    return `*Stakeholder*\n_No named person verified_ — target role: ${b?.role ?? 'unknown'}`;
+  }
+  const links = [
+    b.linkedinUrl ? `<${b.linkedinUrl}|LinkedIn>` : null,
+    r?.buyerEmail ? `<mailto:${r.buyerEmail.address}|${r.buyerEmail.address}>` : '_no published email_'
+  ].filter(Boolean);
+  const alts = b.alternates?.length
+    ? `\nAlternates: ${b.alternates
+        .map((a) => (a.linkedinUrl ? `<${a.linkedinUrl}|${a.name}>` : a.name) + (a.title ? ` (${a.title})` : ''))
+        .join(', ')}`
+    : '';
+  return `*Stakeholder*\n${b.name}${b.title ? ` — ${b.title}` : ''} · ${links.join(' · ')}${alts}`.slice(0, 2900);
 }
 
 export async function postApprovalRequest(p: ProspectRow, token: string) {

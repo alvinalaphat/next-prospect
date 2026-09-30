@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
-import { ArrowDown, ArrowUp, Search } from 'lucide-react';
+import { ArrowDown, ArrowUp, Mail, Search } from 'lucide-react';
+import { LinkedInIcon } from '@/components/linkedin-icon';
 import { HostBadge, Score, StatusBadge } from '@/components/badges';
 import { HOST_LABEL, ms, relativeTime, STATUS } from '@/lib/format';
 import type { HostId, ProspectStatus } from '@/lib/types';
@@ -20,6 +21,7 @@ export type ProspectListItem = {
   ttfbMs: number | null;
   fitScore: number | null;
   angle: string | null;
+  stakeholder: { name: string; title: string | null; linkedinUrl: string | null; email: string | null } | null;
   updatedAt: string;
 };
 
@@ -49,7 +51,10 @@ export function ProspectsTable({ items }: { items: ProspectListItem[] }) {
       (i) =>
         VIEWS[view].test(i) &&
         (host === 'all' || i.host === host) &&
-        (!q || i.domain.includes(q) || i.angle?.toLowerCase().includes(q))
+        (!q ||
+          i.domain.includes(q) ||
+          i.angle?.toLowerCase().includes(q) ||
+          i.stakeholder?.name.toLowerCase().includes(q))
     );
     const dir = sort.dir === 'asc' ? 1 : -1;
     return filtered.sort((a, b) => {
@@ -137,6 +142,7 @@ export function ProspectsTable({ items }: { items: ProspectListItem[] }) {
               {header('perfScore', 'Perf (mobile)', 'text-right')}
               {header('lcpMs', 'LCP', 'text-right')}
               {header('fitScore', 'Fit', 'text-right')}
+              <th className="px-3 py-2 font-medium">Stakeholder</th>
               <th className="px-3 py-2 font-medium">Angle</th>
               {header('status', 'Status')}
               {header('updatedAt', 'Updated', 'text-right')}
@@ -170,6 +176,32 @@ export function ProspectsTable({ items }: { items: ProspectListItem[] }) {
                 <td className="px-3 py-2.5 text-right">
                   <Score value={i.fitScore} thresholds={[35, 60]} />
                 </td>
+                <td className="px-3 py-2.5">
+                  {i.stakeholder ? (
+                    <div className="max-w-52">
+                      <div className="flex items-center gap-1.5">
+                        <span className="truncate">{i.stakeholder.name}</span>
+                        {i.stakeholder.linkedinUrl && (
+                          <a href={i.stakeholder.linkedinUrl} target="_blank" rel="noreferrer" title="LinkedIn profile" className="text-muted-foreground hover:text-[#0a66c2]">
+                            <LinkedInIcon className="size-3.5" />
+                          </a>
+                        )}
+                        {i.stakeholder.email && (
+                          <a href={`mailto:${i.stakeholder.email}`} title={i.stakeholder.email} className="text-muted-foreground hover:text-foreground">
+                            <Mail className="size-3.5" />
+                          </a>
+                        )}
+                      </div>
+                      {i.stakeholder.title && (
+                        <div className="text-muted-foreground truncate text-xs" title={i.stakeholder.title}>
+                          {i.stakeholder.title}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
+                </td>
                 <td className="text-muted-foreground max-w-64 truncate px-3 py-2.5" title={i.angle ?? ''}>
                   {i.angle ?? '—'}
                 </td>
@@ -183,7 +215,7 @@ export function ProspectsTable({ items }: { items: ProspectListItem[] }) {
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={9} className="text-muted-foreground px-3 py-12 text-center">
+                <td colSpan={10} className="text-muted-foreground px-3 py-12 text-center">
                   {items.length === 0 ? 'No prospects yet — run a batch of domains to get started.' : 'Nothing matches these filters.'}
                 </td>
               </tr>
