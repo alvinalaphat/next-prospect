@@ -55,13 +55,13 @@ export const workflowOutbound = async (domain: string, startDelaySeconds = 0) =>
     // Human in the loop. The run suspends here — no compute — until someone
     // clicks Approve / Edit / Reject in Slack or on the dashboard.
     const hook = approvalHook.create({ token: approvalToken(domain, workflowRunId) });
-    await stepRequestApproval(domain, hook.token);
+    const card = (await stepRequestApproval(domain, hook.token)) ?? null;
 
     const approval = await Promise.race([
       hook.then((a): Approval => a),
       sleep('7d').then(() => null)
     ]);
-    await stepRecordDecision(domain, workflowRunId, approval);
+    await stepRecordDecision(domain, workflowRunId, approval, card);
 
     return { domain, decision: approval?.decision ?? 'expired' };
   } catch (err) {

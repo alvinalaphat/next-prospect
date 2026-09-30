@@ -4,7 +4,7 @@ import { getProspect, upsertProspect } from '@/lib/db';
 import { researchEvidence } from '@/lib/grounding';
 import { emptyPerfResult, perfEvidence, PsiRateLimitError, runPsi } from '@/lib/psi';
 import { qualify, research, ResearchAuthError, writeDraft } from '@/lib/services';
-import { postApprovalRequest, updateApprovalMessage } from '@/lib/slack';
+import { markSuperseded, postApprovalRequest, updateApprovalMessage } from '@/lib/slack';
 import type {
   Approval,
   Detection,
@@ -148,6 +148,7 @@ export const stepRequestApproval = async (domain: string, token: string) => {
   if (!prospect) throw new FatalError(`Prospect ${domain} missing`);
   const slack = await postApprovalRequest(prospect, token);
   await upsertProspect(domain, { slack });
+  return slack;
 };
 
 /**
@@ -156,14 +157,21 @@ export const stepRequestApproval = async (domain: string, token: string) => {
 export const stepRecordDecision = async (
   domain: string,
   runId: string,
-  approval: Approval | null
+  approval: Approval | null,
+  ownCard: { channel: string; ts: string } | null
 ) => {
   'use step';
 
   const prospect = await getProspect(domain);
   if (!prospect) throw new FatalError(`Prospect ${domain} missing`);
-  // The domain was re-run since this card was posted; don't clobber the new run.
-  if (prospect.runId !== runId) return { stale: true };
+  // The domain was re-run since this card was posted; don't clobber the new
+  // run, but tell whoever clicked that this card is stale.
+  if (prospect.runId !== runId) {
+    if (ownCard && approval) {
+      await markSuperseded(ownCard, domain, `Your ${approval.decision === 'approved' ? 'approval' : 'rejection'} wasn't applied: this domain was re-run. Decide on the newer card.`);
+    }
+    return { stale: true };
+  }
 
   const status: ProspectStatus = !approval ? 'expired' : approval.decision;
   const draft =

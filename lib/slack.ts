@@ -171,6 +171,26 @@ export async function postApprovalRequest(p: ProspectRow, token: string) {
 }
 
 /** Replace the buttons with the outcome once a decision is recorded. */
+/**
+ * Mark an older card as superseded (the domain was re-run), removing its
+ * buttons so clicks can't silently go nowhere.
+ */
+export async function markSuperseded(
+  slack: { channel: string; ts: string },
+  domain: string,
+  note = 'This domain was re-run — use the newer card below.'
+) {
+  await client().chat.update({
+    channel: slack.channel,
+    ts: slack.ts,
+    text: `${domain}: superseded`,
+    blocks: [
+      { type: 'section', text: { type: 'mrkdwn', text: `~${domain}~ · *superseded*\n${note}` } },
+      { type: 'context', elements: [{ type: 'mrkdwn', text: `<${appUrl(`/prospect/${domain}`)}|Open current brief →>` }] }
+    ]
+  });
+}
+
 export async function updateApprovalMessage(p: ProspectRow) {
   if (!p.slack) return;
   await client().chat.update({
