@@ -1,14 +1,11 @@
+import { approvalToken } from '@/lib/approval-token';
 import { getWorkflowMetadata, sleep } from 'workflow';
-import type { Approval } from '@/lib/types';
-import { approvalHook, approvalToken } from './hooks';
 import {
-  stepCreateGmailDraft,
   stepDetect,
   stepDraft,
   stepFail,
   stepPerf,
   stepQualify,
-  stepRecordDecision,
   stepRequestApproval,
   stepResearch
 } from './steps';
@@ -18,10 +15,11 @@ import {
  *
  *   detect → (stop: already Vercel / not Next.js / unreachable)
  *   → PageSpeed Insights → research agent → qualify
- *   → (stop: disqualified) → draft → human approval (Slack or dashboard)
+ *   → (stop: disqualified) → draft → Needs review
  *
- * Every stage appends to an evidence ledger; qualify and draft may only cite
- * ids from that ledger. Nothing is ever sent — approval just marks the draft.
+ * The run ends once the draft is waiting for a person. Slack and the dashboard
+ * record the decision themselves. Every stage appends to an evidence ledger;
+ * qualify and draft may only cite ids from that ledger. Nothing is ever sent.
  */
 export const workflowOutbound = async (domain: string, startDelaySeconds = 0) => {
   'use workflow';
@@ -53,21 +51,10 @@ export const workflowOutbound = async (domain: string, startDelaySeconds = 0) =>
       ...warnings
     ]);
 
-    // Human in the loop. The run suspends here — no compute — until someone
-    // clicks Approve / Edit / Reject in Slack or on the dashboard.
-    const hook = approvalHook.create({ token: approvalToken(domain, workflowRunId) });
-    const card = (await stepRequestApproval(domain, hook.token)) ?? null;
-
-    const approval = await Promise.race([
-      hook.then((a): Approval => a),
-      sleep('7d').then(() => null)
-    ]);
-    const recorded = await stepRecordDecision(domain, workflowRunId, approval, card);
-    if (!recorded.stale && approval?.decision === 'approved') {
-      await stepCreateGmailDraft(domain);
-    }
-
-    return { domain, decision: approval?.decision ?? 'expired' };
+    // Stop at Needs review. The token lets Slack or the dashboard record a
+    // decision for this run without keeping the workflow open.
+    await stepRequestApproval(domain, approvalToken(domain, workflowRunId));
+    return { domain, stopped: 'awaiting_approval' };
   } catch (err) {
     await stepFail(domain, err instanceof Error ? err.message : String(err));
     throw err;

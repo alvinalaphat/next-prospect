@@ -179,10 +179,6 @@ export function RunPanel() {
           <Button onClick={run} disabled={busy || count === 0 || tooMany} className="w-full">
             {busy ? 'Starting…' : `Start ${count || ''} workflow${count === 1 ? '' : 's'}`}
           </Button>
-          <p className="text-muted-foreground text-xs">
-            One durable workflow per domain, staggered a few seconds apart. Domains already in
-            progress are skipped.
-          </p>
         </div>
       )}
     </div>

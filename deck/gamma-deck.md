@@ -55,7 +55,7 @@ Starts from an unmodified import of **vercel-labs/lead-agent**, so every change 
 | Form → one workflow | CSV → one durable workflow per domain |
 | Research returns free text | Structured output, grounded to real URLs |
 | `techStackAnalysis` stub | Real detector + precision/recall eval |
-| Slack post, then workflow ends | Workflow **suspends on a hook** until Approve / Edit / Reject |
+| Slack post, then workflow ends | Workflow ends at Needs review; Slack and the dashboard record the decision |
 | `sendEmail()` stub | Gmail **draft** on approval |
 
 Workflow DevKit · AI SDK + AI Gateway · Exa · Slack Bolt · Neon via Marketplace

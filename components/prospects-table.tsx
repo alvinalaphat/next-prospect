@@ -109,19 +109,24 @@ export function ProspectsTable({ items }: { items: ProspectListItem[] }) {
           ))}
         </div>
         <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center lg:ml-auto">
-          <select
-            value={host}
-            onChange={(e) => setHost(e.target.value)}
-            className="bg-background min-h-11 w-full rounded-lg border px-3 py-2 text-sm sm:w-auto"
-            aria-label="Filter by host"
-          >
-            <option value="all">All hosts</option>
-            {hosts.map((h) => (
-              <option key={h} value={h}>
-                {HOST_LABEL[h as HostId] ?? h}
-              </option>
-            ))}
-          </select>
+          <div className="grid w-fit max-w-full">
+            <span aria-hidden className="invisible col-start-1 row-start-1 h-9 px-3 pr-8 text-sm leading-9 whitespace-nowrap">
+              {host === 'all' ? 'All hosts' : (HOST_LABEL[host as HostId] ?? host)}
+            </span>
+            <select
+              value={host}
+              onChange={(e) => setHost(e.target.value)}
+              className="col-start-1 row-start-1 h-9 w-full appearance-none rounded-lg border bg-background bg-[image:var(--select-chevron)] bg-[length:1rem] bg-[position:right_0.55rem_center] bg-no-repeat pr-8 pl-3 text-sm leading-9"
+              aria-label="Filter by host"
+            >
+              <option value="all">All hosts</option>
+              {hosts.map((h) => (
+                <option key={h} value={h}>
+                  {HOST_LABEL[h as HostId] ?? h}
+                </option>
+              ))}
+            </select>
+          </div>
           <label className="relative min-w-0 sm:w-64">
             <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
             <input

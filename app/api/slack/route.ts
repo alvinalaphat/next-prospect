@@ -1,41 +1,58 @@
 import { createHandler } from '@vercel/slack-bolt';
+import { parseApprovalToken } from '@/lib/approval-token';
+import { applyDecision } from '@/lib/decision';
 import { getProspect } from '@/lib/db';
-import { ACTIONS, editModal, receiver, slackApp } from '@/lib/slack';
-import { approvalHook } from '@/workflows/outbound/hooks';
+import { ACTIONS, editModal, markSuperseded, receiver, slackApp } from '@/lib/slack';
+import type { Approval } from '@/lib/types';
 
-const domainFromToken = (token: string) => token.split(':')[1] ?? '';
+type CardBody = {
+  channel?: { id?: string };
+  message?: { ts?: string };
+  container?: { channel_id?: string; message_ts?: string };
+};
+
+const clickedCard = (body: CardBody) => {
+  const channel = body.channel?.id ?? body.container?.channel_id;
+  const ts = body.message?.ts ?? body.container?.message_ts;
+  return channel && ts ? { channel, ts } : null;
+};
 
 // Only set up event handlers if Slack is initialized
 if (slackApp && receiver) {
   slackApp.action(ACTIONS.approve, async ({ ack, body, action, logger }) => {
     await ack();
     if (action.type !== 'button' || !action.value) return;
-    await approvalHook
-      .resume(action.value, { decision: 'approved', by: body.user.name ?? body.user.id, via: 'slack' })
-      .catch((err) => logger.warn(`resume failed (already decided?): ${err}`));
+    await decide(action.value, { decision: 'approved', by: body.user.name ?? body.user.id, via: 'slack' }, body, logger);
   });
 
   slackApp.action(ACTIONS.reject, async ({ ack, body, action, logger }) => {
     await ack();
     if (action.type !== 'button' || !action.value) return;
-    await approvalHook
-      .resume(action.value, { decision: 'rejected', by: body.user.name ?? body.user.id, via: 'slack' })
-      .catch((err) => logger.warn(`resume failed (already decided?): ${err}`));
+    await decide(action.value, { decision: 'rejected', by: body.user.name ?? body.user.id, via: 'slack' }, body, logger);
   });
 
   slackApp.action(ACTIONS.edit, async ({ ack, body, action, client }) => {
     await ack();
     if (action.type !== 'button' || !action.value || body.type !== 'block_actions') return;
-    const prospect = await getProspect(domainFromToken(action.value));
-    if (!prospect) return;
+    const parsed = parseApprovalToken(action.value);
+    if (!parsed) return;
+    const prospect = await getProspect(parsed.domain);
+    if (!prospect || prospect.approvalToken !== action.value) {
+      const card = clickedCard(body);
+      if (card) {
+        await markSuperseded(card, parsed.domain).catch((err) => console.warn('supersede failed', err));
+      }
+      return;
+    }
     await client.views.open({ trigger_id: body.trigger_id, view: editModal(prospect, action.value) });
   });
 
   slackApp.view(ACTIONS.editModal, async ({ ack, body, view, logger }) => {
     await ack();
     const values = view.state.values;
-    await approvalHook
-      .resume(view.private_metadata, {
+    await decide(
+      view.private_metadata,
+      {
         decision: 'approved',
         by: body.user.name ?? body.user.id,
         via: 'slack',
@@ -43,9 +60,24 @@ if (slackApp && receiver) {
           subject: values.subject.value.value ?? '',
           body: values.body.value.value ?? ''
         }
-      })
-      .catch((err) => logger.warn(`resume failed (already decided?): ${err}`));
+      },
+      {},
+      logger
+    );
   });
+}
+
+async function decide(
+  token: string,
+  approval: Approval,
+  body: CardBody,
+  logger: { warn: (message: string) => void }
+) {
+  const result = await applyDecision(token, approval, clickedCard(body)).catch((err: unknown) => {
+    logger.warn(`decision failed: ${err instanceof Error ? err.message : String(err)}`);
+    return null;
+  });
+  if (result && !result.applied) logger.warn(`decision not applied (${result.reason})`);
 }
 
 export const POST =

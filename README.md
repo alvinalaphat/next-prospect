@@ -32,8 +32,8 @@ For each domain in a CSV, one durable workflow:
 5. **Draft**: a 60–120 word email in a helpful-engineer tone, addressed to the verified
    stakeholder's first name and signed with `REP_NAME`, plus 3 rep talking points.
    Numbers are checked against the ledger.
-6. **Approve**: the workflow **suspends on a durable hook** until someone clicks
-   Approve / Edit / Reject in Slack or on the dashboard.
+6. **Approve**: the workflow **ends at Needs review**. Slack or the dashboard
+   records Approve / Edit / Reject. A draft stays there until someone decides.
 7. **Gmail draft**: on approval, the final (possibly edited) email becomes a **draft in
    the rep's Gmail**, linked from Slack and the brief. It uses the `gmail.compose` scope
    and only calls `drafts.create`, so the rep still reviews it and clicks Send.
@@ -53,15 +53,16 @@ flowchart TD
         Q -->|disqualified| STOP2([stop])
         Q --> DR["stepDraft<br/>email + talking points"]
         DR --> H["stepRequestApproval<br/>Slack card"]
-        H --> HOOK{{"await approvalHook<br/>(suspended, 7d timeout)"}}
-        HOOK --> REC[stepRecordDecision]
+        H --> DONE([Needs review])
     end
 
     D & P & R -.->|append| LEDGER[(Evidence ledger)]
     LEDGER -.->|only citable ids| Q & DR
 
-    SLACK[Slack: Approve / Edit / Reject] -->|approvalHook.resume| HOOK
-    DASH[Dashboard: Approve / Edit / Reject] -->|approvalHook.resume| HOOK
+    SLACK[Slack: Approve / Edit / Reject] --> DEC[record decision]
+    DASH[Dashboard: Approve / Edit / Reject] --> DEC
+    DEC -->|approved| GMAIL[Gmail draft]
+    DEC --> DB
 
     WF --> DB[(Neon Postgres)]
     DB --> UI["/ dashboard · /prospect/[domain] · /about"]
@@ -92,7 +93,7 @@ Every observation becomes an `EvidenceItem` with a stable id:
 | Research agent returns free text | Same agent + Exa tools, **structured output**, grounded URLs |
 | `techStackAnalysis` tool is a stub | Real detector + eval |
 | `generateObject` category | `Output.object`: fit score, angle, cited claims |
-| Slack post, then the workflow ends; buttons don't reach the run | Workflow **suspends on a hook**; Slack buttons carry the token and resume it |
+| Slack post, then the workflow ends; buttons don't reach the run | Workflow ends at Needs review; Slack and the dashboard record the decision |
 | No storage | Neon Postgres (Marketplace) / PGlite locally |
 | `workflow@4.0.1-beta`, `ai@5` | `workflow@4.8`, `ai@7` (`ToolLoopAgent`, `Output.object`) |
 
@@ -104,12 +105,11 @@ app/
   prospect/[domain]/page.tsx    full brief: evidence, CWV, research, reasoning, draft
   about/page.tsx                pitch write-up
   api/run/route.ts              POST CSV/list → one workflow per domain
-  api/slack/route.ts            Approve / Edit (modal) / Reject → approvalHook.resume
+  api/slack/route.ts            Approve / Edit (modal) / Reject
   api/prospects/[domain]/decision/route.ts   dashboard approvals
 workflows/outbound/
   index.ts                      the durable workflow
   steps.ts                      'use step' functions (persist each stage)
-  hooks.ts                      defineHook approval schema
 lib/
   detect/                       fetch (robots, caps), nextjs + host rules, DNS
   psi.ts                        PageSpeed Insights + cache + CWV thresholds
@@ -117,6 +117,8 @@ lib/
   prompts.ts                    the rep playbook — tune behaviour here
   grounding.ts                  evidence ledger enforcement
   slack.ts                      Block Kit card + edit modal
+  decision.ts                   record a decision and create the Gmail draft
+  approval-token.ts             ties a Slack or dashboard click to one run
   db/                           Drizzle schema (prospects, psi_cache)
 eval/                           15 labelled domains + precision/recall script
 ```

@@ -8,7 +8,7 @@ import { authHeaders, getSecret, setSecret } from '@/lib/client-secret';
 import type { Draft } from '@/lib/types';
 
 /**
- * Dashboard twin of the Slack buttons: resumes the same workflow hook.
+ * Dashboard twin of the Slack buttons. Records the decision directly.
  * Approve only marks the prospect approved — nothing is ever sent.
  */
 export function ApprovalBar({ domain, draft }: { domain: string; draft: Draft }) {
@@ -37,8 +37,8 @@ export function ApprovalBar({ domain, draft }: { domain: string; draft: Draft })
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
       toast.success(decision === 'approved' ? 'Approved' : 'Rejected');
-      // The workflow records the decision in its next step; give it a moment.
-      setTimeout(() => router.refresh(), 1500);
+      if (json.gmailError) toast.warning(json.gmailError);
+      router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed');
     } finally {
@@ -51,7 +51,7 @@ export function ApprovalBar({ domain, draft }: { domain: string; draft: Draft })
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
         <div className="text-sm">
           <span className="font-medium">Waiting for review.</span>{' '}
-          <span className="text-muted-foreground">The workflow is suspended until someone decides here or in Slack.</span>
+          <span className="text-muted-foreground">Approve, edit, or reject here or in Slack. Nothing is sent.</span>
         </div>
         <div className="flex w-full flex-col gap-3 sm:ml-auto sm:w-auto sm:max-w-full">
           <input

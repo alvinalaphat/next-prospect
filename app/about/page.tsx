@@ -38,8 +38,8 @@ const STAGES: { n: string; title: string; tech: string; body: string; stop?: str
   {
     n: '06',
     title: 'Approve',
-    tech: 'Workflow hook + Slack',
-    body: 'The run suspends on a durable hook, using no compute while it waits. Approve, Edit or Reject in Slack or on the dashboard resumes it. Nothing is ever sent.'
+    tech: 'Slack + dashboard',
+    body: 'The workflow ends once the draft is ready. Approve, Edit or Reject in Slack or on the dashboard. An approval creates a Gmail draft. Nothing is ever sent.'
   }
 ];
 
@@ -129,7 +129,7 @@ export default function About() {
             ['Research Agent + Exa tools, free-text report', 'Same agent + tools, structured output, URLs grounded to tool results'],
             ['techStackAnalysis tool: empty stub', 'Real detector: Next.js confidence + host from headers/DNS, with an eval'],
             ['generateObject → category', 'Output.object → fit score, angle, cited claims; one repair pass'],
-            ['Slack post, then workflow ends', 'Workflow suspends on a durable hook until Slack/dashboard resumes it'],
+            ['Slack post, then workflow ends', 'Workflow ends at Needs review; Slack and the dashboard record the decision'],
             ['Approve → sendEmail() stub', 'Approve / Edit (modal) / Reject → recorded; never sends'],
             ['No storage', 'Neon Postgres via Marketplace; embedded PGlite locally']
           ].map(([a, b]) => (
@@ -155,7 +155,7 @@ export default function About() {
                 ['Research Agent + Exa tools, free-text report', 'Same agent + tools, structured output, URLs grounded to tool results'],
                 ['techStackAnalysis tool: empty stub', 'Real detector: Next.js confidence + host from headers/DNS, with an eval'],
                 ['generateObject → category', 'Output.object → fit score, angle, cited claims; one repair pass'],
-                ['Slack post, then workflow ends', 'Workflow suspends on a durable hook until Slack/dashboard resumes it'],
+                ['Slack post, then workflow ends', 'Workflow ends at Needs review; Slack and the dashboard record the decision'],
                 ['Approve → sendEmail() stub', 'Approve / Edit (modal) / Reject → recorded; never sends'],
                 ['No storage', 'Neon Postgres via Marketplace; embedded PGlite locally']
               ].map(([a, b]) => (

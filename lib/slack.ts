@@ -61,7 +61,7 @@ function client() {
 
 /**
  * Block Kit card for a prospect. The approval token rides along in each
- * button's `value`, so the click handler can resume the exact workflow run.
+ * button's `value`, so a click applies to this run and not a later re-run.
  */
 function prospectBlocks(p: ProspectRow, token: string | null): KnownBlock[] {
   const q = p.qualification;

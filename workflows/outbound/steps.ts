@@ -1,20 +1,11 @@
 import { FatalError, getStepMetadata, RetryableError } from 'workflow';
 import { detect, detectionEvidence } from '@/lib/detect';
-import { createGmailDraft, GmailAuthError, isGmailConfigured } from '@/lib/gmail';
 import { getProspect, upsertProspect } from '@/lib/db';
 import { researchEvidence } from '@/lib/grounding';
 import { emptyPerfResult, perfEvidence, PsiRateLimitError, runPsi } from '@/lib/psi';
 import { qualify, research, ResearchAuthError, writeDraft } from '@/lib/services';
-import { markSuperseded, postApprovalRequest, updateApprovalMessage } from '@/lib/slack';
-import type {
-  Approval,
-  Detection,
-  EvidenceItem,
-  Perf,
-  ProspectStatus,
-  Qualification,
-  Research
-} from '@/lib/types';
+import { postApprovalRequest } from '@/lib/slack';
+import type { Detection, EvidenceItem, Perf, ProspectStatus, Qualification, Research } from '@/lib/types';
 
 /**
  * step: detect Next.js + hosting from one polite homepage fetch
@@ -150,66 +141,6 @@ export const stepRequestApproval = async (domain: string, token: string) => {
   const slack = await postApprovalRequest(prospect, token);
   await upsertProspect(domain, { slack });
   return slack;
-};
-
-/**
- * step: record the human decision (or expiry)
- */
-export const stepRecordDecision = async (
-  domain: string,
-  runId: string,
-  approval: Approval | null,
-  ownCard: { channel: string; ts: string } | null
-) => {
-  'use step';
-
-  const prospect = await getProspect(domain);
-  if (!prospect) throw new FatalError(`Prospect ${domain} missing`);
-  // The domain was re-run since this card was posted; don't clobber the new
-  // run, but tell whoever clicked that this card is stale.
-  if (prospect.runId !== runId) {
-    if (ownCard && approval) {
-      await markSuperseded(ownCard, domain, `Your ${approval.decision === 'approved' ? 'approval' : 'rejection'} wasn't applied: this domain was re-run. Decide on the newer card.`);
-    }
-    return { stale: true };
-  }
-
-  const status: ProspectStatus = !approval ? 'expired' : approval.decision;
-  const draft =
-    approval?.editedDraft && prospect.draft
-      ? { ...prospect.draft, ...approval.editedDraft, editedBy: approval.by }
-      : prospect.draft;
-
-  await upsertProspect(domain, { status, approval, draft, approvalToken: null });
-  if (prospect.slack) {
-    await updateApprovalMessage({ ...prospect, status, approval, draft });
-  }
-  return { stale: false };
-};
-
-/**
- * step: approved → create a Gmail draft (never sends)
- */
-export const stepCreateGmailDraft = async (domain: string) => {
-  'use step';
-
-  if (!isGmailConfigured()) return null;
-  const prospect = await getProspect(domain);
-  if (!prospect || prospect.status !== 'approved') return null;
-  // Idempotent across step retries: don't create a second draft.
-  if (prospect.gmailDraft) return prospect.gmailDraft;
-
-  try {
-    const gmailDraft = await createGmailDraft(prospect);
-    await upsertProspect(domain, { gmailDraft, gmailError: null });
-    if (prospect.slack) await updateApprovalMessage({ ...prospect, gmailDraft });
-    return gmailDraft;
-  } catch (err) {
-    // A bad/expired token won't fix itself on retry; surface it and move on.
-    if (!(err instanceof GmailAuthError)) throw err;
-    await upsertProspect(domain, { gmailError: err.message });
-    return null;
-  }
 };
 
 /**
