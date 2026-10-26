@@ -105,6 +105,7 @@ app/
   prospect/[domain]/page.tsx    full brief: evidence, CWV, research, reasoning, draft
   about/page.tsx                pitch write-up
   api/run/route.ts              POST CSV/list → one workflow per domain
+  api/secret/route.ts           check RUN_SECRET without starting a run
   api/slack/route.ts            Approve / Edit (modal) / Reject
   api/prospects/[domain]/decision/route.ts   dashboard approvals
 workflows/outbound/

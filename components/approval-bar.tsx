@@ -1,10 +1,10 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { authHeaders, getSecret, setSecret } from '@/lib/client-secret';
+import { authHeaders, useRunSecret } from '@/lib/client-secret';
 import type { Draft } from '@/lib/types';
 
 /**
@@ -16,18 +16,25 @@ export function ApprovalBar({ domain, draft }: { domain: string; draft: Draft })
   const [editing, setEditing] = useState(false);
   const [subject, setSubject] = useState(draft.subject);
   const [body, setBody] = useState(draft.body);
-  const [secret, setSecretState] = useState('');
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => setSecretState(getSecret()), []);
+  const secretField = useRunSecret();
 
   async function decide(decision: 'approved' | 'rejected') {
     setBusy(true);
-    setSecret(secret);
+    const { value, status } = await secretField.commit();
+    if (status === 'empty') {
+      toast.error('Enter the run secret.');
+      setBusy(false);
+      return;
+    }
+    if (status === 'invalid') {
+      setBusy(false);
+      return;
+    }
     try {
       const res = await fetch(`/api/prospects/${domain}/decision`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json', ...authHeaders(secret) },
+        headers: { 'content-type': 'application/json', ...authHeaders(value) },
         body: JSON.stringify({
           decision,
           by: 'dashboard',
@@ -35,6 +42,7 @@ export function ApprovalBar({ domain, draft }: { domain: string; draft: Draft })
         })
       });
       const json = await res.json();
+      if (res.status === 401) secretField.reveal();
       if (!res.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
       toast.success(decision === 'approved' ? 'Approved' : 'Rejected');
       if (json.gmailError) toast.warning(json.gmailError);
@@ -54,14 +62,20 @@ export function ApprovalBar({ domain, draft }: { domain: string; draft: Draft })
           <span className="text-muted-foreground">Approve, edit, or reject here or in Slack. Nothing is sent.</span>
         </div>
         <div className="flex w-full flex-col gap-3 sm:ml-auto sm:w-auto sm:max-w-full">
-          <input
-            type="password"
-            value={secret}
-            onChange={(e) => setSecretState(e.target.value)}
-            placeholder="RUN_SECRET"
-            autoComplete="off"
-            className="bg-background w-full rounded-lg border px-3 py-2 text-xs sm:w-40"
-          />
+          {secretField.show && (
+            <input
+              type="password"
+              value={secretField.secret}
+              onChange={(e) => secretField.update(e.target.value)}
+              onBlur={() => void secretField.commit()}
+              placeholder="RUN_SECRET"
+              autoComplete="off"
+              aria-label="Run secret"
+              aria-invalid={secretField.invalid || undefined}
+              className={`bg-background w-full rounded-lg border px-3 py-2 text-xs sm:w-40 ${secretField.invalid ? 'border-error' : ''}`}
+            />
+          )}
+          {secretField.show && secretField.invalid && <p className="text-error text-xs">Doesn't match.</p>}
           <div className="flex flex-wrap gap-2">
             <Button size="sm" disabled={busy} onClick={() => decide('approved')}>
               {editing ? 'Save & approve' : 'Approve'}

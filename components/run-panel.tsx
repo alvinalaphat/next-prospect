@@ -1,11 +1,11 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
+import { useMemo, useRef, useState, type DragEvent } from 'react';
 import { FileUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { authHeaders, getSecret, setSecret } from '@/lib/client-secret';
+import { authHeaders, useRunSecret } from '@/lib/client-secret';
 import { parseDomains } from '@/lib/domains';
 import { cn } from '@/lib/utils';
 
@@ -18,12 +18,10 @@ export function RunPanel() {
   const [domains, setDomains] = useState('');
   const [fileName, setFileName] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
-  const [secret, setSecretState] = useState('');
   const [busy, setBusy] = useState(false);
+  const secretField = useRunSecret();
   const fileInput = useRef<HTMLInputElement>(null);
   const dragDepth = useRef(0);
-
-  useEffect(() => setSecretState(getSecret()), []);
 
   // Same parser the API uses, so the preview count matches what will run.
   const parsed = useMemo(() => parseDomains(domains), [domains]);
@@ -47,14 +45,24 @@ export function RunPanel() {
 
   async function run() {
     setBusy(true);
-    setSecret(secret);
+    const { value, status } = await secretField.commit();
+    if (status === 'empty') {
+      toast.error('Enter the run secret.');
+      setBusy(false);
+      return;
+    }
+    if (status === 'invalid') {
+      setBusy(false);
+      return;
+    }
     try {
       const res = await fetch('/api/run', {
         method: 'POST',
-        headers: { 'content-type': 'text/plain', ...authHeaders(secret) },
+        headers: { 'content-type': 'text/plain', ...authHeaders(value) },
         body: domains
       });
       const json = await res.json();
+      if (res.status === 401) secretField.reveal();
       if (!res.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
       toast.success(
         `Started ${json.started.length} workflow${json.started.length === 1 ? '' : 's'}` +
@@ -157,15 +165,28 @@ export function RunPanel() {
             'A CSV can use a domain, website, or url column.'
           )}
         </p>
-        <input
-          type="password"
-          value={secret}
-          onChange={(e) => setSecretState(e.target.value)}
-          placeholder="RUN_SECRET"
-          autoComplete="off"
-          aria-label="Run secret"
-          className="bg-background h-11 w-full rounded-lg border px-3 text-sm sm:w-40"
-        />
+        {secretField.show && (
+          <div className="w-full sm:w-40">
+            <input
+              type="password"
+              value={secretField.secret}
+              onChange={(e) => secretField.update(e.target.value)}
+              onBlur={() => void secretField.commit()}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') void secretField.commit();
+              }}
+              placeholder="RUN_SECRET"
+              autoComplete="off"
+              aria-label="Run secret"
+              aria-invalid={secretField.invalid || undefined}
+              className={cn(
+                'bg-background h-11 w-full rounded-lg border px-3 text-sm',
+                secretField.invalid && 'border-error'
+              )}
+            />
+            {secretField.invalid && <p className="text-error mt-1 text-xs">Doesn't match.</p>}
+          </div>
+        )}
       </div>
     </div>
   );
