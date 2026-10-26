@@ -11,12 +11,14 @@ import {
   unknownCitations,
   unverifiedNumbers
 } from '@/lib/grounding';
+import { HOST_LABEL } from '@/lib/format';
 import { DRAFT_INSTRUCTIONS, QUALIFY_INSTRUCTIONS, RESEARCH_INSTRUCTIONS } from '@/lib/prompts';
 import {
   type Detection,
   type Draft,
   draftSchema,
   type EvidenceItem,
+  type HostId,
   type Qualification,
   qualificationSchema,
   type Research,
@@ -289,6 +291,22 @@ export function formatEmailBody(body: string): string {
 }
 
 /**
+ * Plain name for the detected host, when the email may say it.
+ * Unknown and Vercel are omitted — one isn't a fact, the other is already a customer.
+ */
+function currentHost(ledger: EvidenceItem[]): string | null {
+  const item = ledger.find((e) => e.id === 'detect.host.summary');
+  const id = item?.value.match(/Primary host: ([a-z]+)/)?.[1];
+  if (!id || id === 'unknown' || id === 'vercel' || !(id in HOST_LABEL)) return null;
+  return HOST_LABEL[id as HostId];
+}
+
+function mentionsHost(body: string, label: string): boolean {
+  const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`\\b${escaped}\\b`, 'i').test(body);
+}
+
+/**
  * ------------------------------------------------------------
  * Draft email + rep brief
  * ------------------------------------------------------------
@@ -300,13 +318,18 @@ export async function writeDraft(
   qualification: Qualification,
   research?: Research | null
 ): Promise<Draft> {
+  const host = currentHost(ledger);
   const prompt = [
     `Prospect: ${domain}`,
     `Strongest angle: ${qualification.strongestAngle.label} — ${qualification.strongestAngle.explanation}`,
     `Qualification reasoning: ${qualification.reasoning}`,
     '',
     'EVIDENCE LEDGER:',
-    formatLedger(ledger)
+    formatLedger(ledger),
+    '',
+    host
+      ? `Current host: ${host}. Use that exact name once. The close is about moving that hosting onto Vercel. Cite detect.host.summary.`
+      : 'Current host: unknown. Do not name a hosting provider.'
   ].join('\n');
 
   const normalize = (d: z.infer<typeof draftSchema>) => ({
@@ -322,7 +345,8 @@ export async function writeDraft(
   const check = (d: z.infer<typeof draftSchema>) => ({
     jargon: jargon(d),
     bad: unknownCitations([...d.emailCitations, ...d.talkingPoints.flatMap((t) => t.citations)], ledger),
-    numbers: unverifiedNumbers(`${d.subjectOptions.join('\n')}\n${d.subject}\n${d.body}`, ledger)
+    numbers: unverifiedNumbers(`${d.subjectOptions.join('\n')}\n${d.subject}\n${d.body}`, ledger),
+    host: !!host && !mentionsHost(d.body, host)
   });
 
   let { output } = await generateText({
@@ -335,7 +359,7 @@ export async function writeDraft(
   output = normalize(output);
 
   let issues = check(output);
-  if (issues.bad.length || issues.numbers.length || issues.jargon.length) {
+  if (issues.bad.length || issues.numbers.length || issues.jargon.length || issues.host) {
     ({ output } = await generateText({
       model: MODEL,
       providerOptions: FAST,
@@ -347,6 +371,7 @@ export async function writeDraft(
         issues.bad.length ? `- Cited ids not in the ledger: ${issues.bad.join(', ')}` : '',
         issues.numbers.length ? `- Numbers not found in the ledger: ${issues.numbers.join(', ')}` : '',
         issues.jargon.length ? `- Technical jargon in the email (rewrite in plain English): ${issues.jargon.join(', ')}` : '',
+        issues.host ? `- The email never names their current host. Say the site is hosted on ${host}, once, and that the ask is to move that hosting onto Vercel. Cite detect.host.summary.` : '',
         '',
         `Previous draft:\nSubject: ${output.subject}\n${output.body}`
       ].join('\n'),
@@ -360,6 +385,10 @@ export async function writeDraft(
   if (issues.bad.length) warnings.push(`Unknown citations: ${issues.bad.join(', ')}`);
   if (issues.numbers.length) warnings.push(`Numbers not found in evidence: ${issues.numbers.join(', ')}`);
   if (issues.jargon.length) warnings.push(`Jargon in email: ${issues.jargon.join(', ')}`);
+  if (issues.host) warnings.push(`Email doesn't name the current host (${host})`);
+  if (host && mentionsHost(output.body, host) && !output.emailCitations.includes('detect.host.summary')) {
+    output = { ...output, emailCitations: [...output.emailCitations, 'detect.host.summary'] };
+  }
   // Fill the greeting from the verified stakeholder only; otherwise leave the
   // placeholder for the rep.
   const firstName = stakeholderFirstName(research);
