@@ -1,5 +1,27 @@
+'use client';
+
 import type { EvidenceItem } from '@/lib/types';
 import { cn } from '@/lib/utils';
+
+/** Open the receipts drawer, then scroll the cited row into view. */
+function openReceipt(id: string) {
+  const ledger = document.getElementById('evidence-ledger');
+  if (ledger instanceof HTMLDetailsElement) ledger.open = true;
+  document.getElementById(`ev-${id}`)?.scrollIntoView({ block: 'center' });
+}
+
+/** A one-line source count. The raw receipt ids stay inside it. */
+export function Sources({ ids, ledger }: { ids: string[]; ledger: EvidenceItem[] }) {
+  if (ids.length === 0) return null;
+  return (
+    <details className="mt-1">
+      <summary className="text-muted-foreground hover:text-foreground w-fit cursor-pointer list-none text-xs [&::-webkit-details-marker]:hidden">
+        {ids.length} {ids.length === 1 ? 'source' : 'sources'}
+      </summary>
+      <Citations ids={ids} ledger={ledger} />
+    </details>
+  );
+}
 
 /** Citation chips that jump to (and highlight) the ledger entry they cite. */
 export function Citations({
@@ -23,6 +45,7 @@ export function Citations({
           <a
             key={id}
             href={`#ev-${id}`}
+            onClick={() => openReceipt(id)}
             title={e ? `${e.label}: ${e.value}` : 'Unknown evidence id'}
             className={cn(
               'rounded-lg border px-2 py-1 font-mono text-xs leading-normal transition-colors',
