@@ -12,6 +12,7 @@ import {
   unverifiedNumbers
 } from '@/lib/grounding';
 import { HOST_LABEL } from '@/lib/format';
+import { stripEmDashes } from '@/lib/email-text';
 import { DRAFT_INSTRUCTIONS, QUALIFY_INSTRUCTIONS, RESEARCH_INSTRUCTIONS } from '@/lib/prompts';
 import {
   type Detection,
@@ -330,7 +331,7 @@ export async function writeDraft(
   const host = currentHost(ledger);
   const prompt = [
     `Prospect: ${domain}`,
-    `Strongest angle: ${qualification.strongestAngle.label} — ${qualification.strongestAngle.explanation}`,
+    `Strongest angle: ${qualification.strongestAngle.label}. ${qualification.strongestAngle.explanation}`,
     `Qualification reasoning: ${qualification.reasoning}`,
     '',
     'EVIDENCE LEDGER:',
@@ -411,9 +412,9 @@ export async function writeDraft(
   const firstName = stakeholderFirstName(research);
   output = {
     ...output,
-    subject: fillPlaceholders(output.subject, firstName),
-    subjectOptions: output.subjectOptions.map((o) => fillPlaceholders(o, firstName)),
-    body: formatEmailBody(fillPlaceholders(stripCitationLeaks(output.body), firstName))
+    subject: stripEmDashes(fillPlaceholders(output.subject, firstName)),
+    subjectOptions: output.subjectOptions.map((o) => stripEmDashes(fillPlaceholders(o, firstName))),
+    body: stripEmDashes(formatEmailBody(fillPlaceholders(stripCitationLeaks(output.body), firstName)))
   };
   if (!firstName) warnings.push('No verified stakeholder — fill in {{first_name}} before sending');
 

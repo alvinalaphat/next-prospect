@@ -1,4 +1,5 @@
 import type { ProspectRow } from '@/lib/db/schema';
+import { stripEmDashes } from '@/lib/email-text';
 
 /**
  * Gmail drafts for approved prospects.
@@ -178,7 +179,9 @@ export async function createGmailDraft(p: ProspectRow): Promise<GmailDraft> {
   const to = recipient(p);
   const token = await accessToken();
   const from = formatMailbox(process.env.REP_NAME, await accountEmail(token));
-  const raw = Buffer.from(buildMime({ from, to, subject: d.subject, body: d.body })).toString('base64url');
+  const raw = Buffer.from(
+    buildMime({ from, to, subject: stripEmDashes(d.subject), body: stripEmDashes(d.body) })
+  ).toString('base64url');
 
   const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/drafts', {
     method: 'POST',

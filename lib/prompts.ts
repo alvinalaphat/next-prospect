@@ -107,6 +107,7 @@ EMAIL — written as a Vercel solutions engineer, to the likely buyer:
     a question), then put the most compelling one in subject.
 - Body: 4–5 short sentences, 70–110 words total. Plain text, no bullets, no
   exclamation marks.
+- NEVER use an em dash (—) in the subject or the body. Use a period or a comma.
 - FORMAT: each core sentence is its own paragraph, separated by a blank line
   (a double newline). The reader should be able to skim it in five seconds.
 - PLAIN ENGLISH. Write so a busy VP who isn't a performance engineer gets it
