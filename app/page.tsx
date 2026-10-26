@@ -51,25 +51,26 @@ export default async function Dashboard() {
 
   const count = (f: (i: ProspectListItem) => boolean) => items.filter(f).length;
   const stats = [
-    { label: 'Scanned', value: items.length },
+    { label: 'Checked', hint: 'Sites you have run', value: items.length },
     {
-      label: 'Next.js off Vercel',
+      label: 'Off Vercel',
+      hint: 'Next.js, hosted somewhere else',
       value: count((i) => (i.nextjsConfidence ?? 0) >= 50 && i.host !== 'vercel')
     },
-    { label: 'Already on Vercel', value: count((i) => i.status === 'vercel_customer') },
-    { label: 'Needs review', value: count((i) => i.status === 'awaiting_approval') },
-    { label: 'Approved', value: count((i) => i.status === 'approved') }
+    { label: 'On Vercel', hint: 'Already a customer, so skipped', value: count((i) => i.status === 'vercel_customer') },
+    { label: 'Needs review', hint: 'Drafts waiting on you', value: count((i) => i.status === 'awaiting_approval') },
+    { label: 'Approved', hint: 'Drafts you accepted', value: count((i) => i.status === 'approved') }
   ];
   const running = items.some((i) => STATUS[i.status].group === 'running');
 
   return (
     <div className="space-y-6 sm:space-y-8">
       <AutoRefresh active={running} />
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div className="space-y-4">
         <div>
           <h1 className="text-2xl font-medium">Prospects</h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            Companies running Next.js on non-Vercel hosting, researched and drafted for review.
+            Paste sites to research. You approve every draft before anything is sent.
           </p>
         </div>
         <RunPanel />
@@ -81,8 +82,9 @@ export default async function Dashboard() {
             key={s.label}
             className={`bg-background px-4 py-4 ${index === stats.length - 1 ? 'col-span-2 sm:col-span-2 xl:col-span-1' : ''}`}
           >
-            <dt className="text-muted-foreground text-xs">{s.label}</dt>
-            <dd className="mt-1 font-mono text-2xl tabular-nums">{s.value}</dd>
+            <dt className="text-sm font-medium">{s.label}</dt>
+            <dd className="mt-2 font-mono text-2xl tabular-nums">{s.value}</dd>
+            <p className="text-muted-foreground mt-1 text-xs leading-normal">{s.hint}</p>
           </div>
         ))}
       </dl>

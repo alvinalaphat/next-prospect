@@ -134,7 +134,7 @@ pnpm db:migrate                   # Neon if DATABASE_URL is set, else local PGli
 pnpm dev
 ```
 
-Start a batch from the dashboard (**Run domains**) or the CLI:
+Start a batch by pasting domains on the dashboard, or from the CLI:
 
 ```bash
 pnpm run:csv data/seed.csv

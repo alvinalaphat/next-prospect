@@ -1,8 +1,8 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { FileUp, Play, X } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
+import { FileUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { authHeaders, getSecret, setSecret } from '@/lib/client-secret';
@@ -11,15 +11,17 @@ import { cn } from '@/lib/utils';
 
 const MAX_DOMAINS = 250;
 
+const isFileDrag = (e: DragEvent) => [...e.dataTransfer.types].includes('Files');
+
 export function RunPanel() {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
   const [domains, setDomains] = useState('');
   const [fileName, setFileName] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const [secret, setSecretState] = useState('');
   const [busy, setBusy] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
+  const dragDepth = useRef(0);
 
   useEffect(() => setSecretState(getSecret()), []);
 
@@ -61,7 +63,6 @@ export function RunPanel() {
       );
       setDomains('');
       setFileName(null);
-      setOpen(false);
       router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to start');
@@ -74,113 +75,98 @@ export function RunPanel() {
   const tooMany = count > MAX_DOMAINS;
 
   return (
-    <div className="relative w-full sm:w-auto">
-      <Button onClick={() => setOpen((o) => !o)} variant={open ? 'outline' : 'default'} className="w-full sm:w-auto">
-        <Play /> Run domains
-      </Button>
-      {open && (
-        <div className="bg-background fixed inset-x-4 top-20 z-30 max-h-[calc(100dvh-6.5rem)] space-y-4 overflow-y-auto rounded-lg border border-border p-4 shadow-geist sm:absolute sm:inset-x-auto sm:top-full sm:right-0 sm:mt-2 sm:max-h-[min(32rem,calc(100dvh-8rem))] sm:w-[min(26rem,calc(100vw-3rem))]">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-medium">Run domains</h2>
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              aria-label="Close"
-              className="text-muted-foreground hover:text-foreground -mr-2 inline-flex size-11 items-center justify-center"
-            >
-              <X className="size-4" />
-            </button>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => fileInput.current?.click()}
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDragging(true);
-            }}
-            onDragLeave={() => setDragging(false)}
-            onDrop={(e) => {
-              e.preventDefault();
-              setDragging(false);
-              const file = e.dataTransfer.files[0];
-              if (file) loadFile(file);
-            }}
-            className={cn(
-              'text-muted-foreground hover:text-foreground flex w-full flex-col items-center gap-4 rounded-lg border border-dashed px-4 py-4 text-xs transition-colors',
-              dragging && 'border-foreground bg-accent text-foreground'
-            )}
-          >
-            <FileUp className="size-4" />
-            {fileName ? (
-              <span>
-                <span className="text-foreground font-medium">{fileName}</span> · click to replace
-              </span>
-            ) : (
-              <span>
-                Drop a CSV here or{' '}
-                <span className="text-foreground underline underline-offset-2">choose a file</span>
-              </span>
-            )}
-            <span className="text-xs">
-              Uses a “domain”, “website” or “url” column, or the first column
-            </span>
-          </button>
-          <input
-            ref={fileInput}
-            type="file"
-            accept=".csv,.txt,text/csv,text/plain"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) loadFile(file);
-              e.target.value = '';
-            }}
-          />
-
+    <div className="space-y-4">
+      <div
+        className={cn(
+          'flex flex-col rounded-lg border sm:flex-row sm:items-stretch',
+          dragging && 'border-foreground bg-hover'
+        )}
+        onDragEnter={(e) => {
+          if (!isFileDrag(e)) return;
+          e.preventDefault();
+          dragDepth.current += 1;
+          setDragging(true);
+        }}
+        onDragOver={(e) => {
+          if (!isFileDrag(e)) return;
+          e.preventDefault();
+        }}
+        onDragLeave={() => {
+          dragDepth.current = Math.max(0, dragDepth.current - 1);
+          if (dragDepth.current === 0) setDragging(false);
+        }}
+        onDrop={(e) => {
+          dragDepth.current = 0;
+          setDragging(false);
+          const file = e.dataTransfer.files[0];
+          if (!file) return;
+          e.preventDefault();
+          loadFile(file);
+        }}
+      >
+        <label className="min-w-0 flex-1">
+          <span className="sr-only">Domains to research</span>
           <textarea
             value={domains}
             onChange={(e) => {
               setDomains(e.target.value);
               setFileName(null);
             }}
-            rows={4}
-            placeholder={'…or paste domains, one per line\nacme.com\nexample.io'}
-            className="bg-background w-full rounded-lg border px-4 py-4 font-mono text-xs"
+            rows={3}
+            placeholder={'Paste domains, one per line, or drop a CSV\nacme.com'}
+            className="h-full min-h-24 w-full resize-y bg-transparent px-4 py-3 font-mono text-sm leading-normal outline-none"
           />
-
-          {domains.trim() && (
-            <p
-              className={cn(
-                'text-xs',
-                tooMany ? 'text-error' : 'text-muted-foreground'
-              )}
-            >
-              <span className="text-foreground font-medium">{count}</span> valid domain
-              {count === 1 ? '' : 's'}
+        </label>
+        <div className="flex shrink-0 gap-4 border-t p-4 sm:flex-col sm:justify-center sm:border-t-0 sm:border-l">
+          <Button type="button" variant="outline" onClick={() => fileInput.current?.click()} className="flex-1 sm:flex-none">
+            <FileUp /> Upload CSV
+          </Button>
+          <Button type="button" onClick={run} disabled={busy || count === 0 || tooMany} className="flex-1 sm:flex-none">
+            {busy ? 'Running…' : 'Run'}
+          </Button>
+        </div>
+      </div>
+      <input
+        ref={fileInput}
+        type="file"
+        accept=".csv,.txt,text/csv,text/plain"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) loadFile(file);
+          e.target.value = '';
+        }}
+      />
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <p className={cn('text-sm', tooMany ? 'text-error' : 'text-muted-foreground')}>
+          {domains.trim() ? (
+            <>
+              {fileName && <span className="text-foreground">{fileName} · </span>}
+              <span className="text-foreground font-medium">{count}</span> domain{count === 1 ? '' : 's'}
               {parsed.invalid.length > 0 && (
                 <span title={parsed.invalid.slice(0, 20).join(', ')}>
                   {' '}
-                  · {parsed.invalid.length} invalid rows skipped
+                  · {parsed.invalid.length} skipped
                 </span>
               )}
               {tooMany && ` · max ${MAX_DOMAINS} per batch`}
-            </p>
+            </>
+          ) : dragging ? (
+            'Drop the file to fill the list'
+          ) : (
+            'A CSV can use a domain, website, or url column.'
           )}
-
-          <input
-            type="password"
-            value={secret}
-            onChange={(e) => setSecretState(e.target.value)}
-            placeholder="RUN_SECRET"
-            autoComplete="off"
-            className="bg-background w-full rounded-lg border px-4 py-4 text-sm"
-          />
-          <Button onClick={run} disabled={busy || count === 0 || tooMany} className="w-full">
-            {busy ? 'Starting…' : `Start ${count || ''} workflow${count === 1 ? '' : 's'}`}
-          </Button>
-        </div>
-      )}
+        </p>
+        <input
+          type="password"
+          value={secret}
+          onChange={(e) => setSecretState(e.target.value)}
+          placeholder="RUN_SECRET"
+          autoComplete="off"
+          aria-label="Run secret"
+          className="bg-background h-11 w-full rounded-lg border px-3 text-sm sm:w-40"
+        />
+      </div>
     </div>
   );
 }
