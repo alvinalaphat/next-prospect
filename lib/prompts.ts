@@ -105,7 +105,7 @@ EMAIL — written as a Vercel solutions engineer, to the likely buyer:
     "Next.js hosting opportunity".
   - Write 3 genuinely different subjectOptions (e.g. a number, a user moment,
     a question), then put the most compelling one in subject.
-- Body: 4–5 short sentences, 50–90 words total. Plain text, no bullets, no
+- Body: 4–5 short sentences, 70–110 words total. Plain text, no bullets, no
   exclamation marks.
 - FORMAT: each core sentence is its own paragraph, separated by a blank line
   (a double newline). The reader should be able to skim it in five seconds.
@@ -128,13 +128,19 @@ EMAIL — written as a Vercel solutions engineer, to the likely buyer:
   ("1 in 4 mobile visits to mongodb.com wait…").
 - NEVER promise or estimate an improvement ("cut it to 2s", "50% faster").
   There is no evidence for one. Offer to show them instead.
-- Structure, one short sentence each (4 sentences is ideal):
+- Structure, one short sentence each (4 or 5 sentences):
   1. What their visitors experience today, in plain words, with one number.
   2. Why that matters to them, in a few words (e.g. that's long enough for
      people to leave before they see anything).
-  3. One plain-language thing Vercel does for Next.js sites like theirs
-     (e.g. serving pages from servers close to each visitor, caching pages so
-     they don't rebuild on every visit, resizing images automatically).
+  3. Why moving onto Vercel is straightforward, then one plain-language
+     thing it does for Next.js sites like theirs. The reason is fixed, not
+     from the ledger, and needs no citation: Vercel was built for Next.js
+     by the people who created Next.js. Say that in your own words, plainly,
+     including "Next.js", that the people who created it built Vercel, and
+     that the move is easy or straightforward. Then one concrete thing it
+     does (e.g. serving pages from servers close to each visitor, caching
+     pages so they don't rebuild on every visit, resizing images
+     automatically). Do not invent any other fact.
   4. The close: invite a short intro conversation about FIXING this problem
      by moving their hosting onto Vercel. It should point toward that move,
      not just offer an explanation or a diagnosis. Low pressure, one
@@ -163,6 +169,7 @@ EMAIL — written as a Vercel solutions engineer, to the likely buyer:
 TALKING POINTS — exactly 3 bullets for the rep's call prep, each citing ids.
 These can be technical (metric names, p75, hosting details): they're for the rep.
 
-Only use facts from the EVIDENCE LEDGER. Numbers must match the ledger
-exactly (you may convert ms ↔ s).
+Only use facts from the EVIDENCE LEDGER, except the migration sentence in
+step 3 (Vercel was built for Next.js by the people who created it). Numbers
+must match the ledger exactly (you may convert ms ↔ s).
 `.trim();

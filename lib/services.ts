@@ -306,6 +306,15 @@ function mentionsHost(body: string, label: string): boolean {
   return new RegExp(`\\b${escaped}\\b`, 'i').test(body);
 }
 
+/** The migration line is a product fact, not a ledger claim. */
+function mentionsMigration(body: string): boolean {
+  return (
+    /Next\.js/i.test(body) &&
+    /creat(or|ed|ors)/i.test(body) &&
+    /\b(easy|straightforward|simple)\b/i.test(body)
+  );
+}
+
 /**
  * ------------------------------------------------------------
  * Draft email + rep brief
@@ -329,7 +338,8 @@ export async function writeDraft(
     '',
     host
       ? `Current host: ${host}. Use that exact name once. The close is about moving that hosting onto Vercel. Cite detect.host.summary.`
-      : 'Current host: unknown. Do not name a hosting provider.'
+      : 'Current host: unknown. Do not name a hosting provider.',
+    'Migration: say moving to Vercel is easy or straightforward because it was built for Next.js by the people who created Next.js. Do not cite that line.'
   ].join('\n');
 
   const normalize = (d: z.infer<typeof draftSchema>) => ({
@@ -346,7 +356,8 @@ export async function writeDraft(
     jargon: jargon(d),
     bad: unknownCitations([...d.emailCitations, ...d.talkingPoints.flatMap((t) => t.citations)], ledger),
     numbers: unverifiedNumbers(`${d.subjectOptions.join('\n')}\n${d.subject}\n${d.body}`, ledger),
-    host: !!host && !mentionsHost(d.body, host)
+    host: !!host && !mentionsHost(d.body, host),
+    migration: !mentionsMigration(d.body)
   });
 
   let { output } = await generateText({
@@ -359,7 +370,7 @@ export async function writeDraft(
   output = normalize(output);
 
   let issues = check(output);
-  if (issues.bad.length || issues.numbers.length || issues.jargon.length || issues.host) {
+  if (issues.bad.length || issues.numbers.length || issues.jargon.length || issues.host || issues.migration) {
     ({ output } = await generateText({
       model: MODEL,
       providerOptions: FAST,
@@ -372,6 +383,9 @@ export async function writeDraft(
         issues.numbers.length ? `- Numbers not found in the ledger: ${issues.numbers.join(', ')}` : '',
         issues.jargon.length ? `- Technical jargon in the email (rewrite in plain English): ${issues.jargon.join(', ')}` : '',
         issues.host ? `- The email never names their current host. Say the site is hosted on ${host}, once, and that the ask is to move that hosting onto Vercel. Cite detect.host.summary.` : '',
+        issues.migration
+          ? '- The email never says why the move is easy. Say moving to Vercel is straightforward because it was built for Next.js by the people who created Next.js. Do not cite that line.'
+          : '',
         '',
         `Previous draft:\nSubject: ${output.subject}\n${output.body}`
       ].join('\n'),
@@ -386,6 +400,9 @@ export async function writeDraft(
   if (issues.numbers.length) warnings.push(`Numbers not found in evidence: ${issues.numbers.join(', ')}`);
   if (issues.jargon.length) warnings.push(`Jargon in email: ${issues.jargon.join(', ')}`);
   if (issues.host) warnings.push(`Email doesn't name the current host (${host})`);
+  if (issues.migration) {
+    warnings.push("Email doesn't say the move is straightforward because Vercel was built for Next.js by the people who created it");
+  }
   if (host && mentionsHost(output.body, host) && !output.emailCitations.includes('detect.host.summary')) {
     output = { ...output, emailCitations: [...output.emailCitations, 'detect.host.summary'] };
   }
@@ -406,7 +423,7 @@ export async function writeDraft(
     : null;
 
   const words = output.body.split(/\s+/).filter(Boolean).length;
-  if (words > 110) warnings.push(`Email is ${words} words (target 50–90)`);
+  if (words > 120) warnings.push(`Email is ${words} words (target 70–110)`);
 
   return {
     ...output,
