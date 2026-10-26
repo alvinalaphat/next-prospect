@@ -47,7 +47,6 @@ export default function About() {
   return (
     <article className="mx-auto max-w-3xl space-y-8 break-words">
       <header className="space-y-4">
-        <p className="text-muted-foreground font-mono text-xs">Prototype, weekend build</p>
         <h1 className="text-3xl font-medium sm:text-4xl">
           Next Prospect
         </h1>
