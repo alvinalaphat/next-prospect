@@ -28,7 +28,7 @@ export default async function ProspectPage({ params }: { params: Promise<{ domai
   const running = STATUS[p.status].group === 'running';
 
   return (
-    <div className="space-y-8">
+    <div className="min-w-0 space-y-6 sm:space-y-8">
       <AutoRefresh active={running} />
 
       <div className="space-y-4">
@@ -50,7 +50,7 @@ export default async function ProspectPage({ params }: { params: Promise<{ domai
               {p.domain} <ArrowUpRight className="size-3" />
             </a>
           </div>
-          <dl className="flex gap-6 text-sm">
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-4 text-sm sm:grid-cols-4">
             <Stat label="Host">
               <HostBadge host={p.host} cdn={d?.host.cdn} />
             </Stat>
@@ -78,23 +78,23 @@ export default async function ProspectPage({ params }: { params: Promise<{ domai
           </p>
         )}
         {p.status === 'approved' && (
-          <div className="flex flex-wrap items-center gap-4 rounded-lg border p-4 text-sm">
+          <div className="flex flex-col gap-4 rounded-lg border p-4 text-sm sm:flex-row sm:flex-wrap sm:items-center">
             {p.gmailDraft ? (
               <>
-                <Mail className="size-4" />
-                <span>
+                <Mail className="size-4 shrink-0" />
+                <span className="min-w-0">
                   Gmail draft created {relativeTime(p.gmailDraft.createdAt)}
                   {!p.gmailDraft.to && <span className="text-muted-foreground"> · no recipient (no published email). Add one in Gmail.</span>}
                 </span>
-                <a href={p.gmailDraft.url} target="_blank" rel="noreferrer" className="ml-auto font-medium underline underline-offset-4">
+                <a href={p.gmailDraft.url} target="_blank" rel="noreferrer" className="font-medium underline underline-offset-4 sm:ml-auto">
                   Open in Gmail ↗
                 </a>
               </>
             ) : (
               <>
-                <Mail className="text-muted-foreground size-4" />
-                <span className="text-muted-foreground">{p.gmailError ?? 'No Gmail draft yet.'}</span>
-                <div className="ml-auto">
+                <Mail className="text-muted-foreground size-4 shrink-0" />
+                <span className="text-muted-foreground min-w-0">{p.gmailError ?? 'No Gmail draft yet.'}</span>
+                <div className="w-full sm:ml-auto sm:w-auto">
                   <GmailDraftButton domain={p.domain} label={p.gmailError ? 'Retry Gmail draft' : 'Create Gmail draft'} />
                 </div>
               </>
@@ -105,8 +105,8 @@ export default async function ProspectPage({ params }: { params: Promise<{ domai
 
       {p.status === 'awaiting_approval' && draft && <ApprovalBar domain={p.domain} draft={draft} />}
 
-      <div className="grid gap-6 lg:grid-cols-5">
-        <div className="space-y-6 lg:col-span-3">
+      <div className="grid min-w-0 gap-6 lg:grid-cols-5">
+        <div className="min-w-0 space-y-6 lg:col-span-3">
           {r && <StakeholderCard research={r} />}
 
           {q && (
@@ -200,7 +200,7 @@ export default async function ProspectPage({ params }: { params: Promise<{ domai
           )}
         </div>
 
-        <div className="space-y-6 lg:col-span-2">
+        <div className="min-w-0 space-y-6 lg:col-span-2">
           {p.perf && (
             <Section title="Core Web Vitals" aside={<a className="text-muted-foreground hover:text-foreground text-xs" href={`https://pagespeed.web.dev/analysis?url=${encodeURIComponent(d?.finalUrl ?? `https://${p.domain}/`)}`} target="_blank" rel="noreferrer">PageSpeed ↗</a>}>
               <VitalsTable mobile={p.perf.mobile} desktop={p.perf.desktop} />
@@ -212,7 +212,7 @@ export default async function ProspectPage({ params }: { params: Promise<{ domai
 
           {d && (
             <Section title="Detection evidence" aside={<span className="text-muted-foreground text-xs">{relativeTime(d.fetchedAt)}</span>}>
-              <div className="text-muted-foreground mb-3 text-xs">
+              <div className="text-muted-foreground mb-3 text-xs break-all">
                 GET {d.fetchedUrl} → {d.status ?? '—'} {d.finalUrl && d.finalUrl !== d.fetchedUrl && `→ ${d.finalUrl}`}
                 {d.outcome !== 'ok' && <Pill className="ml-2">{d.outcome}</Pill>}
               </div>
@@ -272,7 +272,7 @@ function StakeholderCard({ research: r }: { research: Research }) {
                   href={b.linkedinUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="hover:bg-accent inline-flex items-center gap-4 rounded-lg border px-4 py-4 text-sm"
+                  className="hover:bg-accent inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 text-sm"
                 >
                   <LinkedInIcon className="size-3.5" /> LinkedIn
                 </a>
@@ -280,7 +280,7 @@ function StakeholderCard({ research: r }: { research: Research }) {
               {r.buyerEmail && (
                 <a
                   href={`mailto:${r.buyerEmail.address}`}
-                  className="hover:bg-accent inline-flex items-center gap-4 rounded-lg border px-4 py-4 font-mono text-xs"
+                  className="hover:bg-accent inline-flex min-h-11 max-w-full items-center gap-2 rounded-lg border px-3 py-2 font-mono text-xs break-all"
                 >
                   <Mail className="size-3.5" /> {r.buyerEmail.address}
                 </a>
@@ -303,9 +303,9 @@ function StakeholderCard({ research: r }: { research: Research }) {
               <div className="text-muted-foreground mb-2 text-xs">Alternates</div>
               <ul className="space-y-4 text-sm">
                 {b.alternates.map((a) => (
-                  <li key={a.name} className="flex items-center gap-4">
-                    {a.name}
-                    {a.title && <span className="text-muted-foreground">· {a.title}</span>}
+                  <li key={a.name} className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                    <span className="font-medium">{a.name}</span>
+                    {a.title && <span className="text-muted-foreground min-w-0">· {a.title}</span>}
                     {a.linkedinUrl && (
                       <a href={a.linkedinUrl} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-foreground">
                         <LinkedInIcon className="size-3.5" />
@@ -338,8 +338,8 @@ function Stat({ label, children }: { label: string; children: React.ReactNode })
 
 function Section({ title, aside, children }: { title: string; aside?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <section className="rounded-lg border border-border p-6">
-      <div className="mb-4 flex items-center justify-between gap-4">
+    <section className="rounded-lg border border-border p-4 sm:p-6">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h2 className="font-medium">{title}</h2>
         {aside}
       </div>
@@ -354,7 +354,7 @@ function Source({ url }: { url: string }) {
     host = new URL(url).hostname.replace(/^www\./, '');
   } catch {}
   return (
-    <a href={url} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-foreground text-xs whitespace-nowrap underline decoration-dotted underline-offset-2">
+    <a href={url} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-foreground text-xs break-all underline decoration-dotted underline-offset-2">
       {host}
     </a>
   );
@@ -415,14 +415,14 @@ function VitalsTable({ mobile, desktop }: { mobile: PerfResult; desktop: PerfRes
       ? { good: 'Good', 'needs-improvement': 'Needs improvement', poor: 'Poor' }[rating]
       : null;
     return (
-      <td className="px-4 py-4 text-right whitespace-nowrap">
+      <td className="px-2 py-3 text-right align-top sm:px-4">
         <span className="font-mono tabular-nums">{row.fmt(v)}</span>
-        {label && <span className={`ml-4 text-xs ${color}`}>{label}</span>}
+        {label && <span className={`mt-0.5 block text-xs leading-snug sm:mt-0 sm:ml-2 sm:inline ${color}`}>{label}</span>}
       </td>
     );
   };
   return (
-    <div className="overflow-x-auto">
+    <div className="min-w-0 overflow-x-auto">
       <table className="w-full text-sm">
         <thead className="text-muted-foreground text-xs">
           <tr>

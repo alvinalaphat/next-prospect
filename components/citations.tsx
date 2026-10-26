@@ -25,7 +25,7 @@ export function Citations({
             href={`#ev-${id}`}
             title={e ? `${e.label}: ${e.value}` : 'Unknown evidence id'}
             className={cn(
-              'rounded-lg border px-4 py-4 font-mono text-xs leading-normal transition-colors',
+              'rounded-lg border px-2 py-1 font-mono text-xs leading-normal transition-colors',
               e
                 ? 'text-muted-foreground hover:bg-accent hover:text-foreground'
                 : 'border-error text-error'

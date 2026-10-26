@@ -14,7 +14,7 @@ export function Pill({
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-4 rounded-lg px-4 py-4 text-xs font-medium whitespace-nowrap',
+        'inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium whitespace-nowrap',
         TONE_CLASS[tone],
         className
       )}
@@ -39,7 +39,7 @@ export function StatusBadge({ status }: { status: ProspectStatus }) {
 export function HostBadge({ host, cdn }: { host: HostId | string | null; cdn?: HostId | null }) {
   if (!host) return <span className="text-muted-foreground">—</span>;
   return (
-    <span className="whitespace-nowrap">
+    <span>
       {HOST_LABEL[host as HostId] ?? host}
       {cdn && <span className="text-muted-foreground"> + {HOST_LABEL[cdn]}</span>}
     </span>
@@ -55,11 +55,13 @@ const RATING_WORD: Partial<Record<keyof typeof TONE_CLASS, string>> = {
 export function Score({
   value,
   thresholds,
-  suffix
+  suffix,
+  className
 }: {
   value: number | null | undefined;
   thresholds: [number, number];
   suffix?: string;
+  className?: string;
 }) {
   if (value == null) return <span className="text-muted-foreground">—</span>;
   const tone = scoreTone(value, thresholds);
@@ -73,7 +75,7 @@ export function Score({
   }[tone];
   const word = RATING_WORD[tone];
   return (
-    <span className="inline-flex items-center justify-end gap-4 font-mono tabular-nums">
+    <span className={cn('inline-flex flex-wrap items-center gap-2 font-mono tabular-nums', className)}>
       <span className={cn('size-2 shrink-0 rounded-full', dot)} aria-hidden />
       <span>
         {value}

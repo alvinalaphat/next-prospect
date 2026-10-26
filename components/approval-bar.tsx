@@ -53,24 +53,26 @@ export function ApprovalBar({ domain, draft }: { domain: string; draft: Draft })
           <span className="font-medium">Waiting for review.</span>{' '}
           <span className="text-muted-foreground">The workflow is suspended until someone decides here or in Slack.</span>
         </div>
-        <div className="flex gap-4 sm:ml-auto">
+        <div className="flex w-full flex-col gap-3 sm:ml-auto sm:w-auto sm:max-w-full">
           <input
             type="password"
             value={secret}
             onChange={(e) => setSecretState(e.target.value)}
             placeholder="RUN_SECRET"
             autoComplete="off"
-            className="bg-background w-40 rounded-lg border px-4 py-4 text-xs"
+            className="bg-background w-full rounded-lg border px-3 py-2 text-xs sm:w-40"
           />
-          <Button size="sm" disabled={busy} onClick={() => decide('approved')}>
-            {editing ? 'Save & approve' : 'Approve'}
-          </Button>
-          <Button size="sm" variant="outline" disabled={busy} onClick={() => setEditing((e) => !e)}>
-            {editing ? 'Cancel edit' : 'Edit'}
-          </Button>
-          <Button size="sm" variant="outline" disabled={busy} onClick={() => decide('rejected')}>
-            Reject
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" disabled={busy} onClick={() => decide('approved')}>
+              {editing ? 'Save & approve' : 'Approve'}
+            </Button>
+            <Button size="sm" variant="outline" disabled={busy} onClick={() => setEditing((e) => !e)}>
+              {editing ? 'Cancel edit' : 'Edit'}
+            </Button>
+            <Button size="sm" variant="outline" disabled={busy} onClick={() => decide('rejected')}>
+              Reject
+            </Button>
+          </div>
         </div>
       </div>
       {editing && (

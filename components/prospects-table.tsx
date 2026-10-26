@@ -69,7 +69,7 @@ export function ProspectsTable({ items }: { items: ProspectListItem[] }) {
   }, [items, view, host, query, sort]);
 
   const header = (key: SortKey, label: string, className?: string) => (
-    <th className={cn('px-4 py-4 font-medium', className)}>
+    <th className={cn('overflow-hidden px-3 py-3 font-medium', className)}>
       <button
         type="button"
         onClick={() =>
@@ -78,7 +78,7 @@ export function ProspectsTable({ items }: { items: ProspectListItem[] }) {
             dir: s.key === key ? (s.dir === 'asc' ? 'desc' : 'asc') : key === 'domain' || key === 'host' ? 'asc' : 'desc'
           }))
         }
-        className="hover:text-foreground inline-flex items-center gap-4"
+        className="hover:text-foreground inline-flex items-center gap-1"
       >
         {label}
         {sort.key === key &&
@@ -89,51 +89,137 @@ export function ProspectsTable({ items }: { items: ProspectListItem[] }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-        <div className="flex flex-wrap rounded-lg border border-border text-sm">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+        <div className="grid grid-cols-2 overflow-hidden rounded-lg border border-border text-sm sm:flex sm:w-fit sm:max-w-full">
           {(Object.keys(VIEWS) as (keyof typeof VIEWS)[]).map((v) => (
             <button
               key={v}
               type="button"
               onClick={() => setView(v)}
               className={cn(
-                'rounded-lg px-4 py-4 whitespace-nowrap transition-colors',
+                'min-h-11 rounded-lg px-3 py-2 text-left whitespace-nowrap transition-colors sm:text-center',
                 view === v ? 'bg-hover text-foreground' : 'text-muted-foreground hover:text-foreground'
               )}
             >
               {VIEWS[v].label}
-              <span className="text-muted-foreground ml-4 font-mono text-xs">
+              <span className="text-muted-foreground ml-2 font-mono text-xs">
                 {items.filter(VIEWS[v].test).length}
               </span>
             </button>
           ))}
         </div>
-        <select
-          value={host}
-          onChange={(e) => setHost(e.target.value)}
-          className="bg-background rounded-lg border px-4 py-4 text-sm"
-          aria-label="Filter by host"
-        >
-          <option value="all">All hosts</option>
-          {hosts.map((h) => (
-            <option key={h} value={h}>
-              {HOST_LABEL[h as HostId] ?? h}
-            </option>
-          ))}
-        </select>
-        <label className="relative sm:ml-auto">
-          <Search className="text-muted-foreground absolute top-4 left-4 size-4" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Filter domains or angles…"
-            className="bg-background w-full rounded-lg border py-4 pr-4 pl-10 text-sm sm:w-64"
-          />
-        </label>
+        <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center lg:ml-auto">
+          <select
+            value={host}
+            onChange={(e) => setHost(e.target.value)}
+            className="bg-background min-h-11 w-full rounded-lg border px-3 py-2 text-sm sm:w-auto"
+            aria-label="Filter by host"
+          >
+            <option value="all">All hosts</option>
+            {hosts.map((h) => (
+              <option key={h} value={h}>
+                {HOST_LABEL[h as HostId] ?? h}
+              </option>
+            ))}
+          </select>
+          <label className="relative min-w-0 sm:w-64">
+            <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Filter domains or angles…"
+              className="bg-background min-h-11 w-full rounded-lg border py-2 pr-3 pl-9 text-sm"
+            />
+          </label>
+        </div>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border">
-        <table className="w-full min-w-[48rem] text-sm">
+      {rows.length === 0 ? (
+        <p className="text-muted-foreground rounded-lg border px-4 py-8 text-center text-sm">
+          {items.length === 0 ? 'No prospects yet — run a batch of domains to get started.' : 'Nothing matches these filters.'}
+        </p>
+      ) : (
+        <>
+        <ul className="space-y-3 lg:hidden">
+          {rows.map((i) => (
+            <li key={i.domain} className="rounded-lg border p-4">
+              <div className="flex items-start justify-between gap-3">
+                <Link href={`/prospect/${i.domain}`} className="min-w-0 font-medium break-all hover:underline">
+                  {i.domain}
+                </Link>
+                <StatusBadge status={i.status} />
+              </div>
+              <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                <div>
+                  <dt className="text-muted-foreground text-xs">Host</dt>
+                  <dd className="mt-1"><HostBadge host={i.host} cdn={i.cdn} /></dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground text-xs">Next.js</dt>
+                  <dd className="mt-1 font-mono tabular-nums">
+                    {i.nextjsConfidence == null ? '—' : `${i.nextjsConfidence}%`}
+                    {i.router && <span className="text-muted-foreground ml-1 text-xs">{i.router}</span>}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground text-xs">Perf (mobile)</dt>
+                  <dd className="mt-1"><Score value={i.perfScore} thresholds={[50, 90]} /></dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground text-xs">Fit</dt>
+                  <dd className="mt-1"><Score value={i.fitScore} thresholds={[35, 60]} /></dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground text-xs">LCP</dt>
+                  <dd className="mt-1 font-mono tabular-nums">{ms(i.lcpMs)}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground text-xs">Updated</dt>
+                  <dd className="text-muted-foreground mt-1 text-xs">{relativeTime(i.updatedAt)}</dd>
+                </div>
+              </dl>
+              {i.stakeholder && (
+                <div className="mt-4 text-sm">
+                  <div className="text-muted-foreground text-xs">Stakeholder</div>
+                  <div className="mt-1 flex items-center gap-2">
+                    <span className="min-w-0 truncate">{i.stakeholder.name}</span>
+                    {i.stakeholder.linkedinUrl && (
+                      <a href={i.stakeholder.linkedinUrl} target="_blank" rel="noreferrer" title="LinkedIn profile" className="text-muted-foreground hover:text-foreground">
+                        <LinkedInIcon className="size-3.5" />
+                      </a>
+                    )}
+                    {i.stakeholder.email && (
+                      <a href={`mailto:${i.stakeholder.email}`} title={i.stakeholder.email} className="text-muted-foreground hover:text-foreground">
+                        <Mail className="size-3.5" />
+                      </a>
+                    )}
+                  </div>
+                  {i.stakeholder.title && (
+                    <div className="text-muted-foreground truncate text-xs" title={i.stakeholder.title}>
+                      {i.stakeholder.title}
+                    </div>
+                  )}
+                </div>
+              )}
+              {i.angle && <p className="text-muted-foreground mt-3 text-sm">{i.angle}</p>}
+            </li>
+          ))}
+        </ul>
+
+      <div className="hidden overflow-x-auto rounded-lg border lg:block">
+        <table className="w-full table-fixed text-sm">
+          <colgroup>
+            <col className="w-[12%]" />
+            <col className="w-[9%]" />
+            <col className="w-[8%]" />
+            <col className="w-[11%]" />
+            <col className="w-[7%]" />
+            <col className="w-[10%]" />
+            <col className="w-[15%]" />
+            <col className="w-[10%]" />
+            <col className="w-[10%]" />
+            <col className="w-[8%]" />
+          </colgroup>
           <thead className="text-muted-foreground border-b bg-hover text-left text-xs">
             <tr>
               {header('domain', 'Domain')}
@@ -142,8 +228,8 @@ export function ProspectsTable({ items }: { items: ProspectListItem[] }) {
               {header('perfScore', 'Perf (mobile)', 'text-right')}
               {header('lcpMs', 'LCP', 'text-right')}
               {header('fitScore', 'Fit', 'text-right')}
-              <th className="px-4 py-4 font-medium">Stakeholder</th>
-              <th className="px-4 py-4 font-medium">Angle</th>
+              <th className="px-3 py-3 font-medium">Stakeholder</th>
+              <th className="px-3 py-3 font-medium">Angle</th>
               {header('status', 'Status')}
               {header('updatedAt', 'Updated', 'text-right')}
             </tr>
@@ -151,15 +237,15 @@ export function ProspectsTable({ items }: { items: ProspectListItem[] }) {
           <tbody className="divide-y">
             {rows.map((i) => (
               <tr key={i.domain} className="hover:bg-accent/50 group">
-                <td className="px-4 py-4">
-                  <Link href={`/prospect/${i.domain}`} className="font-medium group-hover:underline">
+                <td className="overflow-hidden px-3 py-3">
+                  <Link href={`/prospect/${i.domain}`} className="block truncate font-medium group-hover:underline">
                     {i.domain}
                   </Link>
                 </td>
-                <td className="px-4 py-4">
+                <td className="overflow-hidden px-3 py-3">
                   <HostBadge host={i.host} cdn={i.cdn} />
                 </td>
-                <td className="px-4 py-4 text-right">
+                <td className="overflow-hidden px-3 py-3 text-right">
                   {i.nextjsConfidence == null ? (
                     <span className="text-muted-foreground">—</span>
                   ) : (
@@ -169,17 +255,17 @@ export function ProspectsTable({ items }: { items: ProspectListItem[] }) {
                     </span>
                   )}
                 </td>
-                <td className="px-4 py-4 text-right">
-                  <Score value={i.perfScore} thresholds={[50, 90]} />
+                <td className="overflow-hidden px-3 py-3 text-right">
+                  <Score value={i.perfScore} thresholds={[50, 90]} className="justify-end" />
                 </td>
-                <td className="px-4 py-4 text-right font-mono whitespace-nowrap tabular-nums">{ms(i.lcpMs)}</td>
-                <td className="px-4 py-4 text-right">
-                  <Score value={i.fitScore} thresholds={[35, 60]} />
+                <td className="overflow-hidden px-3 py-3 text-right font-mono whitespace-nowrap tabular-nums">{ms(i.lcpMs)}</td>
+                <td className="overflow-hidden px-3 py-3 text-right">
+                  <Score value={i.fitScore} thresholds={[35, 60]} className="justify-end" />
                 </td>
-                <td className="px-4 py-4">
+                <td className="overflow-hidden px-3 py-3">
                   {i.stakeholder ? (
-                    <div className="max-w-52">
-                      <div className="flex items-center gap-4">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
                         <span className="truncate">{i.stakeholder.name}</span>
                         {i.stakeholder.linkedinUrl && (
                           <a href={i.stakeholder.linkedinUrl} target="_blank" rel="noreferrer" title="LinkedIn profile" className="text-muted-foreground hover:text-foreground">
@@ -202,27 +288,22 @@ export function ProspectsTable({ items }: { items: ProspectListItem[] }) {
                     <span className="text-muted-foreground">—</span>
                   )}
                 </td>
-                <td className="text-muted-foreground max-w-64 truncate px-4 py-4" title={i.angle ?? ''}>
+                <td className="text-muted-foreground truncate overflow-hidden px-3 py-3" title={i.angle ?? ''}>
                   {i.angle ?? '—'}
                 </td>
-                <td className="px-4 py-4">
+                <td className="overflow-hidden px-3 py-3">
                   <StatusBadge status={i.status} />
                 </td>
-                <td className="text-muted-foreground px-4 py-4 text-right text-xs whitespace-nowrap">
+                <td className="text-muted-foreground overflow-hidden px-3 py-3 text-right text-xs whitespace-nowrap">
                   {relativeTime(i.updatedAt)}
                 </td>
               </tr>
             ))}
-            {rows.length === 0 && (
-              <tr>
-                <td colSpan={10} className="text-muted-foreground px-4 py-8 text-center">
-                  {items.length === 0 ? 'No prospects yet — run a batch of domains to get started.' : 'Nothing matches these filters.'}
-                </td>
-              </tr>
-            )}
           </tbody>
         </table>
       </div>
+        </>
+      )}
     </div>
   );
 }

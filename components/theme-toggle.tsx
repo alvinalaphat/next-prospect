@@ -1,5 +1,6 @@
 'use client';
 
+import { Moon, Sun } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
 
@@ -16,9 +17,10 @@ export function ThemeToggle() {
       type="button"
       onClick={() => setTheme(dark ? 'light' : 'dark')}
       aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
-      className="rounded-lg border border-border px-4 py-4 text-sm text-muted-foreground hover:bg-hover hover:text-foreground"
+      className="relative inline-flex size-11 cursor-pointer items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-hover hover:text-foreground"
     >
-      {mounted ? (dark ? 'Light' : 'Dark') : 'Theme'}
+      <Sun className="size-4 scale-100 rotate-0 transition-transform dark:scale-0 dark:-rotate-90" aria-hidden />
+      <Moon className="absolute size-4 scale-0 rotate-90 transition-transform dark:scale-100 dark:rotate-0" aria-hidden />
     </button>
   );
 }

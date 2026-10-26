@@ -74,19 +74,19 @@ export function RunPanel() {
   const tooMany = count > MAX_DOMAINS;
 
   return (
-    <div className="relative">
-      <Button onClick={() => setOpen((o) => !o)} variant={open ? 'outline' : 'default'}>
+    <div className="relative w-full sm:w-auto">
+      <Button onClick={() => setOpen((o) => !o)} variant={open ? 'outline' : 'default'} className="w-full sm:w-auto">
         <Play /> Run domains
       </Button>
       {open && (
-        <div className="bg-background absolute top-full right-0 z-30 mt-2 w-[calc(100vw-2rem)] space-y-4 rounded-lg border border-border p-4 shadow-geist sm:w-[26rem]">
+        <div className="bg-background fixed inset-x-4 top-20 z-30 max-h-[calc(100dvh-6.5rem)] space-y-4 overflow-y-auto rounded-lg border border-border p-4 shadow-geist sm:absolute sm:inset-x-auto sm:top-full sm:right-0 sm:mt-2 sm:max-h-[min(32rem,calc(100dvh-8rem))] sm:w-[min(26rem,calc(100vw-3rem))]">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-medium">Run domains</h2>
             <button
               type="button"
               onClick={() => setOpen(false)}
               aria-label="Close"
-              className="text-muted-foreground hover:text-foreground"
+              className="text-muted-foreground hover:text-foreground -mr-2 inline-flex size-11 items-center justify-center"
             >
               <X className="size-4" />
             </button>

@@ -30,33 +30,36 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} min-h-dvh overflow-x-clip font-sans antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <a
             href="#main"
-            className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:rounded-lg focus:bg-background focus:px-4 focus:py-4"
+            className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:rounded-lg focus:bg-background focus:px-4 focus:py-2"
           >
             Skip to content
           </a>
-          <header className="sticky top-0 z-20 border-b border-border bg-background">
-            <div className="mx-auto flex min-h-16 max-w-4xl flex-wrap items-center gap-4 px-4 py-4 sm:px-6">
-              <Link href="/" className="flex items-center gap-4 font-medium whitespace-nowrap">
-                <svg viewBox="0 0 76 65" className="size-4" aria-hidden>
+          <header className="sticky top-0 z-20 border-b border-border bg-background pt-[env(safe-area-inset-top)]">
+            <div className="mx-auto flex min-h-14 max-w-7xl items-center gap-2 px-4 py-3 sm:gap-4 sm:px-6 sm:py-4 [@media(max-height:700px)]:min-h-12 [@media(max-height:700px)]:py-2">
+              <Link href="/" className="flex min-w-0 items-center gap-2 font-medium sm:gap-4">
+                <svg viewBox="0 0 76 65" className="size-4 shrink-0" aria-hidden>
                   <path d="M37.5274 0L75.0548 65H0L37.5274 0Z" fill="currentColor" />
                 </svg>
-                <span className="text-muted-foreground font-normal">/</span>
-                Next Prospect
+                <span className="text-muted-foreground hidden font-normal sm:inline">/</span>
+                <span className="truncate">Next Prospect</span>
               </Link>
-              <nav className="flex items-center gap-4 text-sm" aria-label="Primary">
+              <nav className="flex items-center gap-1 text-sm sm:gap-4" aria-label="Primary">
                 <NavLink href="/">Prospects</NavLink>
                 <NavLink href="/about">About</NavLink>
               </nav>
-              <div className="ml-auto">
+              <div className="ml-auto shrink-0">
                 <ThemeToggle />
               </div>
             </div>
           </header>
-          <main id="main" className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
+          <main
+            id="main"
+            className="mx-auto w-full min-w-0 max-w-7xl px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-8 [@media(max-height:700px)]:py-4"
+          >
             {children}
           </main>
           <Toaster />

@@ -63,7 +63,7 @@ export default async function Dashboard() {
   const running = items.some((i) => STATUS[i.status].group === 'running');
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       <AutoRefresh active={running} />
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
@@ -75,11 +75,11 @@ export default async function Dashboard() {
         <RunPanel />
       </div>
 
-      <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-5">
+      <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-3 xl:grid-cols-5">
         {stats.map((s, index) => (
           <div
             key={s.label}
-            className={`bg-background px-4 py-4 ${index === stats.length - 1 ? 'col-span-2 sm:col-span-1' : ''}`}
+            className={`bg-background px-4 py-4 ${index === stats.length - 1 ? 'col-span-2 sm:col-span-2 xl:col-span-1' : ''}`}
           >
             <dt className="text-muted-foreground text-xs">{s.label}</dt>
             <dd className="mt-1 font-mono text-2xl tabular-nums">{s.value}</dd>

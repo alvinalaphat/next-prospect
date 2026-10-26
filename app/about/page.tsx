@@ -45,7 +45,7 @@ const STAGES: { n: string; title: string; tech: string; body: string; stop?: str
 
 export default function About() {
   return (
-    <article className="space-y-8">
+    <article className="mx-auto max-w-3xl space-y-8 break-words">
       <header className="space-y-4">
         <p className="text-muted-foreground font-mono text-xs">Prototype, weekend build</p>
         <h1 className="text-3xl font-medium sm:text-4xl">
@@ -93,9 +93,9 @@ export default function About() {
 
         <div className="rounded-lg border p-4 font-mono text-xs sm:p-6">
           <div className="text-muted-foreground mb-4 flex flex-wrap items-center gap-4">
-            <span className="rounded-lg border px-4 py-4">CSV / dashboard</span>→
-            <span className="rounded-lg border px-4 py-4">POST /api/run</span>→
-            <span className="rounded-lg border px-4 py-4">start(workflowOutbound) × N</span>
+            <span className="rounded-lg border px-3 py-2">CSV / dashboard</span>→
+            <span className="rounded-lg border px-3 py-2">POST /api/run</span>→
+            <span className="rounded-lg border px-3 py-2">start(workflowOutbound) × N</span>
           </div>
           <ol className="relative space-y-0 border-l pl-6">
             {STAGES.map((s) => (
@@ -106,7 +106,7 @@ export default function About() {
                 <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                   <span className="text-muted-foreground">{s.n}</span>
                   <span className="font-sans text-sm font-semibold">{s.title}</span>
-                  <span className="text-muted-foreground rounded-lg bg-hover px-4 py-4">{s.tech}</span>
+                  <span className="text-muted-foreground rounded-lg bg-hover px-3 py-1">{s.tech}</span>
                 </div>
                 <p className="text-muted-foreground mt-1.5 font-sans text-sm leading-relaxed">{s.body}</p>
                 {s.stop && (
@@ -123,8 +123,26 @@ export default function About() {
 
       <section className="space-y-4">
         <h2 className="text-xl font-medium">What&apos;s reused from lead-agent, and what changed</h2>
-        <div className="overflow-x-auto rounded-lg border">
-          <table className="w-full text-sm">
+        <ul className="space-y-3 md:hidden">
+          {[
+            ['Form submit → start(workflowInbound)', 'CSV / dashboard → start(workflowOutbound) per domain, staggered'],
+            ['Research Agent + Exa tools, free-text report', 'Same agent + tools, structured output, URLs grounded to tool results'],
+            ['techStackAnalysis tool: empty stub', 'Real detector: Next.js confidence + host from headers/DNS, with an eval'],
+            ['generateObject → category', 'Output.object → fit score, angle, cited claims; one repair pass'],
+            ['Slack post, then workflow ends', 'Workflow suspends on a durable hook until Slack/dashboard resumes it'],
+            ['Approve → sendEmail() stub', 'Approve / Edit (modal) / Reject → recorded; never sends'],
+            ['No storage', 'Neon Postgres via Marketplace; embedded PGlite locally']
+          ].map(([a, b]) => (
+            <li key={a} className="rounded-lg border p-4 text-sm">
+              <p className="text-muted-foreground text-xs">lead-agent</p>
+              <p className="mt-1">{a}</p>
+              <p className="text-muted-foreground mt-3 text-xs">Next Prospect</p>
+              <p className="mt-1">{b}</p>
+            </li>
+          ))}
+        </ul>
+        <div className="hidden overflow-x-auto rounded-lg border md:block">
+          <table className="w-full min-w-[36rem] text-sm">
             <thead className="text-muted-foreground border-b bg-hover text-left text-xs">
               <tr>
                 <th className="px-4 py-4 font-medium">lead-agent</th>
