@@ -63,19 +63,21 @@ export function ApprovalBar({ domain, draft }: { domain: string; draft: Draft })
         </div>
         <div className="flex w-full flex-col gap-3 sm:ml-auto sm:w-auto sm:max-w-full">
           {secretField.show && (
-            <input
-              type="password"
-              value={secretField.secret}
-              onChange={(e) => secretField.update(e.target.value)}
-              onBlur={() => void secretField.commit()}
-              placeholder="RUN_SECRET"
-              autoComplete="off"
-              aria-label="Run secret"
-              aria-invalid={secretField.invalid || undefined}
-              className={`bg-background w-full rounded-lg border px-3 py-2 text-xs sm:w-40 ${secretField.invalid ? 'border-error' : ''}`}
-            />
+            <div data-secret-slot className="contents">
+              <input
+                type="password"
+                value={secretField.secret}
+                onChange={(e) => secretField.update(e.target.value)}
+                onBlur={() => void secretField.commit()}
+                placeholder="RUN_SECRET"
+                autoComplete="off"
+                aria-label="Run secret"
+                aria-invalid={secretField.invalid || undefined}
+                className={`bg-background w-full rounded-lg border px-3 py-2 text-xs sm:w-40 ${secretField.invalid ? 'border-error' : ''}`}
+              />
+              {secretField.invalid && <p className="text-error text-xs">Doesn't match.</p>}
+            </div>
           )}
-          {secretField.show && secretField.invalid && <p className="text-error text-xs">Doesn't match.</p>}
           <div className="flex flex-wrap gap-2">
             <Button size="sm" disabled={busy} onClick={() => decide('approved')}>
               {editing ? 'Save & approve' : 'Approve'}

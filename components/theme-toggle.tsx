@@ -19,8 +19,14 @@ export function ThemeToggle() {
       aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
       className="relative inline-flex size-11 cursor-pointer items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-hover hover:text-foreground"
     >
-      <Sun className="size-4 scale-100 rotate-0 transition-transform dark:scale-0 dark:-rotate-90" aria-hidden />
-      <Moon className="absolute size-4 scale-0 rotate-90 transition-transform dark:scale-100 dark:rotate-0" aria-hidden />
+      <Sun
+        className="theme-icon size-4 scale-100 opacity-100 transition-[transform,opacity] duration-[160ms] ease-out-strong dark:scale-95 dark:opacity-0"
+        aria-hidden
+      />
+      <Moon
+        className="theme-icon absolute size-4 scale-95 opacity-0 transition-[transform,opacity] duration-[160ms] ease-out-strong dark:scale-100 dark:opacity-100"
+        aria-hidden
+      />
     </button>
   );
 }

@@ -31,11 +31,11 @@ export function Disclosure({
           {hint ? <span className="text-muted-foreground mt-1 line-clamp-2 block text-sm leading-normal">{hint}</span> : null}
         </span>
         <ChevronDown
-          className="text-muted-foreground mt-0.5 size-4 shrink-0 transition-transform duration-200 group-open:rotate-180"
+          className="text-muted-foreground mt-0.5 size-4 shrink-0 transition-transform duration-200 ease-out-strong motion-reduce:transition-none group-open:rotate-180"
           aria-hidden
         />
       </summary>
-      <div className="pb-4">{children}</div>
+      <div className="disclosure-panel pb-4">{children}</div>
     </details>
   );
 }

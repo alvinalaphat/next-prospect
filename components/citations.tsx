@@ -18,7 +18,9 @@ export function Sources({ ids, ledger }: { ids: string[]; ledger: EvidenceItem[]
       <summary className="text-muted-foreground hover:text-foreground w-fit cursor-pointer list-none text-xs [&::-webkit-details-marker]:hidden">
         {ids.length} {ids.length === 1 ? 'source' : 'sources'}
       </summary>
-      <Citations ids={ids} ledger={ledger} />
+      <div className="disclosure-panel">
+        <Citations ids={ids} ledger={ledger} />
+      </div>
     </details>
   );
 }

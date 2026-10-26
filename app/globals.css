@@ -26,6 +26,8 @@
   --geist-selection-text: #000000;
   --geist-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 8px 24px rgb(0 0 0 / 0.06);
   --geist-radius: 8px;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6.5 8 10.5 12 6.5' stroke='%23666' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 
   --background: var(--geist-background);
@@ -90,6 +92,8 @@
   --color-warning: var(--geist-warning);
   --color-error: var(--geist-error);
   --color-violet: var(--geist-violet);
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out-strong: cubic-bezier(0.77, 0, 0.175, 1);
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
   --radius: var(--geist-radius);
@@ -152,5 +156,62 @@
   input[type='button']:not(:disabled),
   input[type='reset']:not(:disabled) {
     cursor: pointer;
+  }
+}
+
+/*
+  A stored run secret is hidden before first paint so the field does not
+  appear and then collapse, which shifts the rest of the page.
+*/
+html[data-secret='stored'] [data-secret-slot] {
+  display: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :where(button, [role='button']):not(:disabled) {
+    transition-property: color, background-color, border-color, outline-color, text-decoration-color, opacity, transform;
+    transition-duration: 160ms;
+    transition-timing-function: var(--ease-out);
+  }
+
+  :where(button, [role='button']):not(:disabled):not([data-no-press]):active {
+    transform: scale(0.97);
+  }
+
+  .filter-thumb[data-ready='true'] {
+    transition-property: transform, width, height;
+    transition-duration: 200ms;
+    transition-timing-function: var(--ease-in-out);
+  }
+
+  .disclosure-panel {
+    transition-property: opacity, transform;
+    transition-duration: 200ms;
+    transition-timing-function: var(--ease-out);
+  }
+
+  @starting-style {
+    .disclosure-panel {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .disclosure-panel {
+    transition: opacity 200ms ease;
+  }
+
+  @starting-style {
+    .disclosure-panel {
+      opacity: 0;
+    }
+  }
+
+  .theme-icon {
+    transform: none !important;
+    transition-property: opacity;
+    transition-duration: 160ms;
   }
 }

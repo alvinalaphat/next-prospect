@@ -41,19 +41,21 @@ export function GmailDraftButton({ domain, label = 'Create Gmail draft' }: { dom
   return (
     <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
       {secretField.show && (
-        <input
-          type="password"
-          value={secretField.secret}
-          onChange={(e) => secretField.update(e.target.value)}
-          onBlur={() => void secretField.commit()}
-          placeholder="RUN_SECRET"
-          autoComplete="off"
-          aria-label="Run secret"
-          aria-invalid={secretField.invalid || undefined}
-          className={`bg-background w-full rounded-lg border px-3 py-2 text-xs sm:w-40 ${secretField.invalid ? 'border-error' : ''}`}
-        />
+        <div data-secret-slot className="contents">
+          <input
+            type="password"
+            value={secretField.secret}
+            onChange={(e) => secretField.update(e.target.value)}
+            onBlur={() => void secretField.commit()}
+            placeholder="RUN_SECRET"
+            autoComplete="off"
+            aria-label="Run secret"
+            aria-invalid={secretField.invalid || undefined}
+            className={`bg-background w-full rounded-lg border px-3 py-2 text-xs sm:w-40 ${secretField.invalid ? 'border-error' : ''}`}
+          />
+          {secretField.invalid && <p className="text-error text-xs">Doesn't match.</p>}
+        </div>
       )}
-      {secretField.show && secretField.invalid && <p className="text-error text-xs">Doesn't match.</p>}
       <Button size="sm" variant="outline" disabled={busy} onClick={create} className="w-full sm:w-auto">
         {busy ? 'Creating…' : label}
       </Button>

@@ -13,10 +13,16 @@ export function CopyButton({ text }: { text: string }) {
         setCopied(true);
         setTimeout(() => setCopied(false), 1500);
       }}
-      className="text-muted-foreground hover:text-foreground inline-flex items-center gap-4 text-xs"
+      className="text-muted-foreground hover:text-foreground inline-flex items-center gap-2 text-xs"
     >
-      {copied ? <Check className="size-3" /> : <Copy className="size-3" />}
-      {copied ? 'Copied' : 'Copy'}
+      <span className="grid size-3" aria-hidden>
+        <Copy className={`col-start-1 row-start-1 size-3 transition-opacity duration-150 ease-out-strong ${copied ? 'opacity-0' : ''}`} />
+        <Check className={`col-start-1 row-start-1 size-3 transition-opacity duration-150 ease-out-strong ${copied ? '' : 'opacity-0'}`} />
+      </span>
+      <span className="grid">
+        <span aria-hidden={copied} className={`col-start-1 row-start-1 transition-opacity duration-150 ease-out-strong ${copied ? 'opacity-0' : ''}`}>Copy</span>
+        <span aria-hidden={!copied} className={`col-start-1 row-start-1 transition-opacity duration-150 ease-out-strong ${copied ? '' : 'opacity-0'}`}>Copied</span>
+      </span>
     </button>
   );
 }

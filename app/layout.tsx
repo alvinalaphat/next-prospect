@@ -4,7 +4,9 @@ import Link from 'next/link';
 import { ThemeProvider } from 'next-themes';
 import { Toaster } from 'sonner';
 import { NavLink } from '@/components/nav-link';
+import { SecretPresence } from '@/components/secret-presence';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { RUN_SECRET_STORAGE_KEY } from '@/lib/run-secret-key';
 import './globals.css';
 
 const geistSans = Geist({
@@ -31,6 +33,12 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} min-h-dvh overflow-x-clip font-sans antialiased`}>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{if(localStorage.getItem(${JSON.stringify(RUN_SECRET_STORAGE_KEY)}))document.documentElement.dataset.secret='stored'}catch(e){}`
+          }}
+        />
+        <SecretPresence />
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <a
             href="#main"

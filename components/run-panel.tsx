@@ -166,7 +166,7 @@ export function RunPanel() {
           )}
         </p>
         {secretField.show && (
-          <div className="w-full sm:w-40">
+          <div data-secret-slot className="w-full sm:w-40">
             <input
               type="password"
               value={secretField.secret}

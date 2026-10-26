@@ -328,7 +328,7 @@ function StakeholderCard({ research: r }: { research: Research }) {
         </p>
       )}
       <Disclosure
-        className="border-t"
+        className="mt-4 border-t"
         title="Why this person"
         hint={others > 0 ? `${others} other ${others === 1 ? 'person' : 'people'} on file` : 'How they were chosen'}
       >

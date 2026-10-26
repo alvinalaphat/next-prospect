@@ -1,8 +1,16 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { RUN_SECRET_STORAGE_KEY } from '@/lib/run-secret-key';
 
-const KEY = 'next-prospect:run-secret';
+const KEY = RUN_SECRET_STORAGE_KEY;
+
+/** Keep the pre-paint hide flag in sync once React knows whether the field should exist. */
+function setSecretPresence(stored: boolean) {
+  if (typeof document === 'undefined') return;
+  if (stored) document.documentElement.dataset.secret = 'stored';
+  else delete document.documentElement.dataset.secret;
+}
 
 /** RUN_SECRET is kept in this browser only, for authorizing runs/decisions. */
 export function getSecret(): string {
@@ -60,12 +68,20 @@ export function useRunSecret() {
   useEffect(() => {
     const stored = getSecret();
     setSecretState(stored);
-    if (!stored) return;
+    if (!stored) {
+      setSecretPresence(false);
+      return;
+    }
     let cancelled = false;
     checkSecret(stored).then((status) => {
       if (cancelled) return;
-      if (status === 'valid') setHidden(true);
-      if (status === 'invalid') setInvalid(true);
+      if (status === 'valid') {
+        setSecretPresence(true);
+        setHidden(true);
+      } else {
+        setSecretPresence(false);
+        if (status === 'invalid') setInvalid(true);
+      }
     });
     return () => {
       cancelled = true;
@@ -76,19 +92,23 @@ export function useRunSecret() {
     const clean = cleanSecret(secret);
     setSecretState(clean);
     if (!clean) {
+      setSecretPresence(false);
       setHidden(false);
       setInvalid(false);
       return { value: '', status: 'empty' };
     }
     const status = await checkSecret(clean);
-    if (status === 'valid') setSecret(clean);
-    else if (status === 'invalid' && getSecret() === clean) {
+    if (status === 'valid') {
+      setSecret(clean);
+      setSecretPresence(true);
+    } else if (status === 'invalid' && getSecret() === clean) {
       try {
         localStorage.removeItem(KEY);
       } catch {
         // ignore
       }
     }
+    if (status !== 'valid') setSecretPresence(false);
     setHidden(status === 'valid');
     setInvalid(status === 'invalid');
     return { value: clean, status };
@@ -104,6 +124,7 @@ export function useRunSecret() {
     },
     commit,
     reveal: () => {
+      setSecretPresence(false);
       setHidden(false);
       setInvalid(true);
     }

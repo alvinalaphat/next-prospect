@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, Mail, Search } from 'lucide-react';
 import { LinkedInIcon } from '@/components/linkedin-icon';
 import { HostBadge, Score, StatusBadge } from '@/components/badges';
@@ -33,6 +33,75 @@ const VIEWS = {
   skipped: { label: 'Skipped', test: (i: ProspectListItem) => STATUS[i.status].group === 'skipped' },
   all: { label: 'All', test: () => true }
 } as const;
+
+/** Inset track so the active fill never sits on the border. The fill slides between options. */
+function ViewSwitch({
+  view,
+  onChange,
+  counts
+}: {
+  view: keyof typeof VIEWS;
+  onChange: (view: keyof typeof VIEWS) => void;
+  counts: Record<keyof typeof VIEWS, number>;
+}) {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [box, setBox] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  const [ready, setReady] = useState(false);
+
+  useLayoutEffect(() => {
+    const track = trackRef.current;
+    if (!track) return;
+    const measure = () => {
+      const active = track.querySelector<HTMLElement>('[aria-pressed="true"]');
+      if (!active) return;
+      setBox({
+        x: active.offsetLeft,
+        y: active.offsetTop,
+        w: active.offsetWidth,
+        h: active.offsetHeight
+      });
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(track);
+    return () => observer.disconnect();
+  }, [view]);
+
+  useEffect(() => setReady(true), []);
+
+  return (
+    <div
+      ref={trackRef}
+      className="relative grid grid-cols-2 gap-1 rounded-lg border p-1 text-sm sm:flex sm:w-fit"
+    >
+      {box && (
+        <span
+          aria-hidden
+          data-ready={ready ? 'true' : 'false'}
+          className="filter-thumb bg-hover pointer-events-none absolute rounded-[4px]"
+          style={{ left: 0, top: 0, width: box.w, height: box.h, transform: `translate(${box.x}px, ${box.y}px)` }}
+        />
+      )}
+      {(Object.keys(VIEWS) as (keyof typeof VIEWS)[]).map((v) => (
+        <button
+          key={v}
+          type="button"
+          data-no-press
+          aria-pressed={view === v}
+          onClick={() => onChange(v)}
+          className={cn(
+            'relative z-10 min-h-11 rounded-[4px] px-3 py-2 text-left whitespace-nowrap sm:text-center',
+            view === v ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
+            view === v && !box && 'bg-hover'
+          )}
+        >
+          {VIEWS[v].label}
+          <span className="text-muted-foreground ml-2 font-mono text-xs">{counts[v]}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export function ProspectsTable({ items }: { items: ProspectListItem[] }) {
   const [view, setView] = useState<keyof typeof VIEWS>('pipeline');
@@ -90,24 +159,13 @@ export function ProspectsTable({ items }: { items: ProspectListItem[] }) {
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-        <div className="grid grid-cols-2 overflow-hidden rounded-lg border border-border text-sm sm:flex sm:w-fit sm:max-w-full">
-          {(Object.keys(VIEWS) as (keyof typeof VIEWS)[]).map((v) => (
-            <button
-              key={v}
-              type="button"
-              onClick={() => setView(v)}
-              className={cn(
-                'min-h-11 rounded-lg px-3 py-2 text-left whitespace-nowrap transition-colors sm:text-center',
-                view === v ? 'bg-hover text-foreground' : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              {VIEWS[v].label}
-              <span className="text-muted-foreground ml-2 font-mono text-xs">
-                {items.filter(VIEWS[v].test).length}
-              </span>
-            </button>
-          ))}
-        </div>
+        <ViewSwitch
+          view={view}
+          onChange={setView}
+          counts={Object.fromEntries(
+            (Object.keys(VIEWS) as (keyof typeof VIEWS)[]).map((v) => [v, items.filter(VIEWS[v].test).length])
+          ) as Record<keyof typeof VIEWS, number>}
+        />
         <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center lg:ml-auto">
           <div className="grid w-fit max-w-full">
             <span aria-hidden className="invisible col-start-1 row-start-1 h-9 px-3 pr-8 text-sm leading-9 whitespace-nowrap">
