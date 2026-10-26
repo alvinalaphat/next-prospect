@@ -45,10 +45,10 @@ const STAGES: { n: string; title: string; tech: string; body: string; stop?: str
 
 export default function About() {
   return (
-    <article className="mx-auto max-w-3xl space-y-12">
+    <article className="space-y-8">
       <header className="space-y-4">
-        <p className="text-muted-foreground font-mono text-xs uppercase tracking-widest">Prototype · weekend build</p>
-        <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+        <p className="text-muted-foreground font-mono text-xs">Prototype, weekend build</p>
+        <h1 className="text-3xl font-medium sm:text-4xl">
           Next Prospect
         </h1>
         <p className="text-muted-foreground text-lg leading-relaxed">
@@ -59,7 +59,7 @@ export default function About() {
       </header>
 
       <section className="space-y-4">
-        <h2 className="text-xl font-semibold tracking-tight">The idea</h2>
+        <h2 className="text-xl font-medium">The idea</h2>
         <div className="text-muted-foreground space-y-4 leading-relaxed">
           <p>
             The best outbound reps don&apos;t spray. They find a <em>specific, verifiable</em> reason to reach out: a slow
@@ -83,7 +83,7 @@ export default function About() {
 
       <section className="space-y-6">
         <div>
-          <h2 className="text-xl font-semibold tracking-tight">Architecture</h2>
+          <h2 className="text-xl font-medium">Architecture</h2>
           <p className="text-muted-foreground mt-2">
             One durable Workflow DevKit run per domain. Each stage is a <code className="font-mono text-sm">&apos;use step&apos;</code>, so
             it&apos;s retried, checkpointed and observable. A batch of 100 domains is 100 independent runs, staggered to
@@ -92,10 +92,10 @@ export default function About() {
         </div>
 
         <div className="rounded-lg border p-4 font-mono text-xs sm:p-6">
-          <div className="text-muted-foreground mb-4 flex flex-wrap items-center gap-2">
-            <span className="rounded border px-2 py-1">CSV / dashboard</span>→
-            <span className="rounded border px-2 py-1">POST /api/run</span>→
-            <span className="rounded border px-2 py-1">start(workflowOutbound) × N</span>
+          <div className="text-muted-foreground mb-4 flex flex-wrap items-center gap-4">
+            <span className="rounded-lg border px-4 py-4">CSV / dashboard</span>→
+            <span className="rounded-lg border px-4 py-4">POST /api/run</span>→
+            <span className="rounded-lg border px-4 py-4">start(workflowOutbound) × N</span>
           </div>
           <ol className="relative space-y-0 border-l pl-6">
             {STAGES.map((s) => (
@@ -106,11 +106,11 @@ export default function About() {
                 <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                   <span className="text-muted-foreground">{s.n}</span>
                   <span className="font-sans text-sm font-semibold">{s.title}</span>
-                  <span className="text-muted-foreground rounded bg-zinc-100 px-1.5 py-0.5 dark:bg-zinc-800">{s.tech}</span>
+                  <span className="text-muted-foreground rounded-lg bg-hover px-4 py-4">{s.tech}</span>
                 </div>
                 <p className="text-muted-foreground mt-1.5 font-sans text-sm leading-relaxed">{s.body}</p>
                 {s.stop && (
-                  <p className="mt-1.5 text-[11px] text-amber-700 dark:text-amber-400">↳ stops here if: {s.stop}</p>
+                  <p className="text-warning mt-2 text-xs">Stops here if: {s.stop}</p>
                 )}
               </li>
             ))}
@@ -122,13 +122,13 @@ export default function About() {
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-xl font-semibold tracking-tight">What&apos;s reused from lead-agent, and what changed</h2>
+        <h2 className="text-xl font-medium">What&apos;s reused from lead-agent, and what changed</h2>
         <div className="overflow-x-auto rounded-lg border">
           <table className="w-full text-sm">
-            <thead className="text-muted-foreground border-b bg-zinc-50 text-left text-xs dark:bg-zinc-900/50">
+            <thead className="text-muted-foreground border-b bg-hover text-left text-xs">
               <tr>
-                <th className="px-4 py-2 font-medium">lead-agent</th>
-                <th className="px-4 py-2 font-medium">Next Prospect</th>
+                <th className="px-4 py-4 font-medium">lead-agent</th>
+                <th className="px-4 py-4 font-medium">Next Prospect</th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -142,8 +142,8 @@ export default function About() {
                 ['No storage', 'Neon Postgres via Marketplace; embedded PGlite locally']
               ].map(([a, b]) => (
                 <tr key={a}>
-                  <td className="text-muted-foreground px-4 py-2.5 align-top">{a}</td>
-                  <td className="px-4 py-2.5 align-top">{b}</td>
+                  <td className="text-muted-foreground px-4 py-4 align-top">{a}</td>
+                  <td className="px-4 py-4 align-top">{b}</td>
                 </tr>
               ))}
             </tbody>
@@ -152,8 +152,8 @@ export default function About() {
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-xl font-semibold tracking-tight">Guardrails</h2>
-        <ul className="text-muted-foreground list-disc space-y-2 pl-5 leading-relaxed">
+        <h2 className="text-xl font-medium">Guardrails</h2>
+        <ul className="text-muted-foreground list-disc space-y-4 pl-5 leading-relaxed">
           <li><span className="text-foreground">No invented facts.</span> Research items without a retrieved source are dropped. Claims citing unknown ids are repaired once, then pruned. Unverified numbers in an email are flagged to the reviewer.</li>
           <li><span className="text-foreground">Lab ≠ field.</span> Lighthouse lab numbers and CrUX real-user p75 are kept separate end to end, and the prompt forbids presenting one as the other.</li>
           <li><span className="text-foreground">Customers are skipped.</span> Any Vercel signal (for example x-vercel-id behind Cloudflare) short-circuits the run. Bot-blocked sites are skipped rather than guessed.</li>
@@ -163,7 +163,7 @@ export default function About() {
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-xl font-semibold tracking-tight">Detection eval</h2>
+        <h2 className="text-xl font-medium">Detection eval</h2>
         <p className="text-muted-foreground leading-relaxed">
           15 domains were hand-labelled in a real browser (JS executed, DOM inspected) and compared with the detector&apos;s
           single plain GET. Result: <span className="text-foreground font-mono">Next.js precision 100%, recall 90%</span>;
@@ -174,8 +174,8 @@ export default function About() {
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-xl font-semibold tracking-tight">Where it goes next</h2>
-        <ul className="text-muted-foreground list-disc space-y-2 pl-5 leading-relaxed">
+        <h2 className="text-xl font-medium">Where it goes next</h2>
+        <ul className="text-muted-foreground list-disc space-y-4 pl-5 leading-relaxed">
           <li>Feed domains from Clay / BuiltWith / HG Insights instead of a CSV. Dedupe against Salesforce (lead-agent&apos;s <code className="font-mono text-sm">crmSearch</code> stub).</li>
           <li>Learn from decisions: approved vs. rejected drafts become few-shot examples and tune the fit-score rubric.</li>
           <li>Deeper, still polite evidence: PSI on a key product page, Next.js version from the build manifest, ISR/cache headers.</li>

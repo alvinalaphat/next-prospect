@@ -47,20 +47,20 @@ export function ApprovalBar({ domain, draft }: { domain: string; draft: Draft })
   }
 
   return (
-    <div className="space-y-3 rounded-lg border border-amber-200 bg-amber-50/50 p-4 dark:border-amber-900 dark:bg-amber-950/30">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+    <div className="space-y-4 rounded-lg border border-warning/40 bg-hover p-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
         <div className="text-sm">
           <span className="font-medium">Waiting for review.</span>{' '}
           <span className="text-muted-foreground">The workflow is suspended until someone decides here or in Slack.</span>
         </div>
-        <div className="flex gap-2 sm:ml-auto">
+        <div className="flex gap-4 sm:ml-auto">
           <input
             type="password"
             value={secret}
             onChange={(e) => setSecretState(e.target.value)}
             placeholder="RUN_SECRET"
             autoComplete="off"
-            className="bg-background h-8 w-32 rounded-md border px-2 text-xs"
+            className="bg-background w-40 rounded-lg border px-4 py-4 text-xs"
           />
           <Button size="sm" disabled={busy} onClick={() => decide('approved')}>
             {editing ? 'Save & approve' : 'Approve'}
@@ -74,17 +74,17 @@ export function ApprovalBar({ domain, draft }: { domain: string; draft: Draft })
         </div>
       </div>
       {editing && (
-        <div className="space-y-2">
+        <div className="space-y-4">
           <input
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
-            className="bg-background h-9 w-full rounded-md border px-3 text-sm"
+            className="bg-background w-full rounded-lg border px-4 py-4 text-sm"
           />
           <textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
             rows={8}
-            className="bg-background w-full rounded-md border px-3 py-2 text-sm"
+            className="bg-background w-full rounded-lg border px-4 py-4 text-sm"
           />
         </div>
       )}

@@ -16,7 +16,7 @@ export function Citations({
   }
   const byId = new Map(ledger.map((e) => [e.id, e]));
   return (
-    <span className={cn('inline-flex flex-wrap gap-1 align-middle', !inline && 'mt-2 flex')}>
+    <span className={cn('inline-flex flex-wrap gap-4 align-middle', !inline && 'mt-4 flex')}>
       {ids.map((id) => {
         const e = byId.get(id);
         return (
@@ -25,10 +25,10 @@ export function Citations({
             href={`#ev-${id}`}
             title={e ? `${e.label}: ${e.value}` : 'Unknown evidence id'}
             className={cn(
-              'rounded border px-1 font-mono text-[10px] leading-4 transition-colors',
+              'rounded-lg border px-4 py-4 font-mono text-xs leading-normal transition-colors',
               e
                 ? 'text-muted-foreground hover:bg-accent hover:text-foreground'
-                : 'border-red-300 text-red-600'
+                : 'border-error text-error'
             )}
           >
             {id}

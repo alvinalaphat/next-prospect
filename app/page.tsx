@@ -67,7 +67,7 @@ export default async function Dashboard() {
       <AutoRefresh active={running} />
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Prospects</h1>
+          <h1 className="text-2xl font-medium">Prospects</h1>
           <p className="text-muted-foreground mt-1 text-sm">
             Companies running Next.js on non-Vercel hosting, researched and drafted for review.
           </p>
@@ -75,9 +75,12 @@ export default async function Dashboard() {
         <RunPanel />
       </div>
 
-      <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-5">
-        {stats.map((s) => (
-          <div key={s.label} className="bg-background px-4 py-3">
+      <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-5">
+        {stats.map((s, index) => (
+          <div
+            key={s.label}
+            className={`bg-background px-4 py-4 ${index === stats.length - 1 ? 'col-span-2 sm:col-span-1' : ''}`}
+          >
             <dt className="text-muted-foreground text-xs">{s.label}</dt>
             <dd className="mt-1 font-mono text-2xl tabular-nums">{s.value}</dd>
           </div>

@@ -3,120 +3,137 @@
 
 @custom-variant dark (&:is(.dark *));
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-}
-
+/*
+  Geist semantic tokens. Components use these variables, never raw hex.
+  Specified pairs: background, foreground, success (#0070f3), cyan, muted, border.
+  Status text colors are theme-specific so each pair stays at or above WCAG AA (4.5:1).
+*/
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  color-scheme: light;
+  --geist-background: #ffffff;
+  --geist-foreground: #000000;
+  --geist-success: #0070f3;
+  --geist-cyan: #79ffe1;
+  --geist-muted: #666666;
+  --geist-border: #eaeaea;
+  --geist-hover: #fafafa;
+  --geist-positive: #15803d;
+  --geist-warning: #9a5b00;
+  --geist-error: #d00000;
+  --geist-violet: #7928ca;
+  --geist-focus: var(--geist-success);
+  --geist-selection: var(--geist-cyan);
+  --geist-selection-text: #000000;
+  --geist-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 8px 24px rgb(0 0 0 / 0.06);
+  --geist-radius: 8px;
+
+  --background: var(--geist-background);
+  --foreground: var(--geist-foreground);
+  --card: var(--geist-background);
+  --card-foreground: var(--geist-foreground);
+  --popover: var(--geist-background);
+  --popover-foreground: var(--geist-foreground);
+  --primary: var(--geist-foreground);
+  --primary-foreground: var(--geist-background);
+  --secondary: var(--geist-hover);
+  --secondary-foreground: var(--geist-foreground);
+  --muted: var(--geist-hover);
+  --muted-foreground: var(--geist-muted);
+  --accent: var(--geist-hover);
+  --accent-foreground: var(--geist-foreground);
+  --destructive: var(--geist-error);
+  --border: var(--geist-border);
+  --input: var(--geist-border);
+  --ring: var(--geist-focus);
+  --radius: var(--geist-radius);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  color-scheme: dark;
+  --geist-background: #000000;
+  --geist-foreground: #ffffff;
+  --geist-muted: #888888;
+  --geist-border: #333333;
+  --geist-hover: #111111;
+  --geist-positive: #3ecf8e;
+  --geist-warning: #f5a623;
+  --geist-error: #ff5a5a;
+  --geist-violet: #c084fc;
+  --geist-shadow: 0 1px 2px rgb(0 0 0 / 0.35), 0 8px 24px rgb(0 0 0 / 0.28);
+}
+
+@theme inline {
+  --color-background: var(--geist-background);
+  --color-foreground: var(--geist-foreground);
+  --color-card: var(--geist-background);
+  --color-card-foreground: var(--geist-foreground);
+  --color-popover: var(--geist-background);
+  --color-popover-foreground: var(--geist-foreground);
+  --color-primary: var(--geist-foreground);
+  --color-primary-foreground: var(--geist-background);
+  --color-secondary: var(--geist-hover);
+  --color-secondary-foreground: var(--geist-foreground);
+  --color-muted: var(--geist-hover);
+  --color-muted-foreground: var(--geist-muted);
+  --color-accent: var(--geist-hover);
+  --color-accent-foreground: var(--geist-foreground);
+  --color-destructive: var(--geist-error);
+  --color-border: var(--geist-border);
+  --color-input: var(--geist-border);
+  --color-ring: var(--geist-focus);
+  --color-hover: var(--geist-hover);
+  --color-success: var(--geist-success);
+  --color-cyan: var(--geist-cyan);
+  --color-positive: var(--geist-positive);
+  --color-warning: var(--geist-warning);
+  --color-error: var(--geist-error);
+  --color-violet: var(--geist-violet);
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --radius: var(--geist-radius);
+  --radius-xs: var(--geist-radius);
+  --radius-sm: var(--geist-radius);
+  --radius-md: var(--geist-radius);
+  --radius-lg: var(--geist-radius);
+  --radius-xl: var(--geist-radius);
+  --radius-2xl: var(--geist-radius);
+  --radius-3xl: var(--geist-radius);
+  --radius-4xl: var(--geist-radius);
+  --shadow-geist: var(--geist-shadow);
+  --text-xl--line-height: 1.2;
+  --text-2xl--line-height: 1.2;
+  --text-3xl--line-height: 1.2;
+  --text-4xl--line-height: 1.2;
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border;
   }
+
   body {
-    @apply bg-background text-foreground;
+    background: var(--geist-background);
+    color: var(--geist-foreground);
+    font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+    line-height: 1.5;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    line-height: 1.2;
+  }
+
+  ::selection {
+    background: var(--geist-selection);
+    color: var(--geist-selection-text);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--geist-focus);
+    outline-offset: 2px;
   }
 }

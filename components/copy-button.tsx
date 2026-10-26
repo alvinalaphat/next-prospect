@@ -13,7 +13,7 @@ export function CopyButton({ text }: { text: string }) {
         setCopied(true);
         setTimeout(() => setCopied(false), 1500);
       }}
-      className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs"
+      className="text-muted-foreground hover:text-foreground inline-flex items-center gap-4 text-xs"
     >
       {copied ? <Check className="size-3" /> : <Copy className="size-3" />}
       {copied ? 'Copied' : 'Copy'}

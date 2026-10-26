@@ -39,12 +39,12 @@ export const HOST_LABEL: Record<HostId, string> = {
 };
 
 export const TONE_CLASS: Record<Tone, string> = {
-  neutral: 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300',
-  blue: 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300',
-  green: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300',
-  amber: 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
-  red: 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300',
-  violet: 'bg-violet-50 text-violet-700 dark:bg-violet-950 dark:text-violet-300'
+  neutral: 'border border-border bg-hover text-muted-foreground',
+  blue: 'border border-success/40 bg-background text-success',
+  green: 'border border-positive/40 bg-background text-positive',
+  amber: 'border border-warning/40 bg-background text-warning',
+  red: 'border border-error/40 bg-background text-error',
+  violet: 'border border-violet/40 bg-background text-violet'
 };
 
 export function scoreTone(score: number | null | undefined, [poor, good]: [number, number]): Tone {

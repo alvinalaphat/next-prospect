@@ -14,7 +14,7 @@ export function Pill({
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap',
+        'inline-flex items-center gap-4 rounded-lg px-4 py-4 text-xs font-medium whitespace-nowrap',
         TONE_CLASS[tone],
         className
       )}
@@ -46,6 +46,12 @@ export function HostBadge({ host, cdn }: { host: HostId | string | null; cdn?: H
   );
 }
 
+const RATING_WORD: Partial<Record<keyof typeof TONE_CLASS, string>> = {
+  green: 'Good',
+  amber: 'Fair',
+  red: 'Poor'
+};
+
 export function Score({
   value,
   thresholds,
@@ -58,18 +64,22 @@ export function Score({
   if (value == null) return <span className="text-muted-foreground">—</span>;
   const tone = scoreTone(value, thresholds);
   const dot = {
-    green: 'bg-emerald-500',
-    amber: 'bg-amber-500',
-    red: 'bg-red-500',
-    neutral: 'bg-zinc-400',
-    blue: 'bg-blue-500',
-    violet: 'bg-violet-500'
+    green: 'bg-positive',
+    amber: 'bg-warning',
+    red: 'bg-error',
+    neutral: 'bg-muted-foreground',
+    blue: 'bg-success',
+    violet: 'bg-violet'
   }[tone];
+  const word = RATING_WORD[tone];
   return (
-    <span className="inline-flex items-center gap-1.5 font-mono tabular-nums">
-      <span className={cn('size-2 rounded-full', dot)} aria-hidden />
-      {value}
-      {suffix}
+    <span className="inline-flex items-center justify-end gap-4 font-mono tabular-nums">
+      <span className={cn('size-2 shrink-0 rounded-full', dot)} aria-hidden />
+      <span>
+        {value}
+        {suffix}
+      </span>
+      {word && <Pill tone={tone}>{word}</Pill>}
     </span>
   );
 }

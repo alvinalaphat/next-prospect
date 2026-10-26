@@ -32,20 +32,20 @@ export default async function ProspectPage({ params }: { params: Promise<{ domai
       <AutoRefresh active={running} />
 
       <div className="space-y-4">
-        <Link href="/" className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm">
+        <Link href="/" className="text-muted-foreground hover:text-foreground inline-flex items-center gap-4 text-sm">
           <ArrowLeft className="size-4" /> Prospects
         </Link>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <div className="flex flex-wrap items-center gap-3">
-              <h1 className="text-2xl font-semibold tracking-tight">{r?.companyName || p.domain}</h1>
+            <div className="flex flex-wrap items-center gap-4">
+              <h1 className="text-2xl font-medium">{r?.companyName || p.domain}</h1>
               <StatusBadge status={p.status} />
             </div>
             <a
               href={d?.finalUrl ?? `https://${p.domain}`}
               target="_blank"
               rel="noreferrer"
-              className="text-muted-foreground hover:text-foreground mt-1 inline-flex items-center gap-1 font-mono text-sm"
+              className="text-muted-foreground hover:text-foreground mt-4 inline-flex items-center gap-4 font-mono text-sm"
             >
               {p.domain} <ArrowUpRight className="size-3" />
             </a>
@@ -67,7 +67,7 @@ export default async function ProspectPage({ params }: { params: Promise<{ domai
           </dl>
         </div>
         {p.error && (
-          <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+          <div className="rounded-lg border border-error/40 bg-background px-4 py-4 text-sm text-error" role="alert">
             {p.error}
           </div>
         )}
@@ -78,7 +78,7 @@ export default async function ProspectPage({ params }: { params: Promise<{ domai
           </p>
         )}
         {p.status === 'approved' && (
-          <div className="flex flex-wrap items-center gap-3 rounded-lg border p-3 text-sm">
+          <div className="flex flex-wrap items-center gap-4 rounded-lg border p-4 text-sm">
             {p.gmailDraft ? (
               <>
                 <Mail className="size-4" />
@@ -111,14 +111,14 @@ export default async function ProspectPage({ params }: { params: Promise<{ domai
 
           {q && (
             <Section title="Qualification" aside={<Pill tone={q.verdict === 'qualified' ? 'green' : q.verdict === 'nurture' ? 'amber' : 'neutral'}>{q.verdict}</Pill>}>
-              <div className="rounded-md bg-zinc-50 p-3 dark:bg-zinc-900">
-                <div className="text-muted-foreground text-xs uppercase tracking-wide">Strongest angle</div>
+              <div className="rounded-lg bg-hover p-4">
+                <div className="text-muted-foreground text-xs">Strongest angle</div>
                 <div className="mt-1 font-medium">{q.strongestAngle.label}</div>
                 <p className="text-muted-foreground mt-1 text-sm">{q.strongestAngle.explanation}</p>
                 <Citations ids={q.strongestAngle.citations} ledger={ledger} />
               </div>
               <p className="mt-4 text-sm leading-relaxed">{q.reasoning}</p>
-              <ul className="mt-4 space-y-2">
+              <ul className="mt-4 space-y-4">
                 {q.claims.map((c, i) => (
                   <li key={i} className="text-sm">
                     {c.text} <Citations ids={c.citations} ledger={ledger} inline />
@@ -134,8 +134,8 @@ export default async function ProspectPage({ params }: { params: Promise<{ domai
               aside={<CopyButton text={`Subject: ${draft.subject}\n\n${draft.body}`} />}
             >
               {draft.editedBy && <p className="text-muted-foreground mb-2 text-xs">Edited by {draft.editedBy}</p>}
-              <div className="rounded-md border">
-                <div className="border-b px-4 py-2 text-sm">
+              <div className="rounded-lg border">
+                <div className="border-b px-4 py-4 text-sm">
                   <span className="text-muted-foreground">To: </span>
                   {draft.to ? (
                     <>
@@ -150,7 +150,7 @@ export default async function ProspectPage({ params }: { params: Promise<{ domai
                     <span className="text-muted-foreground">no verified stakeholder</span>
                   )}
                 </div>
-                <div className="border-b px-4 py-2 text-sm">
+                <div className="border-b px-4 py-4 text-sm">
                   <span className="text-muted-foreground">Subject: </span>
                   {draft.subject}
                   {draft.subjectOptions && draft.subjectOptions.filter((o) => o !== draft.subject).length > 0 && (
@@ -163,20 +163,20 @@ export default async function ProspectPage({ params }: { params: Promise<{ domai
                     </div>
                   )}
                 </div>
-                <div className="px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap">{draft.body}</div>
+                <div className="px-4 py-4 text-sm leading-relaxed whitespace-pre-wrap">{draft.body}</div>
               </div>
               <Citations ids={draft.emailCitations} ledger={ledger} />
               {draft.warnings.length > 0 && (
-                <ul className="mt-3 space-y-1">
+                <ul className="mt-4 space-y-4">
                   {draft.warnings.map((w) => (
-                    <li key={w} className="flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-400">
+                    <li key={w} className="text-warning flex items-start gap-4 text-xs">
                       <TriangleAlert className="mt-0.5 size-3 shrink-0" /> {w}
                     </li>
                   ))}
                 </ul>
               )}
               <h3 className="mt-6 mb-2 text-sm font-medium">Rep talking points</h3>
-              <ol className="list-decimal space-y-2 pl-5 text-sm">
+              <ol className="list-decimal space-y-4 pl-5 text-sm">
                 {draft.talkingPoints.map((t, i) => (
                   <li key={i}>
                     {t.text} <Citations ids={t.citations} ledger={ledger} inline />
@@ -220,7 +220,7 @@ export default async function ProspectPage({ params }: { params: Promise<{ domai
               <SignalList title="Hosting" signals={d.host.signals.map((s) => ({ ...s, label: `${s.label} → ${s.host}` }))} />
               {(d.dns.cname.length > 0 || d.dns.a.length > 0) && (
                 <div className="mt-4">
-                  <h3 className="text-muted-foreground mb-1 text-xs uppercase tracking-wide">DNS</h3>
+                  <h3 className="text-muted-foreground mb-1 text-xs">DNS</h3>
                   <div className="font-mono text-xs break-all">
                     {d.dns.cname.map((c) => <div key={c}>CNAME {c}</div>)}
                     {d.dns.a.map((a) => <div key={a}>A {a}</div>)}
@@ -229,7 +229,7 @@ export default async function ProspectPage({ params }: { params: Promise<{ domai
               )}
               <details className="mt-4">
                 <summary className="text-muted-foreground cursor-pointer text-xs">Response headers</summary>
-                <pre className="mt-2 max-h-64 overflow-auto rounded bg-zinc-50 p-2 font-mono text-[11px] dark:bg-zinc-900">
+                <pre className="mt-2 max-h-64 overflow-auto rounded-lg bg-hover p-4 font-mono text-xs">
                   {Object.entries(d.headers).map(([k, v]) => `${k}: ${v}`).join('\n')}
                 </pre>
               </details>
@@ -239,7 +239,7 @@ export default async function ProspectPage({ params }: { params: Promise<{ domai
           {ledger.length > 0 && (
             <Section title="Evidence ledger" aside={<span className="text-muted-foreground text-xs">{ledger.length} items</span>}>
               <p className="text-muted-foreground mb-3 text-xs">Every claim above must cite one of these ids. Unknown ids are rejected in code.</p>
-              <ul className="space-y-2">
+              <ul className="space-y-4">
                 {ledger.map((e) => (
                   <LedgerRow key={e.id} e={e} />
                 ))}
@@ -260,27 +260,27 @@ function StakeholderCard({ research: r }: { research: Research }) {
       aside={<span className="text-muted-foreground text-xs">verify before sending</span>}
     >
       {b.name ? (
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <div className="text-lg font-medium">{b.name}</div>
               <div className="text-muted-foreground text-sm">{b.title ?? b.role}</div>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-4">
               {b.linkedinUrl && (
                 <a
                   href={b.linkedinUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="hover:bg-accent inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-sm"
+                  className="hover:bg-accent inline-flex items-center gap-4 rounded-lg border px-4 py-4 text-sm"
                 >
-                  <LinkedInIcon className="size-3.5 text-[#0a66c2]" /> LinkedIn
+                  <LinkedInIcon className="size-3.5" /> LinkedIn
                 </a>
               )}
               {r.buyerEmail && (
                 <a
                   href={`mailto:${r.buyerEmail.address}`}
-                  className="hover:bg-accent inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 font-mono text-xs"
+                  className="hover:bg-accent inline-flex items-center gap-4 rounded-lg border px-4 py-4 font-mono text-xs"
                 >
                   <Mail className="size-3.5" /> {r.buyerEmail.address}
                 </a>
@@ -300,14 +300,14 @@ function StakeholderCard({ research: r }: { research: Research }) {
           </div>
           {b.alternates?.length > 0 && (
             <div className="border-t pt-3">
-              <div className="text-muted-foreground mb-1.5 text-xs uppercase tracking-wide">Alternates</div>
-              <ul className="space-y-1 text-sm">
+              <div className="text-muted-foreground mb-2 text-xs">Alternates</div>
+              <ul className="space-y-4 text-sm">
                 {b.alternates.map((a) => (
-                  <li key={a.name} className="flex items-center gap-1.5">
+                  <li key={a.name} className="flex items-center gap-4">
                     {a.name}
                     {a.title && <span className="text-muted-foreground">· {a.title}</span>}
                     {a.linkedinUrl && (
-                      <a href={a.linkedinUrl} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-[#0a66c2]">
+                      <a href={a.linkedinUrl} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-foreground">
                         <LinkedInIcon className="size-3.5" />
                       </a>
                     )}
@@ -338,8 +338,8 @@ function Stat({ label, children }: { label: string; children: React.ReactNode })
 
 function Section({ title, aside, children }: { title: string; aside?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <section className="rounded-lg border p-5">
-      <div className="mb-4 flex items-center justify-between gap-2">
+    <section className="rounded-lg border border-border p-6">
+      <div className="mb-4 flex items-center justify-between gap-4">
         <h2 className="font-medium">{title}</h2>
         {aside}
       </div>
@@ -364,8 +364,8 @@ function ResearchList({ title, items }: { title: string; items: { text: string; 
   if (items.length === 0) return null;
   return (
     <div className="mt-5">
-      <h3 className="text-muted-foreground mb-1 text-xs uppercase tracking-wide">{title}</h3>
-      <ul className="space-y-1.5 text-sm">
+      <h3 className="text-muted-foreground mb-2 text-xs">{title}</h3>
+      <ul className="space-y-4 text-sm">
         {items.map((i, idx) => (
           <li key={idx}>
             {i.text} <Source url={i.sourceUrl} />
@@ -379,15 +379,15 @@ function ResearchList({ title, items }: { title: string; items: { text: string; 
 function SignalList({ title, signals }: { title: string; signals: { id: string; label: string; match: string }[] }) {
   return (
     <div className="mt-4 first:mt-0">
-      <h3 className="text-muted-foreground mb-2 text-xs uppercase tracking-wide">{title}</h3>
+      <h3 className="text-muted-foreground mb-2 text-xs">{title}</h3>
       {signals.length === 0 ? (
         <p className="text-muted-foreground text-sm">No signals matched.</p>
       ) : (
-        <ul className="space-y-2">
+        <ul className="space-y-4">
           {signals.map((s) => (
             <li key={s.id} className="text-sm">
               <div>{s.label}</div>
-              <code className="text-muted-foreground block truncate font-mono text-[11px]" title={s.match}>
+              <code className="text-muted-foreground block truncate font-mono text-xs" title={s.match}>
                 {s.match}
               </code>
             </li>
@@ -408,8 +408,18 @@ function VitalsTable({ mobile, desktop }: { mobile: PerfResult; desktop: PerfRes
   const cell = (r: PerfResult, row: (typeof rows)[number], kind: 'field' | 'lab') => {
     const v = kind === 'field' ? r.field[row.metric] : row.metric === 'inpMs' ? null : r.lab[row.metric];
     const rating = rate(row.metric, v);
-    const color = rating ? { green: 'text-emerald-600 dark:text-emerald-400', amber: 'text-amber-600 dark:text-amber-400', red: 'text-red-600 dark:text-red-400' }[RATING_TONE[rating]] : 'text-muted-foreground';
-    return <td className={`px-2 py-1.5 text-right font-mono tabular-nums ${color}`}>{row.fmt(v)}</td>;
+    const color = rating
+      ? { green: 'text-positive', amber: 'text-warning', red: 'text-error' }[RATING_TONE[rating]]
+      : 'text-muted-foreground';
+    const label = rating
+      ? { good: 'Good', 'needs-improvement': 'Needs improvement', poor: 'Poor' }[rating]
+      : null;
+    return (
+      <td className="px-4 py-4 text-right whitespace-nowrap">
+        <span className="font-mono tabular-nums">{row.fmt(v)}</span>
+        {label && <span className={`ml-4 text-xs ${color}`}>{label}</span>}
+      </td>
+    );
   };
   return (
     <div className="overflow-x-auto">
@@ -417,21 +427,21 @@ function VitalsTable({ mobile, desktop }: { mobile: PerfResult; desktop: PerfRes
         <thead className="text-muted-foreground text-xs">
           <tr>
             <th />
-            <th colSpan={2} className="px-2 pb-1 text-right font-medium">Mobile</th>
-            <th colSpan={2} className="px-2 pb-1 text-right font-medium">Desktop</th>
+            <th colSpan={2} className="px-4 pb-4 text-right font-medium">Mobile</th>
+            <th colSpan={2} className="px-4 pb-4 text-right font-medium">Desktop</th>
           </tr>
           <tr className="border-b">
             <th />
-            <th className="px-2 py-1 text-right font-normal">field</th>
-            <th className="px-2 py-1 text-right font-normal">lab</th>
-            <th className="px-2 py-1 text-right font-normal">field</th>
-            <th className="px-2 py-1 text-right font-normal">lab</th>
+            <th className="px-4 py-4 text-right font-normal">field</th>
+            <th className="px-4 py-4 text-right font-normal">lab</th>
+            <th className="px-4 py-4 text-right font-normal">field</th>
+            <th className="px-4 py-4 text-right font-normal">lab</th>
           </tr>
         </thead>
         <tbody className="divide-y">
           {rows.map((row) => (
             <tr key={row.metric}>
-              <td className="py-1.5 pr-2 font-medium">{row.label}</td>
+              <td className="py-4 pr-4 font-medium">{row.label}</td>
               {cell(mobile, row, 'field')}
               {cell(mobile, row, 'lab')}
               {cell(desktop, row, 'field')}
@@ -439,14 +449,14 @@ function VitalsTable({ mobile, desktop }: { mobile: PerfResult; desktop: PerfRes
             </tr>
           ))}
           <tr>
-            <td className="py-1.5 pr-2 font-medium">Score</td>
-            <td colSpan={2} className="px-2 py-1.5 text-right"><Score value={mobile.score} thresholds={[50, 90]} /></td>
-            <td colSpan={2} className="px-2 py-1.5 text-right"><Score value={desktop.score} thresholds={[50, 90]} /></td>
+            <td className="py-4 pr-4 font-medium">Score</td>
+            <td colSpan={2} className="px-4 py-4 text-right"><Score value={mobile.score} thresholds={[50, 90]} /></td>
+            <td colSpan={2} className="px-4 py-4 text-right"><Score value={desktop.score} thresholds={[50, 90]} /></td>
           </tr>
         </tbody>
       </table>
       {(mobile.error || desktop.error) && (
-        <p className="mt-2 text-xs text-amber-700 dark:text-amber-400">PSI: {mobile.error ?? desktop.error}</p>
+        <p className="text-warning mt-2 text-xs">PSI: {mobile.error ?? desktop.error}</p>
       )}
     </div>
   );
@@ -454,8 +464,8 @@ function VitalsTable({ mobile, desktop }: { mobile: PerfResult; desktop: PerfRes
 
 function LedgerRow({ e }: { e: EvidenceItem }) {
   return (
-    <li id={`ev-${e.id}`} className="scroll-mt-20 rounded target:bg-amber-50 target:ring-2 target:ring-amber-300 dark:target:bg-amber-950">
-      <code className="text-muted-foreground font-mono text-[11px]">{e.id}</code>
+    <li id={`ev-${e.id}`} className="scroll-mt-20 rounded-lg target:bg-hover target:ring-2 target:ring-warning">
+      <code className="text-muted-foreground font-mono text-xs">{e.id}</code>
       <div className="text-sm">
         <span className="text-muted-foreground">{e.label}:</span> <span className="break-words">{e.value}</span>{' '}
         {e.url && <Source url={e.url} />}

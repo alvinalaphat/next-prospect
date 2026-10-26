@@ -30,14 +30,14 @@ export function GmailDraftButton({ domain, label = 'Create Gmail draft' }: { dom
   }
 
   return (
-    <div className="flex gap-2">
+    <div className="flex gap-4">
       <input
         type="password"
         value={secret}
         onChange={(e) => setSecretState(e.target.value)}
         placeholder="RUN_SECRET"
         autoComplete="off"
-        className="bg-background h-8 w-32 rounded-md border px-2 text-xs"
+        className="bg-background w-40 rounded-lg border px-4 py-4 text-xs"
       />
       <Button size="sm" variant="outline" disabled={busy} onClick={create}>
         {busy ? 'Creating…' : label}

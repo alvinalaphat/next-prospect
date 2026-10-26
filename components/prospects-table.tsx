@@ -69,7 +69,7 @@ export function ProspectsTable({ items }: { items: ProspectListItem[] }) {
   }, [items, view, host, query, sort]);
 
   const header = (key: SortKey, label: string, className?: string) => (
-    <th className={cn('px-3 py-2 font-medium', className)}>
+    <th className={cn('px-4 py-4 font-medium', className)}>
       <button
         type="button"
         onClick={() =>
@@ -78,7 +78,7 @@ export function ProspectsTable({ items }: { items: ProspectListItem[] }) {
             dir: s.key === key ? (s.dir === 'asc' ? 'desc' : 'asc') : key === 'domain' || key === 'host' ? 'asc' : 'desc'
           }))
         }
-        className="hover:text-foreground inline-flex items-center gap-1"
+        className="hover:text-foreground inline-flex items-center gap-4"
       >
         {label}
         {sort.key === key &&
@@ -88,21 +88,21 @@ export function ProspectsTable({ items }: { items: ProspectListItem[] }) {
   );
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <div className="flex rounded-md border p-0.5 text-sm">
+    <div className="space-y-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+        <div className="flex flex-wrap rounded-lg border border-border text-sm">
           {(Object.keys(VIEWS) as (keyof typeof VIEWS)[]).map((v) => (
             <button
               key={v}
               type="button"
               onClick={() => setView(v)}
               className={cn(
-                'rounded px-3 py-1 transition-colors',
-                view === v ? 'bg-accent text-foreground' : 'text-muted-foreground hover:text-foreground'
+                'rounded-lg px-4 py-4 whitespace-nowrap transition-colors',
+                view === v ? 'bg-hover text-foreground' : 'text-muted-foreground hover:text-foreground'
               )}
             >
               {VIEWS[v].label}
-              <span className="text-muted-foreground ml-1.5 font-mono text-xs">
+              <span className="text-muted-foreground ml-4 font-mono text-xs">
                 {items.filter(VIEWS[v].test).length}
               </span>
             </button>
@@ -111,7 +111,7 @@ export function ProspectsTable({ items }: { items: ProspectListItem[] }) {
         <select
           value={host}
           onChange={(e) => setHost(e.target.value)}
-          className="bg-background h-9 rounded-md border px-2 text-sm"
+          className="bg-background rounded-lg border px-4 py-4 text-sm"
           aria-label="Filter by host"
         >
           <option value="all">All hosts</option>
@@ -122,19 +122,19 @@ export function ProspectsTable({ items }: { items: ProspectListItem[] }) {
           ))}
         </select>
         <label className="relative sm:ml-auto">
-          <Search className="text-muted-foreground absolute top-2.5 left-2.5 size-4" />
+          <Search className="text-muted-foreground absolute top-4 left-4 size-4" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Filter domains or angles…"
-            className="bg-background h-9 w-full rounded-md border pr-3 pl-8 text-sm sm:w-64"
+            className="bg-background w-full rounded-lg border py-4 pr-4 pl-10 text-sm sm:w-64"
           />
         </label>
       </div>
 
       <div className="overflow-x-auto rounded-lg border">
-        <table className="w-full text-sm">
-          <thead className="text-muted-foreground border-b bg-zinc-50 text-left text-xs dark:bg-zinc-900/50">
+        <table className="w-full min-w-[48rem] text-sm">
+          <thead className="text-muted-foreground border-b bg-hover text-left text-xs">
             <tr>
               {header('domain', 'Domain')}
               {header('host', 'Host')}
@@ -142,8 +142,8 @@ export function ProspectsTable({ items }: { items: ProspectListItem[] }) {
               {header('perfScore', 'Perf (mobile)', 'text-right')}
               {header('lcpMs', 'LCP', 'text-right')}
               {header('fitScore', 'Fit', 'text-right')}
-              <th className="px-3 py-2 font-medium">Stakeholder</th>
-              <th className="px-3 py-2 font-medium">Angle</th>
+              <th className="px-4 py-4 font-medium">Stakeholder</th>
+              <th className="px-4 py-4 font-medium">Angle</th>
               {header('status', 'Status')}
               {header('updatedAt', 'Updated', 'text-right')}
             </tr>
@@ -151,15 +151,15 @@ export function ProspectsTable({ items }: { items: ProspectListItem[] }) {
           <tbody className="divide-y">
             {rows.map((i) => (
               <tr key={i.domain} className="hover:bg-accent/50 group">
-                <td className="px-3 py-2.5">
+                <td className="px-4 py-4">
                   <Link href={`/prospect/${i.domain}`} className="font-medium group-hover:underline">
                     {i.domain}
                   </Link>
                 </td>
-                <td className="px-3 py-2.5">
+                <td className="px-4 py-4">
                   <HostBadge host={i.host} cdn={i.cdn} />
                 </td>
-                <td className="px-3 py-2.5 text-right">
+                <td className="px-4 py-4 text-right">
                   {i.nextjsConfidence == null ? (
                     <span className="text-muted-foreground">—</span>
                   ) : (
@@ -169,20 +169,20 @@ export function ProspectsTable({ items }: { items: ProspectListItem[] }) {
                     </span>
                   )}
                 </td>
-                <td className="px-3 py-2.5 text-right">
+                <td className="px-4 py-4 text-right">
                   <Score value={i.perfScore} thresholds={[50, 90]} />
                 </td>
-                <td className="px-3 py-2.5 text-right font-mono tabular-nums">{ms(i.lcpMs)}</td>
-                <td className="px-3 py-2.5 text-right">
+                <td className="px-4 py-4 text-right font-mono whitespace-nowrap tabular-nums">{ms(i.lcpMs)}</td>
+                <td className="px-4 py-4 text-right">
                   <Score value={i.fitScore} thresholds={[35, 60]} />
                 </td>
-                <td className="px-3 py-2.5">
+                <td className="px-4 py-4">
                   {i.stakeholder ? (
                     <div className="max-w-52">
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-4">
                         <span className="truncate">{i.stakeholder.name}</span>
                         {i.stakeholder.linkedinUrl && (
-                          <a href={i.stakeholder.linkedinUrl} target="_blank" rel="noreferrer" title="LinkedIn profile" className="text-muted-foreground hover:text-[#0a66c2]">
+                          <a href={i.stakeholder.linkedinUrl} target="_blank" rel="noreferrer" title="LinkedIn profile" className="text-muted-foreground hover:text-foreground">
                             <LinkedInIcon className="size-3.5" />
                           </a>
                         )}
@@ -202,20 +202,20 @@ export function ProspectsTable({ items }: { items: ProspectListItem[] }) {
                     <span className="text-muted-foreground">—</span>
                   )}
                 </td>
-                <td className="text-muted-foreground max-w-64 truncate px-3 py-2.5" title={i.angle ?? ''}>
+                <td className="text-muted-foreground max-w-64 truncate px-4 py-4" title={i.angle ?? ''}>
                   {i.angle ?? '—'}
                 </td>
-                <td className="px-3 py-2.5">
+                <td className="px-4 py-4">
                   <StatusBadge status={i.status} />
                 </td>
-                <td className="text-muted-foreground px-3 py-2.5 text-right text-xs whitespace-nowrap">
+                <td className="text-muted-foreground px-4 py-4 text-right text-xs whitespace-nowrap">
                   {relativeTime(i.updatedAt)}
                 </td>
               </tr>
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={10} className="text-muted-foreground px-3 py-12 text-center">
+                <td colSpan={10} className="text-muted-foreground px-4 py-8 text-center">
                   {items.length === 0 ? 'No prospects yet — run a batch of domains to get started.' : 'Nothing matches these filters.'}
                 </td>
               </tr>
