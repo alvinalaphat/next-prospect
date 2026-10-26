@@ -1,27 +1,34 @@
 'use client';
 
+import { AnimatedDetails } from '@/components/disclosure';
 import type { EvidenceItem } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 /** Open the receipts drawer, then scroll the cited row into view. */
 function openReceipt(id: string) {
   const ledger = document.getElementById('evidence-ledger');
-  if (ledger instanceof HTMLDetailsElement) ledger.open = true;
-  document.getElementById(`ev-${id}`)?.scrollIntoView({ block: 'center' });
+  const alreadyOpen = ledger instanceof HTMLDetailsElement && ledger.open && ledger.dataset.closing !== 'true';
+  if (ledger instanceof HTMLDetailsElement) {
+    delete ledger.dataset.closing;
+    ledger.open = true;
+  }
+  const go = () => document.getElementById(`ev-${id}`)?.scrollIntoView({ block: 'center' });
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (alreadyOpen || reduce) go();
+  else window.setTimeout(go, 210);
 }
 
 /** A one-line source count. The raw receipt ids stay inside it. */
 export function Sources({ ids, ledger }: { ids: string[]; ledger: EvidenceItem[] }) {
   if (ids.length === 0) return null;
   return (
-    <details className="mt-1">
-      <summary className="text-muted-foreground hover:text-foreground w-fit cursor-pointer list-none text-xs [&::-webkit-details-marker]:hidden">
-        {ids.length} {ids.length === 1 ? 'source' : 'sources'}
-      </summary>
-      <div className="disclosure-panel">
-        <Citations ids={ids} ledger={ledger} />
-      </div>
-    </details>
+    <AnimatedDetails
+      className="mt-1"
+      summaryClassName="text-muted-foreground hover:text-foreground w-fit cursor-pointer list-none text-xs [&::-webkit-details-marker]:hidden"
+      summary={`${ids.length} ${ids.length === 1 ? 'source' : 'sources'}`}
+    >
+      <Citations ids={ids} ledger={ledger} />
+    </AnimatedDetails>
   );
 }
 

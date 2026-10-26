@@ -197,6 +197,7 @@ export function ProspectsTable({ items }: { items: ProspectListItem[] }) {
         </div>
       </div>
 
+      <div key={view} className="rows-in">
       {rows.length === 0 ? (
         <p className="text-muted-foreground rounded-lg border px-4 py-8 text-center text-sm">
           {items.length === 0 ? 'No prospects yet — run a batch of domains to get started.' : 'Nothing matches these filters.'}
@@ -367,6 +368,7 @@ export function ProspectsTable({ items }: { items: ProspectListItem[] }) {
       </div>
         </>
       )}
+      </div>
     </div>
   );
 }

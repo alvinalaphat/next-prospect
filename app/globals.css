@@ -185,27 +185,78 @@ html[data-secret='stored'] [data-secret-slot] {
   }
 
   .disclosure-panel {
-    transition-property: opacity, transform;
-    transition-duration: 200ms;
-    transition-timing-function: var(--ease-out);
+    display: grid;
+    grid-template-rows: 0fr;
+    opacity: 0;
+  }
+
+  .disclosure-clip {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  details:not([open]) > .disclosure-panel {
+    display: none;
+  }
+
+  details[open] > .disclosure-panel {
+    grid-template-rows: 1fr;
+    opacity: 1;
+    transition:
+      grid-template-rows 200ms var(--ease-out),
+      opacity 200ms var(--ease-out);
   }
 
   @starting-style {
-    .disclosure-panel {
+    details[open] > .disclosure-panel {
+      grid-template-rows: 0fr;
       opacity: 0;
-      transform: translateY(-4px);
+    }
+  }
+
+  details[open][data-closing] > .disclosure-panel {
+    grid-template-rows: 0fr;
+    opacity: 0;
+    transition:
+      grid-template-rows 150ms var(--ease-out),
+      opacity 120ms var(--ease-out);
+  }
+
+  .disclosure-chevron {
+    transition: transform 200ms var(--ease-out);
+  }
+
+  details[data-closing] > summary .disclosure-chevron {
+    transform: none;
+    transition-duration: 150ms;
+  }
+
+  .rows-in {
+    opacity: 1;
+    transition: opacity 160ms var(--ease-out);
+  }
+
+  @starting-style {
+    .rows-in {
+      opacity: 0;
     }
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .disclosure-panel {
-    transition: opacity 200ms ease;
+  .disclosure-panel,
+  details[open] > .disclosure-panel,
+  details[open][data-closing] > .disclosure-panel,
+  .disclosure-chevron,
+  .rows-in {
+    transition: none;
   }
 
   @starting-style {
-    .disclosure-panel {
-      opacity: 0;
+    details[open] > .disclosure-panel,
+    .rows-in {
+      opacity: 1;
+      grid-template-rows: 1fr;
     }
   }
 
