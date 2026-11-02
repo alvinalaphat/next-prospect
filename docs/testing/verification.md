@@ -7,9 +7,9 @@ Vercel build does not replace behavior evaluation or browser testing.
 
 ## Automated CI
 
-`.github/workflows/ci.yml` runs one read-only `Verify` job on Node 22.17 with
-the pnpm version pinned in `package.json`. It performs a frozen-lockfile install,
-then runs:
+`.github/workflows/ci.yml` runs one read-only `Verify` job on Ubuntu 24.04 and
+Node 22.17, with the pnpm version pinned in `package.json`. It performs a
+frozen-lockfile install, then runs:
 
 1. `pnpm typecheck`
 2. `pnpm eval:v2`
