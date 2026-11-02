@@ -157,7 +157,7 @@ function CompanyBackground({ research }: { research: Research }) {
           {research.summary.text} <Source url={research.summary.sourceUrl} />
         </p>
       )}
-      <div className="mt-5 grid gap-3 sm:grid-cols-3">
+      <div className="mt-5 grid gap-2">
         <ResearchList title="Size and funding" items={research.sizeSignals} />
         <ResearchList
           title="Recent company signals"
@@ -216,7 +216,7 @@ function ResearchList({ title, items }: { title: string; items: { text: string; 
     );
   }
   return (
-    <div className="rounded-lg bg-background px-4">
+    <div className="rounded-lg bg-background px-4 sm:px-5">
       <Disclosure title={title} hint={`${items.length} ${items.length === 1 ? 'signal' : 'signals'}`}>
         <ul className="space-y-4 text-sm">
           {items.map((item, index) => (

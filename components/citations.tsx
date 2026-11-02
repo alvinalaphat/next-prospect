@@ -1,15 +1,15 @@
 'use client';
 
 import { AnimatedDetails } from '@/components/disclosure';
+import { ChevronDown } from 'lucide-react';
 import type { EvidenceItem } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 /** Open the receipts drawer, then scroll the cited row into view. */
 function openReceipt(id: string) {
   const ledger = document.getElementById('evidence-ledger');
-  const alreadyOpen = ledger instanceof HTMLDetailsElement && ledger.open && ledger.dataset.closing !== 'true';
+  const alreadyOpen = ledger instanceof HTMLDetailsElement && ledger.open;
   if (ledger instanceof HTMLDetailsElement) {
-    delete ledger.dataset.closing;
     ledger.open = true;
   }
   const go = () => document.getElementById(`ev-${id}`)?.scrollIntoView({ block: 'center' });
@@ -24,8 +24,13 @@ export function Sources({ ids, ledger }: { ids: string[]; ledger: EvidenceItem[]
   return (
     <AnimatedDetails
       className="mt-1"
-      summaryClassName="text-muted-foreground hover:text-foreground w-fit cursor-pointer list-none text-xs [&::-webkit-details-marker]:hidden"
-      summary={`${ids.length} ${ids.length === 1 ? 'source' : 'sources'}`}
+      summaryClassName="text-muted-foreground hover:text-foreground flex w-fit cursor-pointer list-none items-center gap-1 rounded-sm text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden"
+      summary={
+        <>
+          <span>{ids.length} {ids.length === 1 ? 'source' : 'sources'}</span>
+          <ChevronDown className="disclosure-chevron size-3 group-open:rotate-180" aria-hidden />
+        </>
+      }
     >
       <Citations ids={ids} ledger={ledger} />
     </AnimatedDetails>

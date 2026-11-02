@@ -1,6 +1,4 @@
-'use client';
-
-import { useRef, type MouseEvent, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { ChevronDown } from 'lucide-react';
 
 /** A bordered group of drawers. The title stays visible; each row opens on its own. */
@@ -13,7 +11,7 @@ export function Panel({ title, children }: { title: string; children: ReactNode 
   );
 }
 
-/** Details whose body eases open and closed. Closing stays in the document until the fade finishes. */
+/** A native disclosure with a light enter transition and reliable keyboard behavior. */
 export function AnimatedDetails({
   id,
   className,
@@ -27,47 +25,9 @@ export function AnimatedDetails({
   summary: ReactNode;
   children: ReactNode;
 }) {
-  const ref = useRef<HTMLDetailsElement>(null);
-
-  function onSummaryClick(event: MouseEvent<HTMLElement>) {
-    event.preventDefault();
-    event.stopPropagation();
-    const el = ref.current;
-    if (!el) return;
-
-    if (el.dataset.closing === 'true') {
-      delete el.dataset.closing;
-      return;
-    }
-
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (!el.open || reduce) {
-      el.open = !el.open;
-      return;
-    }
-
-    const panel = el.querySelector<HTMLElement>(':scope > .disclosure-panel');
-    el.dataset.closing = 'true';
-    let settled = false;
-    const finish = () => {
-      if (settled) return;
-      settled = true;
-      el.open = false;
-      delete el.dataset.closing;
-    };
-    const onEnd = (ev: TransitionEvent) => {
-      if (ev.target === panel && ev.propertyName === 'grid-template-rows') finish();
-    };
-    panel?.addEventListener('transitionend', onEnd);
-    window.setTimeout(() => {
-      panel?.removeEventListener('transitionend', onEnd);
-      finish();
-    }, 180);
-  }
-
   return (
-    <details id={id} ref={ref} className={className ? `group ${className}` : 'group'}>
-      <summary onClick={onSummaryClick} className={summaryClassName}>
+    <details id={id} className={className ? `group ${className}` : 'group'}>
+      <summary className={summaryClassName}>
         {summary}
       </summary>
       <div className="disclosure-panel">
@@ -94,7 +54,7 @@ export function Disclosure({
     <AnimatedDetails
       id={id}
       className={className}
-      summaryClassName="flex cursor-pointer list-none items-start justify-between gap-4 py-4 [&::-webkit-details-marker]:hidden"
+      summaryClassName="-mx-2 flex cursor-pointer list-none items-start justify-between gap-4 rounded-lg px-2 py-4 outline-none hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden"
       summary={
         <>
           <span className="min-w-0">
