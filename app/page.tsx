@@ -9,57 +9,47 @@ export const dynamic = 'force-dynamic';
 
 export default async function Dashboard() {
   const p = schema.prospects;
-  const rows = await db()
+  const [rows, allOpportunities] = await Promise.all([db()
     .select({
       domain: p.domain,
+      runId: p.runId,
       status: p.status,
-      host: p.host,
-      detection: p.detection,
-      nextjsConfidence: p.nextjsConfidence,
-      perfScore: p.perfScore,
-      perf: p.perf,
       fitScore: p.fitScore,
-      angle: p.angle,
-      research: p.research,
       updatedAt: p.updatedAt
     })
     .from(p)
-    .orderBy(desc(p.updatedAt));
+    .orderBy(desc(p.updatedAt)), db().select().from(schema.opportunities).orderBy(desc(schema.opportunities.score))]);
 
-  const items: ProspectListItem[] = rows.map((r) => ({
+  const currentOpportunities = allOpportunities.filter((opportunity) =>
+    rows.some((row) => row.domain === opportunity.domain && row.runId === opportunity.runId)
+  );
+  const topOpportunity = new Map<string, (typeof currentOpportunities)[number]>();
+  for (const opportunity of currentOpportunities) {
+    if (!topOpportunity.has(opportunity.domain)) topOpportunity.set(opportunity.domain, opportunity);
+  }
+
+  const items: ProspectListItem[] = rows.map((r) => {
+    const opportunity = topOpportunity.get(r.domain);
+    return ({
     domain: r.domain,
     status: r.status,
-    host: r.host,
-    cdn: r.detection?.host.cdn ?? null,
-    router: r.detection?.nextjs.router ?? null,
-    nextjsConfidence: r.nextjsConfidence,
-    perfScore: r.perfScore,
-    lcpMs: r.perf?.mobile.field.lcpMs ?? r.perf?.mobile.lab.lcpMs ?? null,
-    ttfbMs: r.perf?.mobile.field.ttfbMs ?? r.perf?.mobile.lab.ttfbMs ?? null,
-    fitScore: r.fitScore,
-    angle: r.angle,
-    stakeholder: r.research?.likelyBuyer?.name
-      ? {
-          name: r.research.likelyBuyer.name,
-          title: r.research.likelyBuyer.title ?? null,
-          linkedinUrl: r.research.likelyBuyer.linkedinUrl ?? null,
-          email: r.research.buyerEmail?.address ?? null
-        }
-      : null,
+    fitScore: opportunity?.score ?? r.fitScore,
+    opportunityName: opportunity?.productName ?? null,
     updatedAt: r.updatedAt.toISOString()
-  }));
+  });
+  });
 
   const count = (f: (i: ProspectListItem) => boolean) => items.filter(f).length;
   const stats = [
-    { label: 'Checked', hint: 'Sites you have run', value: items.length },
+    { label: 'Accounts', hint: 'Companies researched', value: items.length },
     {
-      label: 'Off Vercel',
-      hint: 'Next.js, hosted somewhere else',
-      value: count((i) => (i.nextjsConfidence ?? 0) >= 50 && i.host !== 'vercel')
+      label: 'Opportunities',
+      hint: 'Current product conversations',
+      value: currentOpportunities.length
     },
-    { label: 'On Vercel', hint: 'Already a customer, so skipped', value: count((i) => i.status === 'vercel_customer') },
-    { label: 'Needs review', hint: 'Drafts waiting on you', value: count((i) => i.status === 'awaiting_approval') },
-    { label: 'Approved', hint: 'Drafts you accepted', value: count((i) => i.status === 'approved') }
+    { label: 'Expansion', hint: 'Existing Vercel footprint', value: currentOpportunities.filter((o) => o.salesMotion === 'expansion').length },
+    { label: 'Needs review', hint: 'Drafts waiting on you', value: currentOpportunities.filter((o) => o.status === 'awaiting_approval').length },
+    { label: 'Approved', hint: 'Product opportunities accepted', value: currentOpportunities.filter((o) => o.status === 'approved').length }
   ];
   const running = items.some((i) => STATUS[i.status].group === 'running');
 
@@ -68,9 +58,9 @@ export default async function Dashboard() {
       <AutoRefresh active={running} />
       <div className="space-y-4">
         <div>
-          <h1 className="text-2xl font-medium">Prospects</h1>
+          <h1 className="text-2xl font-medium">Accounts</h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            Paste sites to research. You approve every draft before anything is sent.
+            Research companies, rank Vercel product opportunities, and review every draft before anything is sent.
           </p>
         </div>
         <RunPanel />

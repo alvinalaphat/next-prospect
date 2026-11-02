@@ -15,6 +15,13 @@
       "when": 1790794180260,
       "tag": "0001_sweet_luminals",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793397326833,
+      "tag": "0002_nebulous_tag",
+      "breakpoints": true
     }
   ]
 }

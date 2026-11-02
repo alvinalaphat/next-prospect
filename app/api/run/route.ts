@@ -1,7 +1,7 @@
 import { inArray } from 'drizzle-orm';
 import { start } from 'workflow/api';
 import { isAuthorized, unauthorized } from '@/lib/auth';
-import { db, schema, upsertProspect } from '@/lib/db';
+import { db, expireOpportunities, schema, upsertProspect } from '@/lib/db';
 import { parseDomains } from '@/lib/domains';
 import type { ProspectStatus } from '@/lib/types';
 import { markSuperseded } from '@/lib/slack';
@@ -63,9 +63,15 @@ export async function POST(request: Request) {
     if (busy.has(domain)) continue;
     // A pending Slack card from the previous run would otherwise keep live buttons.
     const prev = existing.find((p) => p.domain === domain);
-    if (prev?.slack && prev.status === 'awaiting_approval') {
+    if (
+      prev?.slack &&
+      prev.status === 'awaiting_approval' &&
+      process.env.SLACK_BOT_TOKEN &&
+      process.env.SLACK_SIGNING_SECRET
+    ) {
       await markSuperseded(prev.slack, domain).catch((err) => console.warn('supersede failed', err));
     }
+    await expireOpportunities(domain);
     await upsertProspect(domain, {
       status: 'queued',
       batch,

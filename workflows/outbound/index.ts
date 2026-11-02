@@ -3,19 +3,22 @@ import { getWorkflowMetadata, sleep } from 'workflow';
 import {
   stepDetect,
   stepDraft,
+  stepEnrichOpportunity,
   stepFail,
   stepPerf,
   stepQualify,
   stepRequestApproval,
+  stepRequestOpportunityApproval,
+  stepPlanOpportunities,
   stepResearch
 } from './steps';
 
 /**
  * Outbound workflow — one durable run per domain.
  *
- *   detect → (stop: already Vercel / not Next.js / unreachable)
- *   → PageSpeed Insights → research agent → qualify
- *   → (stop: disqualified) → draft → Needs review
+ *   detect → PageSpeed Insights → broad account research
+ *   → route across Vercel's product catalog → score up to 3 opportunities
+ *   → product-specific buyer → draft → Needs review
  *
  * The run ends once the draft is waiting for a person. Slack and the dashboard
  * record the decision themselves. Every stage appends to an evidence ledger;
@@ -37,24 +40,17 @@ export const workflowOutbound = async (domain: string, startDelaySeconds = 0) =>
     const researched = await stepResearch(domain, detected.detection);
 
     const evidence = [...detected.evidence, ...perf.evidence, ...researched.evidence];
-    const { qualification, warnings } = await stepQualify(domain, evidence);
-    if (qualification.verdict === 'disqualified') return { domain, stopped: 'qualify' };
+    const opportunityIds = await stepPlanOpportunities(domain, workflowRunId, evidence);
+    if (!opportunityIds.length) return { domain, stopped: 'no_opportunities' };
 
-    const researchWarnings = [
-      ...(researched.warning ? [researched.warning] : []),
-      ...(researched.dropped.length
-        ? [`Research: dropped ${researched.dropped.length} item(s) with unretrieved sources`]
-        : [])
-    ];
-    await stepDraft(domain, evidence, qualification, researched.research, [
-      ...researchWarnings,
-      ...warnings
-    ]);
-
-    // Stop at Needs review. The token lets Slack or the dashboard record a
-    // decision for this run without keeping the workflow open.
-    await stepRequestApproval(domain, approvalToken(domain, workflowRunId));
-    return { domain, stopped: 'awaiting_approval' };
+    for (const opportunityId of opportunityIds) {
+      await stepEnrichOpportunity(opportunityId, evidence, researched.research);
+      await stepRequestOpportunityApproval(
+        opportunityId,
+        approvalToken(opportunityId, workflowRunId, 'opportunity')
+      );
+    }
+    return { domain, stopped: 'awaiting_approval', opportunities: opportunityIds.length };
   } catch (err) {
     await stepFail(domain, err instanceof Error ? err.message : String(err));
     throw err;

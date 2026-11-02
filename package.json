@@ -9,9 +9,12 @@
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/migrate.ts",
+    "db:reset": "tsx scripts/reset.ts",
     "detect": "tsx scripts/detect.ts",
     "run:csv": "tsx scripts/run.ts",
     "eval": "tsx eval/run.ts",
+    "eval:v2": "tsx eval/v2.ts",
+    "test:v2-e2e": "tsx eval/v2-e2e.ts",
     "gmail:auth": "tsx scripts/gmail-auth.ts"
   },
   "dependencies": {

@@ -73,6 +73,11 @@ export function groundResearch(
       sizeSignals: keep(research.sizeSignals),
       news: keep(research.news),
       whyNow: keep(research.whyNow),
+      productSignals: keep(research.productSignals ?? []),
+      region:
+        research.region?.sourceUrl && ok(research.region.sourceUrl)
+          ? research.region
+          : { group: 'unknown', label: 'Unknown', sourceUrl: null },
       likelyBuyer,
       buyerEmail: likelyBuyer.name ? findPublishedEmail(likelyBuyer.name, domain, retrieved) : null
     },
@@ -141,6 +146,24 @@ export function researchEvidence(r: Research): EvidenceItem[] {
   r.whyNow.forEach((s, i) =>
     items.push({ id: `research.whynow.${i}`, source: 'research', label: 'Why now', value: s.text, url: s.sourceUrl })
   );
+  (r.productSignals ?? []).forEach((s, i) =>
+    items.push({
+      id: `research.signal.${i}`,
+      source: 'research',
+      label: `${s.kind}${s.date ? ` (${s.date})` : ''}`,
+      value: s.text,
+      url: s.sourceUrl
+    })
+  );
+  if (r.region && r.region.group !== 'unknown') {
+    items.push({
+      id: 'research.region',
+      source: 'research',
+      label: 'Company region',
+      value: `${r.region.group}: ${r.region.label}`,
+      url: r.region.sourceUrl ?? undefined
+    });
+  }
   const b = r.likelyBuyer;
   if (b.name) {
     items.push({

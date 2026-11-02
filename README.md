@@ -1,8 +1,9 @@
 # Next Prospect ▲
 
-**Next Prospect** is an outbound excellence agent: it encodes how a top outbound rep finds and researches
-companies running **Next.js on non-Vercel hosting**, then drafts personalized, fully
-cited outreach for **human approval**.
+**Next Prospect** is an account-level outbound opportunity planner for Vercel. It researches a
+company, evaluates the evidence against Vercel's full product catalog, ranks up to three
+product-specific conversations, finds the right buyer for each, and drafts personalized,
+fully cited outreach for **human approval**.
 
 It's [vercel-labs/lead-agent](https://github.com/vercel-labs/lead-agent) pointed at outbound.
 It uses the same stack and patterns (Workflow DevKit, AI SDK + AI Gateway, the Agent
@@ -19,22 +20,22 @@ For each domain in a CSV, one durable workflow:
    no headless browser) plus DNS. It scores Next.js confidence from `__NEXT_DATA__`,
    `self.__next_f`, `/_next/static`, `x-powered-by`, `x-nextjs-*` and `Vary: RSC`, and
    identifies the host (Vercel, Netlify, Cloudflare, AWS/CloudFront/Amplify, Fastly,
-   Akamai, GCP, Azure, Render, Fly, …). **Already on Vercel → skip.**
+   Akamai, GCP, Azure, Render, Fly, …). Existing Vercel hosting becomes expansion context;
+   it suppresses only an incorrect hosting-migration opportunity.
 2. **Measure**: PageSpeed Insights for mobile and desktop. Lighthouse lab LCP/CLS/TTFB/TBT
    and CrUX real-user p75 LCP/INP/CLS/TTFB are kept separate. Cached for 24h.
-3. **Research**: lead-agent's Exa research agent with structured output: summary,
-   size/funding, recent news, why now, and the **key stakeholder**. The stakeholder is
-   found via Exa people (LinkedIn) search, with LinkedIn URL, alternates, and an email
-   only if one is published verbatim on a retrieved page. **Every item must cite a URL the
-   tools actually returned; people must be named on it.**
-4. **Qualify**: fit score 0–100, reasoning, and the single strongest angle. Every claim
-   cites evidence-ledger ids, and unknown ids are rejected in code.
-5. **Draft**: a 60–120 word email in a helpful-engineer tone, addressed to the verified
-   stakeholder's first name and signed with `REP_NAME`, plus 3 rep talking points.
-   Numbers are checked against the ledger.
-6. **Approve**: the workflow **ends at Needs review**. Slack or the dashboard
-   records Approve / Edit / Reject. A draft stays there until someone decides.
-7. **Gmail draft**: on approval, the final (possibly edited) email becomes a **draft in
+3. **Research**: an Exa research agent collects company, region, launches, hiring, job,
+   technical, social, and timing signals. Every item must cite a URL a tool returned.
+4. **Route and score**: the model matches grounded evidence to known catalog signal rules;
+   code applies deterministic confidence, freshness, category caps, and risk deductions.
+5. **Choose a buyer**: each selected product opportunity gets its own verified contact or
+   an explicit target role when no person can be grounded.
+6. **Draft**: each opportunity receives a 60–120 word email and rep brief using only its
+   selected evidence and approved product claims. Expansion drafts may build on an observed
+   Vercel hosting footprint without claiming private account knowledge.
+7. **Approve**: each opportunity independently ends at Needs review. Slack or the dashboard
+   records Approve / Edit / Reject. Nothing is automatically sent.
+8. **Gmail draft**: on approval, the final (possibly edited) email becomes a **draft in
    the rep's Gmail**, linked from Slack and the brief. It uses the `gmail.compose` scope
    and only calls `drafts.create`, so the rep still reviews it and clicks Send.
 
@@ -46,25 +47,24 @@ flowchart TD
     RUN --> D
 
     subgraph WF["workflowOutbound(domain) — 'use workflow'"]
-        D["stepDetect<br/>robots.txt + 1 GET + DNS"] -->|on Vercel / not Next.js /<br/>blocked / unreachable| STOP1([skip])
-        D --> P["stepPerf<br/>PageSpeed Insights ×2"]
+        D["stepDetect<br/>robots.txt + 1 GET + DNS"] --> P["stepPerf<br/>PageSpeed Insights ×2"]
         P --> R["stepResearch<br/>ToolLoopAgent + Exa search/fetch"]
-        R --> Q["stepQualify<br/>Output.object + citation check"]
-        Q -->|disqualified| STOP2([stop])
-        Q --> DR["stepDraft<br/>email + talking points"]
-        DR --> H["stepRequestApproval<br/>Slack card"]
+        R --> Q["stepPlanOpportunities<br/>full catalog routing + deterministic score"]
+        Q -->|no supported product fit| STOP2([stop])
+        Q --> B["stepEnrichOpportunity × up to 3<br/>buyer + rescore + draft"]
+        B --> H["stepRequestOpportunityApproval<br/>one Slack card per opportunity"]
         H --> DONE([Needs review])
     end
 
     D & P & R -.->|append| LEDGER[(Evidence ledger)]
-    LEDGER -.->|only citable ids| Q & DR
+    LEDGER -.->|only citable ids| Q & B
 
     SLACK[Slack: Approve / Edit / Reject] --> DEC[record decision]
     DASH[Dashboard: Approve / Edit / Reject] --> DEC
     DEC -->|approved| GMAIL[Gmail draft]
     DEC --> DB
 
-    WF --> DB[(Neon Postgres)]
+    WF --> DB[(Neon Postgres<br/>prospects + opportunities)]
     DB --> UI["/ dashboard · /prospect/[domain] · /about"]
 ```
 
@@ -112,6 +112,10 @@ workflows/outbound/
   index.ts                      the durable workflow
   steps.ts                      'use step' functions (persist each stage)
 lib/
+  catalog/                      full product/capability catalog and signal rules
+  scoring.ts                    deterministic signal scoring and caps
+  opportunity-services.ts      routing, buyer selection, product-specific drafting
+  opportunity-decision.ts      independent opportunity approval + Gmail handoff
   detect/                       fetch (robots, caps), nextjs + host rules, DNS
   psi.ts                        PageSpeed Insights + cache + CWV thresholds
   services.ts                   research agent, qualify, draft
@@ -122,6 +126,8 @@ lib/
   approval-token.ts             ties a Slack or dashboard click to one run
   db/                           Drizzle schema (prospects, psi_cache)
 eval/                           15 labelled domains + precision/recall script
+  v2.ts                         catalog and deterministic scoring checks
+  v2-e2e.ts                     isolated account → opportunity → approval test
 ```
 
 ## Run it

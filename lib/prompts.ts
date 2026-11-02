@@ -61,6 +61,13 @@ Use the tools to find:
   someone whose name appears in a result you retrieved; if nobody fits,
   leave name null and just give the ideal role.
 - "Why now" reasons to reach out this quarter.
+- The best-supported company region (Americas, EMEA, APAC, or unknown). Use a
+  public source; do not infer it from a top-level domain alone.
+- Public product signals relevant to ANY Vercel offering, not only hosting:
+  AI or agent launches, model/platform work, backend or compute changes,
+  reliability and observability needs, security or bot pressure, analytics,
+  developer workflow, recent technical hires and job postings, and relevant
+  professional posts. Capture the date when available.
 
 Rules:
 - Every item must include the sourceUrl of a page a tool actually returned.

@@ -154,6 +154,22 @@ export const researchSchema = z.object({
       .describe('Up to 2 other plausible contacts, same sourcing rules')
   }),
   whyNow: z.array(sourced).describe('Time-sensitive reasons to reach out now')
+  ,
+  region: z
+    .object({
+      group: z.enum(['americas', 'emea', 'apac', 'unknown']),
+      label: z.string(),
+      sourceUrl: z.string().nullable()
+    })
+    .describe('Best-supported company region; unknown when public evidence is insufficient'),
+  productSignals: z
+    .array(
+      sourced.extend({
+        kind: z.enum(['technology', 'launch', 'hire', 'job_posting', 'person_post', 'company', 'other']),
+        date: z.string().nullable()
+      })
+    )
+    .describe('Public signals that may support any Vercel product opportunity')
 });
 
 export type Research = z.infer<typeof researchSchema> & {
@@ -232,6 +248,40 @@ export const approvalSchema = z.object({
 });
 
 export type Approval = z.infer<typeof approvalSchema>;
+
+/**
+ * ------------------------------------------------------------
+ * V2 opportunities — one account can have several independently reviewed
+ * product/person/draft combinations.
+ * ------------------------------------------------------------
+ */
+
+export const opportunityContactSchema = z.object({
+  name: z.string().nullable(),
+  title: z.string().nullable(),
+  linkedinUrl: z.string().nullable(),
+  email: z.string().nullable(),
+  sourceUrl: z.string().nullable(),
+  rationale: z.string()
+});
+
+export type OpportunityContact = z.infer<typeof opportunityContactSchema>;
+
+export const opportunityStatusSchema = z.enum([
+  'candidate',
+  'researching_contact',
+  'drafting',
+  'awaiting_approval',
+  'approved',
+  'rejected',
+  'suppressed',
+  'expired',
+  'error'
+]);
+
+export type OpportunityStatus = z.infer<typeof opportunityStatusSchema>;
+
+export type SalesMotion = 'new_business' | 'expansion';
 
 /**
  * ------------------------------------------------------------

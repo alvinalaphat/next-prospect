@@ -20,7 +20,7 @@ export async function applyDecision(
   clickedCard?: { channel: string; ts: string } | null
 ): Promise<DecisionResult> {
   const parsed = parseApprovalToken(token);
-  if (!parsed) return { applied: false, reason: 'invalid_token' };
+  if (!parsed || parsed.kind !== 'prospect') return { applied: false, reason: 'invalid_token' };
 
   const current = await getProspect(parsed.domain);
   if (!current?.draft) return { applied: false, reason: 'not_awaiting' };

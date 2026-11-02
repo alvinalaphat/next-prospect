@@ -1,15 +1,11 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, ArrowUpRight, Mail, TriangleAlert } from 'lucide-react';
-import { LinkedInIcon } from '@/components/linkedin-icon';
+import { ArrowLeft, ArrowUpRight } from 'lucide-react';
 import { AutoRefresh } from '@/components/auto-refresh';
-import { HostBadge, Score, StatusBadge } from '@/components/badges';
-import { ApprovalBar } from '@/components/approval-bar';
-import { Citations, Sources } from '@/components/citations';
-import { CopyButton } from '@/components/copy-button';
-import { Disclosure, Panel } from '@/components/disclosure';
-import { GmailDraftButton } from '@/components/gmail-draft-button';
-import { getProspect } from '@/lib/db';
+import { Score, StatusBadge } from '@/components/badges';
+import { Disclosure } from '@/components/disclosure';
+import { OpportunityCards } from '@/components/opportunity-cards';
+import { getOpportunities, getProspect } from '@/lib/db';
 import { HOST_LABEL, ms, RATING_TONE, relativeTime, STATUS } from '@/lib/format';
 import { rate } from '@/lib/psi';
 import type { Detection, EvidenceItem, PerfResult, Research } from '@/lib/types';
@@ -18,374 +14,183 @@ export const dynamic = 'force-dynamic';
 
 export default async function ProspectPage({ params }: { params: Promise<{ domain: string }> }) {
   const { domain } = await params;
-  const p = await getProspect(decodeURIComponent(domain));
-  if (!p) notFound();
+  const prospect = await getProspect(decodeURIComponent(domain));
+  if (!prospect) notFound();
+  const opportunities = await getOpportunities(prospect.domain, prospect.runId);
 
-  const d = p.detection;
-  const q = p.qualification;
-  const r = p.research;
-  const draft = p.draft;
-  const ledger = p.evidence ?? [];
-  const running = STATUS[p.status].group === 'running';
+  const detection = prospect.detection;
+  const research = prospect.research;
+  const ledger = prospect.evidence ?? [];
+  const running = STATUS[prospect.status].group === 'running';
+  const topScore = opportunities[0]?.score ?? prospect.fitScore;
 
   return (
-    <div className="min-w-0 space-y-6 sm:space-y-8">
+    <div className="min-w-0 space-y-10 pb-8 sm:space-y-12">
       <AutoRefresh active={running} />
 
-      <div className="space-y-4">
-        <Link href="/" className="text-muted-foreground hover:text-foreground inline-flex items-center gap-4 text-sm">
-          <ArrowLeft className="size-4" /> Prospects
+      <header className="max-w-5xl space-y-6">
+        <Link href="/" className="text-muted-foreground hover:text-foreground inline-flex items-center gap-2 text-sm">
+          <ArrowLeft className="size-4" /> Accounts
         </Link>
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <div className="flex flex-wrap items-center gap-4">
-              <h1 className="text-2xl font-medium">{r?.companyName || p.domain}</h1>
-              <StatusBadge status={p.status} />
+        <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{research?.companyName || prospect.domain}</h1>
+              <StatusBadge status={prospect.status} />
             </div>
             <a
-              href={d?.finalUrl ?? `https://${p.domain}`}
+              href={detection?.finalUrl ?? `https://${prospect.domain}`}
               target="_blank"
               rel="noreferrer"
-              className="text-muted-foreground hover:text-foreground mt-4 inline-flex items-center gap-4 font-mono text-sm"
+              className="text-muted-foreground hover:text-foreground mt-2 inline-flex items-center gap-1.5 font-mono text-sm"
             >
-              {p.domain} <ArrowUpRight className="size-3" />
+              {prospect.domain} <ArrowUpRight className="size-3" />
             </a>
           </div>
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-4 text-sm sm:grid-cols-4">
-            <Stat label="Host">
-              <HostBadge host={p.host} cdn={d?.host.cdn} />
+          <dl className="flex gap-8 text-sm sm:justify-end">
+            <Stat label="Product opportunities">
+              <span className="font-mono text-lg tabular-nums">{opportunities.length}</span>
             </Stat>
-            <Stat label="Next.js">
-              <span className="font-mono">{p.nextjsConfidence ?? '—'}%</span>
-              {d?.nextjs.router && <span className="text-muted-foreground ml-1">{d.nextjs.router}</span>}
-            </Stat>
-            <Stat label="Perf (mobile)">
-              <Score value={p.perfScore} thresholds={[50, 90]} />
-            </Stat>
-            <Stat label="Fit">
-              <Score value={p.fitScore} thresholds={[35, 60]} suffix="/100" />
+            <Stat label="Top score">
+              <Score value={topScore} thresholds={[35, 60]} suffix="/100" showRating={false} />
             </Stat>
           </dl>
         </div>
-        {p.error && (
-          <div className="rounded-lg border border-error/40 bg-background px-4 py-4 text-sm text-error" role="alert">
-            {p.error}
+        {prospect.status === 'error' && prospect.error && (
+          <div className="rounded-lg border border-error/40 px-4 py-4 text-sm text-error" role="alert">
+            {prospect.error}
           </div>
         )}
-        {p.approval && (
-          <p className="text-muted-foreground text-sm">
-            {STATUS[p.status].label} by <span className="text-foreground">{p.approval.by}</span> via {p.approval.via}
-            {p.approval.editedDraft && ' (with edits)'}.
+      </header>
+
+      {research && hasCompanyContext(research) && <CompanyBackground research={research} />}
+
+      <OpportunityCards opportunities={opportunities} ledger={ledger} />
+
+      {(prospect.perf || detection || ledger.length > 0) && (
+        <section aria-labelledby="supporting-evidence-title" className="max-w-5xl">
+          <h2 id="supporting-evidence-title" className="text-lg font-semibold tracking-tight">Supporting evidence</h2>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Technical checks and source receipts. Open these when you need to verify a recommendation.
           </p>
-        )}
-        {p.status === 'approved' && (
-          <div className="flex flex-col gap-4 rounded-lg border p-4 text-sm sm:flex-row sm:flex-wrap sm:items-center">
-            {p.gmailDraft ? (
-              <>
-                <Mail className="size-4 shrink-0" />
-                <span className="min-w-0">
-                  Gmail draft created {relativeTime(p.gmailDraft.createdAt)}
-                  {!p.gmailDraft.to && <span className="text-muted-foreground"> · no recipient (no published email). Add one in Gmail.</span>}
-                </span>
-                <a href={p.gmailDraft.url} target="_blank" rel="noreferrer" className="font-medium underline underline-offset-4 sm:ml-auto">
-                  Open in Gmail ↗
-                </a>
-              </>
-            ) : (
-              <>
-                <Mail className="text-muted-foreground size-4 shrink-0" />
-                <span className="text-muted-foreground min-w-0">{p.gmailError ?? 'No Gmail draft yet.'}</span>
-                <div className="w-full sm:ml-auto sm:w-auto">
-                  <GmailDraftButton domain={p.domain} label={p.gmailError ? 'Retry Gmail draft' : 'Create Gmail draft'} />
-                </div>
-              </>
-            )}
-          </div>
-        )}
-      </div>
-
-      {p.status === 'awaiting_approval' && draft && <ApprovalBar domain={p.domain} draft={draft} />}
-
-      <div className="max-w-3xl space-y-6">
-        {(q || draft || r) && (
-          <section className="space-y-6 rounded-lg border p-4 sm:p-6">
-            {q && (
-              <div>
-                <p className="text-muted-foreground text-xs">Why write them</p>
-                <h2 className="mt-1 text-lg font-medium leading-snug">{q.strongestAngle.label}</h2>
-                <p className="mt-2 text-sm leading-relaxed">{q.strongestAngle.explanation}</p>
-              </div>
-            )}
-
-            {r && <StakeholderCard research={r} />}
-
-            {draft && (
-              <div>
-                <div className="mb-4 flex items-center justify-between gap-4">
-                  <h2 className="text-sm font-medium">Draft</h2>
-                  <CopyButton text={`Subject: ${draft.subject}\n\n${draft.body}`} />
-                </div>
-                {draft.editedBy && <p className="text-muted-foreground mb-2 text-xs">Edited by {draft.editedBy}</p>}
-                <div className="rounded-lg border">
-                  <div className="border-b px-4 py-4 text-sm">
-                    <span className="text-muted-foreground">To: </span>
-                    {draft.to ? (
-                      <>
-                        {draft.to.name}
-                        {draft.to.email ? (
-                          <span className="text-muted-foreground font-mono text-xs"> &lt;{draft.to.email}&gt;</span>
-                        ) : (
-                          <span className="text-muted-foreground text-xs"> (no published email)</span>
-                        )}
-                      </>
-                    ) : (
-                      <span className="text-muted-foreground">no verified stakeholder</span>
-                    )}
+          <div className="mt-5 grid gap-3">
+            {prospect.perf && (
+              <DisclosureSurface>
+                <Disclosure title="Real-user speed" hint={speedHint(prospect.perf.mobile, prospect.perf.desktop)}>
+                  <div className="mb-4 flex justify-end">
+                    <a
+                      className="text-muted-foreground hover:text-foreground text-xs"
+                      href={`https://pagespeed.web.dev/analysis?url=${encodeURIComponent(detection?.finalUrl ?? `https://${prospect.domain}/`)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Open PageSpeed <ArrowUpRight className="ml-1 inline size-3" />
+                    </a>
                   </div>
-                  <div className="border-b px-4 py-4 text-sm">
-                    <span className="text-muted-foreground">Subject: </span>
-                    {draft.subject}
-                  </div>
-                  <div className="px-4 py-4 text-sm leading-relaxed whitespace-pre-wrap">{draft.body}</div>
-                </div>
-                {draft.warnings.length > 0 && (
-                  <ul className="mt-4 space-y-4">
-                    {draft.warnings.map((w) => (
-                      <li key={w} className="text-warning flex items-start gap-4 text-xs">
-                        <TriangleAlert className="mt-0.5 size-3 shrink-0" /> {w}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                <div className="mt-4 divide-y border-t">
-                  {draft.subjectOptions.filter((o) => o !== draft.subject).length > 0 && (
-                    <Disclosure title="Other subject lines" hint={draft.subjectOptions.filter((o) => o !== draft.subject).join(' · ')}>
-                      <ul className="space-y-2 text-sm">
-                        {draft.subjectOptions
-                          .filter((o) => o !== draft.subject)
-                          .map((o) => (
-                            <li key={o}>{o}</li>
-                          ))}
-                      </ul>
-                    </Disclosure>
-                  )}
-                  <Disclosure title="Talking points" hint="Three notes for the call">
-                    <ol className="list-decimal space-y-4 pl-5 text-sm">
-                      {draft.talkingPoints.map((t, i) => (
-                        <li key={i}>
-                          {t.text} <Sources ids={t.citations} ledger={ledger} />
-                        </li>
-                      ))}
-                    </ol>
-                  </Disclosure>
-                  {draft.emailCitations.length > 0 && (
-                    <Disclosure title="Sources for this email" hint={`${draft.emailCitations.length} receipts`}>
-                      <Citations ids={draft.emailCitations} ledger={ledger} />
-                    </Disclosure>
-                  )}
-                </div>
-              </div>
-            )}
-          </section>
-        )}
-
-        {q && q.claims.length > 0 && (
-          <Panel title="How the score was built">
-            <Disclosure title="Reasoning" hint={lead(q.reasoning)}>
-              <p className="text-sm leading-relaxed">{q.reasoning}</p>
-            </Disclosure>
-            <Disclosure title="Supporting facts" hint={`${q.claims.length} checks, each tied to a receipt`}>
-              <ul className="space-y-4">
-                {q.claims.map((c, i) => (
-                  <li key={i} className="text-sm">
-                    {c.text} <Sources ids={c.citations} ledger={ledger} />
-                  </li>
-                ))}
-              </ul>
-            </Disclosure>
-          </Panel>
-        )}
-
-        {r && (r.summary.text || r.sizeSignals.length > 0 || r.news.length > 0 || r.whyNow.length > 0) && (
-          <Panel title="Company">
-            {r.summary.text && (
-              <p className="py-4 text-sm leading-relaxed">
-                {r.summary.text} <Source url={r.summary.sourceUrl} />
-              </p>
-            )}
-            <ResearchList title="Size and funding" items={r.sizeSignals} />
-            <ResearchList
-              title="Recent news"
-              items={r.news.map((n) => ({ ...n, text: n.date ? `${n.date} — ${n.text}` : n.text }))}
-            />
-            <ResearchList title="Why now" items={r.whyNow} />
-          </Panel>
-        )}
-
-        {(p.perf || d || ledger.length > 0) && (
-          <Panel title="Evidence">
-            {p.perf && (
-              <Disclosure title="Real-user speed" hint={speedHint(p.perf.mobile, p.perf.desktop)}>
-                <div className="mb-4 flex justify-end">
-                  <a
-                    className="text-muted-foreground hover:text-foreground text-xs"
-                    href={`https://pagespeed.web.dev/analysis?url=${encodeURIComponent(d?.finalUrl ?? `https://${p.domain}/`)}`}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    PageSpeed ↗
-                  </a>
-                </div>
-                <VitalsTable mobile={p.perf.mobile} desktop={p.perf.desktop} />
-                <p className="text-muted-foreground mt-2 text-xs">
-                  Real users are the CrUX 75th percentile{p.perf.mobile.field.scope === 'origin' ? ' for the whole site' : ''}. Lab is one Lighthouse run. INP only exists for real users.
-                </p>
-              </Disclosure>
-            )}
-
-            {d && (
-              <Disclosure title="How we detected the stack" hint={detectionHint(d, p.host)}>
-                <p className="text-muted-foreground mb-3 text-xs break-all">
-                  Checked {relativeTime(d.fetchedAt)} · GET {d.fetchedUrl} → {d.status ?? '—'}
-                  {d.finalUrl && d.finalUrl !== d.fetchedUrl && ` → ${d.finalUrl}`}
-                  {d.outcome !== 'ok' && ` · ${d.outcome}`}
-                </p>
-                <SignalList title="Next.js" signals={d.nextjs.signals} />
-                <SignalList title="Hosting" signals={d.host.signals.map((s) => ({ ...s, label: `${s.label} → ${s.host}` }))} />
-                {(d.dns.cname.length > 0 || d.dns.a.length > 0) && (
-                  <div className="mt-4 font-mono text-xs break-all">
-                    {d.dns.cname.map((c) => (
-                      <div key={c}>CNAME {c}</div>
-                    ))}
-                    {d.dns.a.map((a) => (
-                      <div key={a}>A {a}</div>
-                    ))}
-                  </div>
-                )}
-                <Disclosure className="border-t" title="Response headers" hint={`${Object.keys(d.headers).length} headers`}>
-                  <pre className="max-h-64 overflow-auto rounded-lg bg-hover p-4 font-mono text-xs">
-                    {Object.entries(d.headers)
-                      .map(([k, v]) => `${k}: ${v}`)
-                      .join('\n')}
-                  </pre>
+                  <VitalsTable mobile={prospect.perf.mobile} desktop={prospect.perf.desktop} />
+                  <p className="text-muted-foreground mt-3 text-xs leading-relaxed">
+                    Real-user values are the CrUX 75th percentile{prospect.perf.mobile.field.scope === 'origin' ? ' for the whole site' : ''}. Lab values come from one Lighthouse run.
+                  </p>
                 </Disclosure>
-              </Disclosure>
+              </DisclosureSurface>
+            )}
+
+            {detection && (
+              <DisclosureSurface>
+                <Disclosure title="Stack detection" hint={detectionHint(detection, prospect.host)}>
+                  <p className="text-muted-foreground mb-4 text-xs break-all">
+                    Checked {relativeTime(detection.fetchedAt)} · GET {detection.fetchedUrl} → {detection.status ?? '—'}
+                    {detection.finalUrl && detection.finalUrl !== detection.fetchedUrl && ` → ${detection.finalUrl}`}
+                    {detection.outcome !== 'ok' && ` · ${detection.outcome}`}
+                  </p>
+                  <div className="grid gap-6 sm:grid-cols-2">
+                    <SignalList title="Next.js" signals={detection.nextjs.signals} />
+                    <SignalList title="Hosting" signals={detection.host.signals.map((signal) => ({ ...signal, label: `${signal.label} → ${signal.host}` }))} />
+                  </div>
+                  {(detection.dns.cname.length > 0 || detection.dns.a.length > 0) && (
+                    <div className="text-muted-foreground mt-5 font-mono text-xs break-all">
+                      {detection.dns.cname.map((cname) => <div key={cname}>CNAME {cname}</div>)}
+                      {detection.dns.a.map((address) => <div key={address}>A {address}</div>)}
+                    </div>
+                  )}
+                  <div className="mt-5 rounded-lg bg-background px-4">
+                    <Disclosure title="Response headers" hint={`${Object.keys(detection.headers).length} headers`}>
+                      <pre className="max-h-64 overflow-auto rounded-lg bg-hover p-4 font-mono text-xs">
+                        {Object.entries(detection.headers).map(([key, value]) => `${key}: ${value}`).join('\n')}
+                      </pre>
+                    </Disclosure>
+                  </div>
+                </Disclosure>
+              </DisclosureSurface>
             )}
 
             {ledger.length > 0 && (
-              <Disclosure id="evidence-ledger" title="Receipts" hint={`${ledger.length} sources behind the claims above`}>
-                <p className="text-muted-foreground mb-4 text-xs">Every claim has to point at one of these. Unknown ids are rejected.</p>
-                <ul className="space-y-4">
-                  {ledger.map((e) => (
-                    <LedgerRow key={e.id} e={e} />
-                  ))}
-                </ul>
-              </Disclosure>
+              <DisclosureSurface>
+                <Disclosure id="evidence-ledger" title="Source receipts" hint={`${ledger.length} sources behind the recommendations`}>
+                  <p className="text-muted-foreground mb-4 text-xs">Every generated claim must point to one of these records.</p>
+                  <ul className="space-y-4">
+                    {ledger.map((evidence) => <LedgerRow key={evidence.id} e={evidence} />)}
+                  </ul>
+                </Disclosure>
+              </DisclosureSurface>
             )}
-          </Panel>
-        )}
-      </div>
+          </div>
+        </section>
+      )}
     </div>
   );
 }
 
-function StakeholderCard({ research: r }: { research: Research }) {
-  const b = r.likelyBuyer;
-  const others = b.alternates?.length ?? 0;
+function hasCompanyContext(research: Research) {
+  return Boolean(research.summary.text || research.sizeSignals.length || research.news.length || research.whyNow.length);
+}
+
+function CompanyBackground({ research }: { research: Research }) {
   return (
-    <div className="border-t pt-6">
-      <p className="text-muted-foreground text-xs">Who to contact</p>
-      {b.name ? (
-        <div className="mt-1 flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <div className="font-medium">{b.name}</div>
-            <div className="text-muted-foreground text-sm">{b.title ?? b.role}</div>
-          </div>
-          <div className="flex flex-wrap gap-4">
-            {b.linkedinUrl && (
-              <a
-                href={b.linkedinUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="hover:bg-accent inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 text-sm"
-              >
-                <LinkedInIcon className="size-3.5" /> LinkedIn
-              </a>
-            )}
-            {r.buyerEmail && (
-              <a
-                href={`mailto:${r.buyerEmail.address}`}
-                className="hover:bg-accent inline-flex min-h-11 max-w-full items-center gap-2 rounded-lg border px-3 py-2 font-mono text-xs break-all"
-              >
-                <Mail className="size-3.5" /> {r.buyerEmail.address}
-              </a>
-            )}
-          </div>
-        </div>
-      ) : (
-        <p className="mt-1 text-sm">
-          No named person verified. Target role: {b.role}
+    <section aria-labelledby="company-background-title" className="max-w-5xl rounded-xl bg-hover p-5 sm:p-6">
+      <p className="text-muted-foreground text-xs font-medium uppercase tracking-wider">Company context</p>
+      <h2 id="company-background-title" className="mt-2 text-lg font-semibold tracking-tight">
+        What to know about {research.companyName}
+      </h2>
+      {research.summary.text && (
+        <p className="mt-3 max-w-3xl text-sm leading-6 sm:text-base">
+          {research.summary.text} <Source url={research.summary.sourceUrl} />
         </p>
       )}
-      <Disclosure
-        className="mt-4 border-t"
-        title="Why this person"
-        hint={others > 0 ? `${others} other ${others === 1 ? 'person' : 'people'} on file` : 'How they were chosen'}
-      >
-        <p className="text-sm leading-relaxed">{b.rationale}</p>
-        <p className="text-muted-foreground mt-4 text-xs">
-          {r.buyerEmail ? (
-            <>Email found on <Source url={r.buyerEmail.sourceUrl} /></>
-          ) : (
-            'No email published on a retrieved page. Emails are never guessed.'
-          )}
-          {b.sourceUrl && b.sourceUrl !== b.linkedinUrl && (
-            <> · Role confirmed on <Source url={b.sourceUrl} /></>
-          )}
-        </p>
-        {others > 0 && (
-          <ul className="mt-4 space-y-4 text-sm">
-            {b.alternates.map((a) => (
-              <li key={a.name} className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                <span className="font-medium">{a.name}</span>
-                {a.title && <span className="text-muted-foreground min-w-0">· {a.title}</span>}
-                {a.linkedinUrl && (
-                  <a href={a.linkedinUrl} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-foreground">
-                    <LinkedInIcon className="size-3.5" />
-                  </a>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-      </Disclosure>
-    </div>
+      <div className="mt-5 grid gap-3 sm:grid-cols-3">
+        <ResearchList title="Size and funding" items={research.sizeSignals} />
+        <ResearchList
+          title="Recent company signals"
+          items={research.news.map((item) => ({ ...item, text: item.date ? `${item.date} — ${item.text}` : item.text }))}
+        />
+        <ResearchList title="Timing signals" items={research.whyNow} />
+      </div>
+    </section>
   );
+}
+
+function DisclosureSurface({ children }: { children: React.ReactNode }) {
+  return <div className="rounded-xl bg-hover px-4 sm:px-5">{children}</div>;
 }
 
 function Stat({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
       <dt className="text-muted-foreground text-xs">{label}</dt>
-      <dd className="mt-0.5">{children}</dd>
+      <dd className="mt-1">{children}</dd>
     </div>
   );
-}
-
-function lead(text: string) {
-  const sentence = text.split(/(?<=\.)\s/)[0] ?? text;
-  return sentence.length > 180 ? `${sentence.slice(0, 177)}…` : sentence;
 }
 
 function speedHint(mobile: PerfResult, desktop: PerfResult) {
   return `Mobile LCP ${ms(mobile.field.lcpMs)}, server ${ms(mobile.field.ttfbMs)}. Desktop LCP ${ms(desktop.field.lcpMs)}, server ${ms(desktop.field.ttfbMs)}.`;
 }
 
-function detectionHint(d: Detection, host: string | null) {
-  const router = d.nextjs.router === 'app' ? 'App Router' : d.nextjs.router === 'pages' ? 'Pages Router' : 'Next.js';
-  const confidence = Math.round(d.nextjs.confidence * 100);
+function detectionHint(detection: Detection, host: string | null) {
+  const router = detection.nextjs.router === 'app' ? 'App Router' : detection.nextjs.router === 'pages' ? 'Pages Router' : 'Next.js';
+  const confidence = Math.round(detection.nextjs.confidence * 100);
   const hostName = host && host in HOST_LABEL ? HOST_LABEL[host as keyof typeof HOST_LABEL] : host;
-  const cdn = d.host.cdn && d.host.cdn in HOST_LABEL ? HOST_LABEL[d.host.cdn] : null;
+  const cdn = detection.host.cdn && detection.host.cdn in HOST_LABEL ? HOST_LABEL[detection.host.cdn] : null;
   return `${router}, ${confidence}% match. Hosted on ${hostName ?? 'an unknown host'}${cdn ? `, behind ${cdn}` : ''}.`;
 }
 
@@ -402,34 +207,41 @@ function Source({ url }: { url: string }) {
 }
 
 function ResearchList({ title, items }: { title: string; items: { text: string; sourceUrl: string }[] }) {
-  if (items.length === 0) return null;
+  if (items.length === 0) {
+    return (
+      <div className="rounded-lg bg-background px-4 py-4">
+        <h3 className="text-sm font-medium">{title}</h3>
+        <p className="text-muted-foreground mt-1 text-sm">No public signals found.</p>
+      </div>
+    );
+  }
   return (
-    <Disclosure title={title} hint={`${items.length} ${items.length === 1 ? 'note' : 'notes'}`}>
-      <ul className="space-y-4 text-sm">
-        {items.map((i, idx) => (
-          <li key={idx}>
-            {i.text} <Source url={i.sourceUrl} />
-          </li>
-        ))}
-      </ul>
-    </Disclosure>
+    <div className="rounded-lg bg-background px-4">
+      <Disclosure title={title} hint={`${items.length} ${items.length === 1 ? 'signal' : 'signals'}`}>
+        <ul className="space-y-4 text-sm">
+          {items.map((item, index) => (
+            <li key={index} className="leading-relaxed">
+              {item.text} <Source url={item.sourceUrl} />
+            </li>
+          ))}
+        </ul>
+      </Disclosure>
+    </div>
   );
 }
 
 function SignalList({ title, signals }: { title: string; signals: { id: string; label: string; match: string }[] }) {
   return (
-    <div className="mt-4 first:mt-0">
-      <h3 className="text-muted-foreground mb-2 text-xs">{title}</h3>
+    <div>
+      <h3 className="text-muted-foreground mb-2 text-xs font-medium uppercase tracking-wider">{title}</h3>
       {signals.length === 0 ? (
         <p className="text-muted-foreground text-sm">No signals matched.</p>
       ) : (
-        <ul className="space-y-4">
-          {signals.map((s) => (
-            <li key={s.id} className="text-sm">
-              <div>{s.label}</div>
-              <code className="text-muted-foreground block truncate font-mono text-xs" title={s.match}>
-                {s.match}
-              </code>
+        <ul className="space-y-3">
+          {signals.map((signal) => (
+            <li key={signal.id} className="text-sm">
+              <div>{signal.label}</div>
+              <code className="text-muted-foreground block truncate font-mono text-xs" title={signal.match}>{signal.match}</code>
             </li>
           ))}
         </ul>
@@ -445,18 +257,14 @@ function VitalsTable({ mobile, desktop }: { mobile: PerfResult; desktop: PerfRes
     { label: 'CLS', metric: 'clsScore', fmt: (n) => (n == null ? '—' : n.toFixed(2)) },
     { label: 'TTFB', metric: 'ttfbMs', fmt: ms }
   ];
-  const cell = (r: PerfResult, row: (typeof rows)[number], kind: 'field' | 'lab') => {
-    const v = kind === 'field' ? r.field[row.metric] : row.metric === 'inpMs' ? null : r.lab[row.metric];
-    const rating = rate(row.metric, v);
-    const color = rating
-      ? { green: 'text-positive', amber: 'text-warning', red: 'text-error' }[RATING_TONE[rating]]
-      : 'text-muted-foreground';
-    const label = rating
-      ? { good: 'Good', 'needs-improvement': 'Needs improvement', poor: 'Poor' }[rating]
-      : null;
+  const cell = (result: PerfResult, row: (typeof rows)[number], kind: 'field' | 'lab') => {
+    const value = kind === 'field' ? result.field[row.metric] : row.metric === 'inpMs' ? null : result.lab[row.metric];
+    const rating = rate(row.metric, value);
+    const color = rating ? { green: 'text-positive', amber: 'text-warning', red: 'text-error' }[RATING_TONE[rating]] : 'text-muted-foreground';
+    const label = rating ? { good: 'Good', 'needs-improvement': 'Needs improvement', poor: 'Poor' }[rating] : null;
     return (
       <td className="px-2 py-3 text-right align-top sm:px-4">
-        <span className="font-mono tabular-nums">{row.fmt(v)}</span>
+        <span className="font-mono tabular-nums">{row.fmt(value)}</span>
         {label && <span className={`mt-0.5 block text-xs leading-snug sm:mt-0 sm:ml-2 sm:inline ${color}`}>{label}</span>}
       </td>
     );
@@ -467,21 +275,21 @@ function VitalsTable({ mobile, desktop }: { mobile: PerfResult; desktop: PerfRes
         <thead className="text-muted-foreground text-xs">
           <tr>
             <th />
-            <th colSpan={2} className="px-4 pb-4 text-right font-medium">Mobile</th>
-            <th colSpan={2} className="px-4 pb-4 text-right font-medium">Desktop</th>
+            <th colSpan={2} className="px-4 pb-3 text-right font-medium">Mobile</th>
+            <th colSpan={2} className="px-4 pb-3 text-right font-medium">Desktop</th>
           </tr>
           <tr className="border-b">
             <th />
-            <th className="px-4 py-4 text-right font-normal">field</th>
-            <th className="px-4 py-4 text-right font-normal">lab</th>
-            <th className="px-4 py-4 text-right font-normal">field</th>
-            <th className="px-4 py-4 text-right font-normal">lab</th>
+            <th className="px-4 py-3 text-right font-normal">field</th>
+            <th className="px-4 py-3 text-right font-normal">lab</th>
+            <th className="px-4 py-3 text-right font-normal">field</th>
+            <th className="px-4 py-3 text-right font-normal">lab</th>
           </tr>
         </thead>
         <tbody className="divide-y">
           {rows.map((row) => (
             <tr key={row.metric}>
-              <td className="py-4 pr-4 font-medium">{row.label}</td>
+              <td className="py-3 pr-4 font-medium">{row.label}</td>
               {cell(mobile, row, 'field')}
               {cell(mobile, row, 'lab')}
               {cell(desktop, row, 'field')}
@@ -489,24 +297,22 @@ function VitalsTable({ mobile, desktop }: { mobile: PerfResult; desktop: PerfRes
             </tr>
           ))}
           <tr>
-            <td className="py-4 pr-4 font-medium">Score</td>
-            <td colSpan={2} className="px-4 py-4 text-right"><Score value={mobile.score} thresholds={[50, 90]} /></td>
-            <td colSpan={2} className="px-4 py-4 text-right"><Score value={desktop.score} thresholds={[50, 90]} /></td>
+            <td className="py-3 pr-4 font-medium">Score</td>
+            <td colSpan={2} className="px-4 py-3 text-right"><Score value={mobile.score} thresholds={[50, 90]} /></td>
+            <td colSpan={2} className="px-4 py-3 text-right"><Score value={desktop.score} thresholds={[50, 90]} /></td>
           </tr>
         </tbody>
       </table>
-      {(mobile.error || desktop.error) && (
-        <p className="text-warning mt-2 text-xs">PSI: {mobile.error ?? desktop.error}</p>
-      )}
+      {(mobile.error || desktop.error) && <p className="text-warning mt-3 text-xs">PageSpeed: {mobile.error ?? desktop.error}</p>}
     </div>
   );
 }
 
 function LedgerRow({ e }: { e: EvidenceItem }) {
   return (
-    <li id={`ev-${e.id}`} className="scroll-mt-20 rounded-lg target:bg-hover target:ring-2 target:ring-warning">
+    <li id={`ev-${e.id}`} className="scroll-mt-20 rounded-lg target:bg-background target:ring-2 target:ring-warning">
       <code className="text-muted-foreground font-mono text-xs">{e.id}</code>
-      <div className="text-sm">
+      <div className="text-sm leading-relaxed">
         <span className="text-muted-foreground">{e.label}:</span> <span className="break-words">{e.value}</span>{' '}
         {e.url && <Source url={e.url} />}
       </div>

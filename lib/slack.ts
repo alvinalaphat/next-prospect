@@ -1,7 +1,7 @@
 import { App, LogLevel } from '@slack/bolt';
 import type { KnownBlock } from '@slack/web-api';
 import { VercelReceiver } from '@vercel/slack-bolt';
-import type { ProspectRow } from '@/lib/db/schema';
+import type { OpportunityRow, ProspectRow } from '@/lib/db/schema';
 
 const logLevel = process.env.NODE_ENV === 'development' ? LogLevel.DEBUG : LogLevel.INFO;
 
@@ -229,6 +229,122 @@ export function editModal(p: ProspectRow, token: string) {
         block_id: 'body',
         label: { type: 'plain_text' as const, text: 'Body' },
         element: { type: 'plain_text_input' as const, action_id: 'value', multiline: true, initial_value: p.draft?.body ?? '' }
+      }
+    ]
+  };
+}
+
+function opportunityBlocks(
+  prospect: ProspectRow,
+  opportunity: OpportunityRow,
+  token: string | null
+): KnownBlock[] {
+  const d = opportunity.draft;
+  const c = opportunity.contact;
+  const b = opportunity.scoreBreakdown;
+  const blocks: KnownBlock[] = [
+    {
+      type: 'header',
+      text: { type: 'plain_text', text: `${prospect.domain} · ${opportunity.productName} · ${opportunity.score}/100`.slice(0, 150) }
+    },
+    {
+      type: 'section',
+      fields: [
+        { type: 'mrkdwn', text: `*Motion*\n${opportunity.salesMotion === 'expansion' ? 'Expansion' : 'New business'}` },
+        { type: 'mrkdwn', text: `*Target*\n${c?.name ?? opportunity.targetRole}${c?.title ? ` — ${c.title}` : ''}`.slice(0, 1900) },
+        { type: 'mrkdwn', text: `*Score*\nFit ${b.productFit} · timing ${b.trigger} · account ${b.accountValue} · buyer ${b.buyerQuality}${b.risk ? ` · risk ${b.risk}` : ''}` },
+        { type: 'mrkdwn', text: `*Angle*\n${opportunity.angle}`.slice(0, 1900) }
+      ]
+    },
+    { type: 'section', text: { type: 'mrkdwn', text: `*Why now*\n${opportunity.whyNow}`.slice(0, 2900) } },
+    { type: 'section', text: { type: 'mrkdwn', text: `*Why Vercel*\n${opportunity.whyVercel}`.slice(0, 2900) } }
+  ];
+  if (d) {
+    blocks.push(
+      { type: 'divider' },
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `*Draft — ${d.subject}*\n_To: ${d.to ? `${d.to.name}${d.to.email ? ` <${d.to.email}>` : ''}` : opportunity.targetRole}_\n${d.body}`.slice(0, 2900)
+        }
+      }
+    );
+    if (d.warnings.length) {
+      blocks.push({ type: 'context', elements: [{ type: 'mrkdwn', text: `⚠️ ${d.warnings.join(' · ')}`.slice(0, 2900) }] });
+    }
+  }
+  blocks.push({
+    type: 'context',
+    elements: [{ type: 'mrkdwn', text: `<${appUrl(`/prospect/${prospect.domain}#opportunity-${opportunity.id}`)}|Open account plan with evidence →>` }]
+  });
+  if (token) {
+    blocks.push({
+      type: 'actions',
+      elements: [
+        { type: 'button', text: { type: 'plain_text', text: 'Approve' }, style: 'primary', action_id: ACTIONS.approve, value: token },
+        { type: 'button', text: { type: 'plain_text', text: 'Edit' }, action_id: ACTIONS.edit, value: token },
+        { type: 'button', text: { type: 'plain_text', text: 'Reject' }, style: 'danger', action_id: ACTIONS.reject, value: token }
+      ]
+    });
+  } else if (opportunity.decision) {
+    blocks.push({
+      type: 'context',
+      elements: [{ type: 'mrkdwn', text: `${opportunity.status === 'approved' ? '✅ Approved' : '❌ Rejected'} by ${opportunity.decision.by}${opportunity.gmailDraft ? ` · ✉️ <${opportunity.gmailDraft.url}|Gmail draft>` : ''}` }]
+    });
+  }
+  return blocks;
+}
+
+export async function postOpportunityApprovalRequest(
+  prospect: ProspectRow,
+  opportunity: OpportunityRow,
+  token: string
+) {
+  const channel = process.env.SLACK_CHANNEL_ID;
+  if (!channel) throw new Error('SLACK_CHANNEL_ID is not set');
+  const result = await client().chat.postMessage({
+    channel,
+    text: `${prospect.domain}: ${opportunity.productName} opportunity (${opportunity.score}/100)`,
+    blocks: opportunityBlocks(prospect, opportunity, token)
+  });
+  if (!result.ok || !result.ts) throw new Error('Failed to send Slack opportunity message');
+  return { channel: result.channel!, ts: result.ts };
+}
+
+export async function updateOpportunityApprovalMessage(opportunity: OpportunityRow) {
+  if (!opportunity.slack) return;
+  const { getProspect } = await import('@/lib/db');
+  const prospect = await getProspect(opportunity.domain);
+  if (!prospect) return;
+  await client().chat.update({
+    channel: opportunity.slack.channel,
+    ts: opportunity.slack.ts,
+    text: `${opportunity.domain}: ${opportunity.productName} ${opportunity.status}`,
+    blocks: opportunityBlocks(prospect, opportunity, null)
+  });
+}
+
+export function opportunityEditModal(opportunity: OpportunityRow, token: string) {
+  return {
+    type: 'modal' as const,
+    callback_id: ACTIONS.editModal,
+    private_metadata: token,
+    title: { type: 'plain_text' as const, text: 'Edit & approve' },
+    submit: { type: 'plain_text' as const, text: 'Approve' },
+    close: { type: 'plain_text' as const, text: 'Cancel' },
+    blocks: [
+      {
+        type: 'input' as const,
+        block_id: 'subject',
+        label: { type: 'plain_text' as const, text: 'Subject' },
+        element: { type: 'plain_text_input' as const, action_id: 'value', initial_value: opportunity.draft?.subject ?? '' }
+      },
+      {
+        type: 'input' as const,
+        block_id: 'body',
+        label: { type: 'plain_text' as const, text: 'Body' },
+        element: { type: 'plain_text_input' as const, action_id: 'value', multiline: true, initial_value: opportunity.draft?.body ?? '' }
       }
     ]
   };

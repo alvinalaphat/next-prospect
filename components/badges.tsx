@@ -56,12 +56,14 @@ export function Score({
   value,
   thresholds,
   suffix,
-  className
+  className,
+  showRating = true
 }: {
   value: number | null | undefined;
   thresholds: [number, number];
   suffix?: string;
   className?: string;
+  showRating?: boolean;
 }) {
   if (value == null) return <span className="text-muted-foreground">—</span>;
   const tone = scoreTone(value, thresholds);
@@ -81,7 +83,7 @@ export function Score({
         {value}
         {suffix}
       </span>
-      {word && <Pill tone={tone}>{word}</Pill>}
+      {showRating && word && <Pill tone={tone}>{word}</Pill>}
     </span>
   );
 }

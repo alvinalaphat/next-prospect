@@ -1,4 +1,4 @@
-import type { ProspectRow } from '@/lib/db/schema';
+import type { OpportunityRow, ProspectRow } from '@/lib/db/schema';
 import { stripEmDashes } from '@/lib/email-text';
 
 /**
@@ -191,6 +191,33 @@ export async function createGmailDraft(p: ProspectRow): Promise<GmailDraft> {
   const json = await res.json();
   if (!res.ok) throw new Error(`Gmail drafts.create failed: ${json.error?.message ?? res.status}`);
 
+  return {
+    id: json.id,
+    messageId: json.message.id,
+    url: `https://mail.google.com/mail/#drafts?compose=${json.message.id}`,
+    to,
+    createdAt: new Date().toISOString()
+  };
+}
+
+/** Opportunity-level twin used by v2's independent product drafts. */
+export async function createOpportunityGmailDraft(opportunity: OpportunityRow): Promise<GmailDraft> {
+  if (!opportunity.draft) throw new Error(`${opportunity.productName} opportunity has no draft`);
+  const d = opportunity.draft;
+  const email = d.to?.email ?? opportunity.contact?.email ?? null;
+  const to = email ? formatMailbox(d.to?.name ?? opportunity.contact?.name, email) : null;
+  const token = await accessToken();
+  const from = formatMailbox(process.env.REP_NAME, await accountEmail(token));
+  const raw = Buffer.from(
+    buildMime({ from, to, subject: stripEmDashes(d.subject), body: stripEmDashes(d.body) })
+  ).toString('base64url');
+  const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/drafts', {
+    method: 'POST',
+    headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ message: { raw } })
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(`Gmail drafts.create failed: ${json.error?.message ?? res.status}`);
   return {
     id: json.id,
     messageId: json.message.id,

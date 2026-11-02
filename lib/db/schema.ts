@@ -1,15 +1,20 @@
 import { index, integer, jsonb, pgTable, primaryKey, text, timestamp } from 'drizzle-orm/pg-core';
 import type { GmailDraft } from '@/lib/gmail';
+import type { ProductCategory } from '@/lib/catalog/types';
+import type { ScoreBreakdown, ScoredSignal } from '@/lib/scoring';
 import type {
   Approval,
   Detection,
   Draft,
   EvidenceItem,
+  OpportunityContact,
+  OpportunityStatus,
   Perf,
   PerfResult,
   ProspectStatus,
   Qualification,
-  Research
+  Research,
+  SalesMotion
 } from '@/lib/types';
 
 /**
@@ -62,4 +67,49 @@ export const psiCache = pgTable(
   (t) => [primaryKey({ columns: [t.url, t.strategy] })]
 );
 
+/** One independently reviewable Vercel product opportunity for an account. */
+export const opportunities = pgTable(
+  'opportunities',
+  {
+    id: text('id').primaryKey(),
+    domain: text('domain')
+      .notNull()
+      .references(() => prospects.domain, { onDelete: 'cascade' }),
+    runId: text('run_id').notNull(),
+
+    productId: text('product_id').notNull(),
+    productName: text('product_name').notNull(),
+    category: text('category').$type<ProductCategory>().notNull(),
+    salesMotion: text('sales_motion').$type<SalesMotion>().notNull().default('new_business'),
+    status: text('status').$type<OpportunityStatus>().notNull().default('candidate'),
+
+    angle: text('angle').notNull(),
+    whyNow: text('why_now').notNull(),
+    whyVercel: text('why_vercel').notNull(),
+    targetRole: text('target_role').notNull(),
+    score: integer('score').notNull(),
+    scoreBreakdown: jsonb('score_breakdown').$type<ScoreBreakdown>().notNull(),
+    matchedSignals: jsonb('matched_signals').$type<ScoredSignal[]>().notNull(),
+    evidenceIds: jsonb('evidence_ids').$type<string[]>().notNull(),
+
+    contact: jsonb('contact').$type<OpportunityContact>(),
+    draft: jsonb('draft').$type<Draft>(),
+    decision: jsonb('decision').$type<Approval>(),
+    approvalToken: text('approval_token'),
+    slack: jsonb('slack').$type<{ channel: string; ts: string }>(),
+    gmailDraft: jsonb('gmail_draft').$type<GmailDraft>(),
+    gmailError: text('gmail_error'),
+    error: text('error'),
+
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+  },
+  (t) => [
+    index('opportunities_domain_run_idx').on(t.domain, t.runId),
+    index('opportunities_status_idx').on(t.status),
+    index('opportunities_score_idx').on(t.score)
+  ]
+);
+
 export type ProspectRow = typeof prospects.$inferSelect;
+export type OpportunityRow = typeof opportunities.$inferSelect;

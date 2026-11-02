@@ -1,8 +1,8 @@
 import { neon } from '@neondatabase/serverless';
 import { drizzle as drizzleNeon, type NeonHttpDatabase } from 'drizzle-orm/neon-http';
-import { eq, sql } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import * as schema from './schema';
-import type { ProspectRow } from './schema';
+import type { OpportunityRow, ProspectRow } from './schema';
 
 type DB = NeonHttpDatabase<typeof schema>;
 let _db: DB | null = null;
@@ -33,7 +33,7 @@ export function db(): DB {
   return _db!;
 }
 
-export const localDbPath = () => `${process.cwd()}/.pglite`;
+export const localDbPath = () => process.env.PGLITE_PATH || `${process.cwd()}/.pglite`;
 
 export { schema };
 
@@ -56,4 +56,49 @@ export async function getProspect(domain: string) {
     .where(eq(schema.prospects.domain, domain))
     .limit(1);
   return rows[0] ?? null;
+}
+
+type OpportunityInsert = typeof schema.opportunities.$inferInsert;
+type OpportunityPatch = Partial<Omit<OpportunityRow, 'id' | 'domain' | 'runId' | 'createdAt' | 'updatedAt'>>;
+
+export async function insertOpportunity(value: OpportunityInsert) {
+  const rows = await db().insert(schema.opportunities).values(value).returning();
+  return rows[0];
+}
+
+export async function updateOpportunity(id: string, patch: OpportunityPatch) {
+  const rows = await db()
+    .update(schema.opportunities)
+    .set({ ...patch, updatedAt: sql`now()` })
+    .where(eq(schema.opportunities.id, id))
+    .returning();
+  return rows[0] ?? null;
+}
+
+export async function getOpportunity(id: string) {
+  const rows = await db()
+    .select()
+    .from(schema.opportunities)
+    .where(eq(schema.opportunities.id, id))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function getOpportunities(domain: string, runId?: string | null) {
+  return db()
+    .select()
+    .from(schema.opportunities)
+    .where(
+      runId
+        ? and(eq(schema.opportunities.domain, domain), eq(schema.opportunities.runId, runId))
+        : eq(schema.opportunities.domain, domain)
+    )
+    .orderBy(desc(schema.opportunities.score), desc(schema.opportunities.createdAt));
+}
+
+export async function expireOpportunities(domain: string) {
+  await db()
+    .update(schema.opportunities)
+    .set({ status: 'expired', approvalToken: null, updatedAt: sql`now()` })
+    .where(and(eq(schema.opportunities.domain, domain), eq(schema.opportunities.status, 'awaiting_approval')));
 }
