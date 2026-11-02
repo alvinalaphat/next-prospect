@@ -59,15 +59,11 @@ export function OpportunityCards({ opportunities, ledger }: { opportunities: Opp
               <Buyer opportunity={opportunity} />
 
               <div className="rounded-lg bg-hover px-4 sm:px-5">
-                <Disclosure title="Score and supporting signals" hint="Open the deterministic breakdown and source receipts">
-                  <dl className="grid grid-cols-2 gap-5 text-sm sm:grid-cols-5">
-                    <ScorePart label="Product fit" value={opportunity.scoreBreakdown.productFit} />
-                    <ScorePart label="Timing" value={opportunity.scoreBreakdown.trigger} />
-                    <ScorePart label="Account" value={opportunity.scoreBreakdown.accountValue} />
-                    <ScorePart label="Buyer" value={opportunity.scoreBreakdown.buyerQuality} />
-                    <ScorePart label="Risk" value={opportunity.scoreBreakdown.risk} />
-                  </dl>
-                  <Sources ids={opportunity.evidenceIds} ledger={ledger} />
+                <Disclosure
+                  title={`Why this opportunity scored ${opportunity.score}`}
+                  hint={`${scoreAssessment(opportunity.score).label} · ${scoreDriverSummary(opportunity)}`}
+                >
+                  <ScoreExplanation opportunity={opportunity} ledger={ledger} />
                 </Disclosure>
               </div>
 
@@ -106,18 +102,20 @@ function PitchReason({ label, children }: { label: string; children: React.React
 function Buyer({ opportunity }: { opportunity: OpportunityRow }) {
   const contact = opportunity.contact;
   return (
-    <section aria-label={`Recommended buyer for ${opportunity.productName}`} className="rounded-lg bg-hover p-4 sm:p-5">
-      <p className="text-muted-foreground text-xs font-medium uppercase tracking-wider">Recommended buyer</p>
-      <div className="mt-2 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <section aria-label={`Recommended buyer for ${opportunity.productName}`} className="rounded-lg border bg-hover/60 p-4 sm:p-5">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
+          <p className="text-muted-foreground text-xs font-medium uppercase tracking-wider">Recommended buyer</p>
           {contact?.name ? (
             <>
-              <p className="font-medium">{contact.name}</p>
-              <p className="text-muted-foreground mt-0.5 text-sm">{contact.title ?? opportunity.targetRole}</p>
+              <div className="mt-1.5 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                <p className="font-medium">{contact.name}</p>
+                <p className="text-muted-foreground text-sm">{contact.title ?? opportunity.targetRole}</p>
+              </div>
             </>
           ) : (
             <>
-              <p className="font-medium">{opportunity.targetRole}</p>
+              <p className="mt-1.5 font-medium">{opportunity.targetRole}</p>
               <p className="text-muted-foreground mt-0.5 text-sm">No named person verified yet.</p>
             </>
           )}
@@ -125,12 +123,12 @@ function Buyer({ opportunity }: { opportunity: OpportunityRow }) {
         {contact && (contact.linkedinUrl || contact.email) && (
           <div className="flex shrink-0 flex-wrap gap-2">
             {contact.linkedinUrl && (
-              <a href={contact.linkedinUrl} target="_blank" rel="noreferrer" className="hover:bg-background inline-flex min-h-10 items-center gap-2 rounded-lg px-3 text-sm font-medium">
+              <a href={contact.linkedinUrl} target="_blank" rel="noreferrer" className="bg-background hover:bg-accent inline-flex min-h-9 items-center gap-2 rounded-lg border px-3 text-sm font-medium">
                 <LinkedInIcon className="size-3.5" /> LinkedIn
               </a>
             )}
             {contact.email && (
-              <a href={`mailto:${contact.email}`} className="hover:bg-background inline-flex min-h-10 items-center gap-2 rounded-lg px-3 text-sm font-medium">
+              <a href={`mailto:${contact.email}`} className="bg-background hover:bg-accent inline-flex min-h-9 items-center gap-2 rounded-lg border px-3 text-sm font-medium">
                 <Mail className="size-3.5" /> Email
               </a>
             )}
@@ -138,10 +136,9 @@ function Buyer({ opportunity }: { opportunity: OpportunityRow }) {
         )}
       </div>
       {contact?.rationale && (
-        <div className="mt-3 max-w-2xl">
-          <Disclosure title="Why this buyer">
-            <p className="text-muted-foreground text-sm leading-6">{contact.rationale}</p>
-          </Disclosure>
+        <div className="mt-4 border-t pt-4 sm:grid sm:grid-cols-[8rem_1fr] sm:gap-4">
+          <p className="text-muted-foreground text-xs font-medium uppercase tracking-wider">Why this person</p>
+          <p className="mt-1 text-sm leading-6 sm:mt-0">{contact.rationale}</p>
         </div>
       )}
     </section>
@@ -177,11 +174,98 @@ function DraftPreview({ opportunity, ledger }: { opportunity: OpportunityRow; le
   );
 }
 
-function ScorePart({ label, value }: { label: string; value: number }) {
+function scoreAssessment(score: number) {
+  if (score >= 60) return { label: 'Strong opportunity', takeaway: 'Prioritize personalized outreach while the evidence is current.' };
+  if (score >= 35) return { label: 'Promising opportunity', takeaway: 'Worth pursuing, with the missing signals serving as useful discovery questions.' };
+  return { label: 'Early opportunity', takeaway: 'Review the evidence and validate the gaps before prioritizing outreach.' };
+}
+
+function scoreDriverSummary(opportunity: OpportunityRow) {
+  const breakdown = opportunity.scoreBreakdown;
+  const drivers = [
+    breakdown.productFit > 0 && 'product fit',
+    breakdown.trigger > 0 && 'timing',
+    breakdown.accountValue > 0 && 'account potential',
+    breakdown.buyerQuality > 0 && 'buyer confidence'
+  ].filter(Boolean) as string[];
+  if (drivers.length === 0) return 'No positive scoring signals yet';
+  if (drivers.length === 1) return `${drivers[0]} is the main score driver`;
+  return `${drivers.slice(0, -1).join(', ')} and ${drivers.at(-1)} drive the score`;
+}
+
+function ScoreExplanation({ opportunity, ledger }: { opportunity: OpportunityRow; ledger: EvidenceItem[] }) {
+  const breakdown = opportunity.scoreBreakdown;
+  const assessment = scoreAssessment(opportunity.score);
+  const positive = [
+    { label: 'Product fit', value: breakdown.productFit, description: 'Public evidence connects this Vercel product to a specific need.' },
+    { label: 'Timing', value: breakdown.trigger, description: 'A recent event creates a reason to start the conversation now.' },
+    { label: 'Account potential', value: breakdown.accountValue, description: 'Company scale, growth, or existing Vercel adoption increases the opportunity.' },
+    { label: 'Buyer confidence', value: breakdown.buyerQuality, description: 'A relevant person was identified for this product conversation.' }
+  ].filter((item) => item.value > 0);
+  const missing = [
+    breakdown.trigger === 0 && 'a timely trigger',
+    breakdown.accountValue === 0 && 'additional account-value evidence',
+    breakdown.buyerQuality === 0 && 'a verified buyer'
+  ].filter(Boolean) as string[];
+
   return (
-    <div>
-      <dt className="text-muted-foreground text-xs">{label}</dt>
-      <dd className="mt-1 font-mono tabular-nums">{value > 0 ? '+' : ''}{value}</dd>
+    <div className="pb-1">
+      <div className="grid gap-6 sm:grid-cols-[11rem_1fr] sm:gap-8">
+        <div>
+          <p className="text-muted-foreground text-xs font-medium uppercase tracking-wider">Overall assessment</p>
+          <p className="mt-2 font-mono text-2xl tabular-nums">{opportunity.score}<span className="text-muted-foreground text-sm">/100</span></p>
+          <p className="mt-1 text-sm font-medium">{assessment.label}</p>
+        </div>
+        <div>
+          <p className="text-sm font-medium">Sales takeaway</p>
+          <p className="text-muted-foreground mt-1 text-sm leading-6">{assessment.takeaway}</p>
+        </div>
+      </div>
+
+      <div className="mt-6 border-t pt-5">
+        <h4 className="text-sm font-medium">What raised the score</h4>
+        <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+          {positive.map((item) => <ScoreDriver key={item.label} {...item} />)}
+        </dl>
+      </div>
+
+      <div className="mt-5 grid gap-4 text-sm sm:grid-cols-2">
+        <div>
+          <p className="font-medium">Still unproven</p>
+          <p className="text-muted-foreground mt-1 leading-6">
+            {missing.length > 0 ? `No points yet for ${joinList(missing)}.` : 'The major qualification areas all contributed to the score.'}
+          </p>
+        </div>
+        <div>
+          <p className="font-medium">Risk adjustment</p>
+          <p className="text-muted-foreground mt-1 leading-6">
+            {breakdown.risk < 0 ? `${Math.abs(breakdown.risk)} points were removed for a lower-priority or lower-ROI account signal.` : 'No risk penalty was applied.'}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-5 border-t pt-4">
+        <p className="text-muted-foreground text-xs">The score is deterministic and based only on the evidence collected for this opportunity.</p>
+        <Sources ids={opportunity.evidenceIds} ledger={ledger} />
+      </div>
     </div>
   );
+}
+
+function ScoreDriver({ label, value, description }: { label: string; value: number; description: string }) {
+  return (
+    <div className="rounded-lg bg-background p-3.5">
+      <div className="flex items-baseline justify-between gap-3">
+        <dt className="text-sm font-medium">{label}</dt>
+        <dd className="text-positive font-mono text-sm tabular-nums">+{value}</dd>
+      </div>
+      <p className="text-muted-foreground mt-1 text-xs leading-5">{description}</p>
+    </div>
+  );
+}
+
+function joinList(items: string[]) {
+  if (items.length < 2) return items[0] ?? '';
+  if (items.length === 2) return `${items[0]} or ${items[1]}`;
+  return `${items.slice(0, -1).join(', ')}, or ${items.at(-1)}`;
 }
