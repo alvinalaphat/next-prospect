@@ -1,0 +1,57 @@
+name: CI
+
+# Vercel's Git integration owns preview and production deployments. This
+# workflow supplies the checks Vercel does not: types, deterministic product
+# scoring, the isolated approval path, and a production bundle.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Dependency installation and project scripts run with a read-only token.
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@7088e561eb65bb68695d245aa206f005ef30921d # v4.1.0
+        with:
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22.17.1
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm run typecheck
+
+      - name: Evaluate catalog and scoring
+        run: pnpm run eval:v2
+
+      - name: Test isolated approval path
+        run: pnpm run test:v2-e2e
+
+      - name: Build production bundle
+        run: pnpm run build
+        env:
+          CI: true
+          NEXT_TELEMETRY_DISABLED: 1

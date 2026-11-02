@@ -12,6 +12,10 @@ of lead-agent, so every change is reviewable as a diff.
 
 > Nothing is ever sent. "Approve" only marks a draft approved.
 
+> **Working with an AI agent?** Start with [AGENTS.md](./AGENTS.md). It is the
+> table of contents for product intent, architecture boundaries, workflow and
+> database guides, verification, deployment, and task-specific skills.
+
 ## What it does
 
 For each domain in a CSV, one durable workflow:
@@ -132,7 +136,7 @@ eval/                           15 labelled domains + precision/recall script
 
 ## Run it
 
-Prerequisites: Node 20+, pnpm.
+Prerequisites: Node 22.17+, pnpm 11.10.
 
 ```bash
 pnpm install
@@ -150,6 +154,7 @@ pnpm run:csv data/seed.csv
 Other scripts:
 
 ```bash
+pnpm verify                       # typecheck + v2 eval + isolated E2E + build
 pnpm detect nike.com linear.app   # detector only, no keys needed
 pnpm eval                         # detection precision/recall
 npx workflow web                  # inspect workflow runs locally
@@ -194,12 +199,24 @@ stakeholder's email was published on a retrieved page.
 
 ### Deploy
 
+GitHub Actions verifies every pull request and push to `main`. Vercel's Git
+integration creates previews for branches and publishes `main`; CI does not
+hold deployment credentials or run a second deploy command.
+
+First-time project setup:
+
 ```bash
 vercel link
 vercel integration add neon --plan free_v3    # free Postgres, sets DATABASE_URL
 vercel env add EXA_API_KEY / PSI_API_KEY / RUN_SECRET / SLACK_*
 pnpm db:migrate
-vercel deploy --prod
+```
+
+Normal release:
+
+```bash
+pnpm verify
+git push origin main              # CI runs; Vercel builds and deploys
 ```
 
 ## Results
