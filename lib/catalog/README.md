@@ -34,9 +34,11 @@ reps do not receive repetitive micro-opportunities.
    alone.
 4. Add observable public signals. A rule should describe evidence that could
    genuinely support a sales conversation, not a keyword.
-5. Keep points within the intended category model. Shared account rules and
+5. Classify each rule explicitly. Product-fit rules establish a durable
+   workload, problem, or requirement; trigger rules establish why the timing
+   matters and must be freshness-sensitive.
+6. Keep points within the intended category model. Shared account rules and
    category caps live in `lib/scoring.ts`.
-6. Use `freshnessSensitive: true` only for events whose value decays over time.
 7. Add only claims safe to place in externally reviewed outreach.
 8. Decide whether the entry is a standalone product or a capability that must
    roll up to a parent.
@@ -46,6 +48,9 @@ reps do not receive repetitive micro-opportunities.
 ## Invariants
 
 - Every selected opportunity needs at least one grounded product-fit signal.
+- Trigger signals never establish product fit and require a valid observation
+  date to contribute points.
+- Every standalone product defines at least one product-fit rule.
 - Capabilities do not create standalone opportunities.
 - Existing Vercel hosting suppresses only the Vercel Platform migration motion.
 - Approved claims are not a general license to invent adjacent benefits.
