@@ -14,9 +14,9 @@
     "detect": "tsx scripts/detect.ts",
     "run:csv": "tsx scripts/run.ts",
     "eval": "tsx eval/run.ts",
-    "eval:v2": "tsx eval/v2.ts",
-    "test:v2-e2e": "tsx eval/v2-e2e.ts",
-    "verify": "pnpm run typecheck && pnpm run eval:v2 && pnpm run test:v2-e2e && pnpm run build",
+    "eval:detect": "tsx eval/detect.ts",
+    "test:e2e": "tsx eval/e2e.ts",
+    "verify": "pnpm run typecheck && pnpm run eval && pnpm run test:e2e && pnpm run build",
     "gmail:auth": "tsx scripts/gmail-auth.ts"
   },
   "dependencies": {

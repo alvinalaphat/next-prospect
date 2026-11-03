@@ -117,6 +117,7 @@ workflows/outbound/
   steps.ts                      'use step' functions (persist each stage)
 lib/
   catalog/                      full product/capability catalog and signal rules
+  refresh/                      catalog audit and case-study refresh services
   scoring.ts                    deterministic signal scoring and caps
   opportunity-services.ts      routing, buyer selection, product-specific drafting
   opportunity-decision.ts      independent opportunity approval + Gmail handoff
@@ -129,9 +130,11 @@ lib/
   decision.ts                   record a decision and create the Gmail draft
   approval-token.ts             ties a Slack or dashboard click to one run
   db/                           Drizzle schema (prospects, psi_cache)
+workflows/maintenance/          weekly catalog and proof refresh workflows
 eval/                           15 labelled domains + precision/recall script
-  v2.ts                         catalog and deterministic scoring checks
-  v2-e2e.ts                     isolated account → opportunity → approval test
+  run.ts                        catalog and deterministic scoring checks
+  e2e.ts                        isolated account → opportunity → approval test
+  detect.ts                     detector precision/recall checks
 ```
 
 ## Run it
@@ -154,9 +157,11 @@ pnpm run:csv data/seed.csv
 Other scripts:
 
 ```bash
-pnpm verify                       # typecheck + v2 eval + isolated E2E + build
+pnpm verify                       # typecheck + catalog eval + isolated E2E + build
 pnpm detect nike.com linear.app   # detector only, no keys needed
-pnpm eval                         # detection precision/recall
+pnpm eval                         # catalog and deterministic scoring
+pnpm eval:detect                  # detection precision/recall
+pnpm test:e2e                     # isolated account → opportunity → approval
 npx workflow web                  # inspect workflow runs locally
 ```
 
@@ -173,6 +178,7 @@ npx workflow web                  # inspect workflow runs locally
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN` | Gmail drafts | Optional; see Gmail drafts below. |
 | `REP_NAME` | drafts | Name that signs drafts (fills `{{rep_name}}`). |
 | `RUN_SECRET` | prod | Required to start runs and approve from the dashboard. |
+| `CRON_SECRET` | prod | Set by Vercel Cron and required by the weekly catalog/proof refresh routes. |
 | `APP_URL` | Slack links | Defaults to the Vercel production URL. |
 
 ### Slack

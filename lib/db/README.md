@@ -18,6 +18,9 @@ storage.
 - `opportunities`: product-specific angle, score, evidence IDs, buyer, draft,
   approval state, and Slack/Gmail metadata.
 - `psi_cache`: cached PageSpeed responses to reduce quota use.
+- `maintenance_runs`: durable status and results for weekly catalog/proof jobs.
+- `proof_records`: refreshed Vercel customer proof and competitor context;
+  these records never contribute scoring points.
 
 The opportunity is the unit of review. The prospect status is a dashboard-level
 summary and must remain consistent with child decisions.
@@ -56,7 +59,7 @@ the schema and migration history. It is destructive and follows the same
 running it.
 
 For automated tests, prefer a temporary `PGLITE_PATH` and delete
-`DATABASE_URL` in the test process, as `eval/v2-e2e.ts` does.
+`DATABASE_URL` in the test process, as `eval/e2e.ts` does.
 
 ## Query boundaries
 

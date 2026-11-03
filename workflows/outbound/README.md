@@ -39,7 +39,7 @@ decisions after the durable run reaches `awaiting_approval`.
 
 ### Detect
 
-Uses a polite plain fetch plus DNS. It does not run a headless browser. V2
+Uses a polite plain fetch plus DNS. It does not run a headless browser. Product
 product eligibility is evaluated later, so being off Next.js or already on
 Vercel does not stop the entire account. An unreachable site is recorded but
 the current workflow still returns `stop: false`; change this only with an
@@ -79,6 +79,6 @@ the dashboard remains a valid review surface. Nothing sends automatically.
 
 1. Update this file if stage order, retry behavior, or a status invariant changes.
 2. Run `pnpm typecheck` and `pnpm build`.
-3. Run `pnpm eval:v2` for planning or scoring changes.
-4. Run `pnpm test:v2-e2e` for opportunity, persistence, token, or decision changes.
+3. Run `pnpm eval` for planning or scoring changes.
+4. Run `pnpm test:e2e` for opportunity, persistence, token, or decision changes.
 5. Exercise a real local run when changing an external stage or its degradation path.

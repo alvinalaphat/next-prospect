@@ -42,8 +42,8 @@ reps do not receive repetitive micro-opportunities.
 7. Add only claims safe to place in externally reviewed outreach.
 8. Decide whether the entry is a standalone product or a capability that must
    roll up to a parent.
-9. Add or update deterministic cases in `eval/v2.ts`.
-10. Run `pnpm eval:v2`, `pnpm test:v2-e2e`, `pnpm typecheck`, and `pnpm build`.
+9. Add or update deterministic cases in `eval/run.ts`.
+10. Run `pnpm eval`, `pnpm test:e2e`, `pnpm typecheck`, and `pnpm build`.
 
 ## Invariants
 

@@ -21,7 +21,7 @@ export const stepDetect = async (domain: string, runId: string) => {
   const detection = await detect(domain);
   const evidence = detectionEvidence(detection);
 
-  // V2 evaluates eligibility per product. Being on Vercel or not using
+  // Eligibility is evaluated per product. Being on Vercel or not using
   // Next.js can suppress a hosting motion, but must not eliminate AI,
   // observability, security, or other product opportunities.
   const status: ProspectStatus | null =

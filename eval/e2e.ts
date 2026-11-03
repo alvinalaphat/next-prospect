@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 async function main() {
-  process.env.PGLITE_PATH = join(mkdtempSync(join(tmpdir(), 'next-prospect-v2-')), 'db');
+  process.env.PGLITE_PATH = join(mkdtempSync(join(tmpdir(), 'next-prospect-e2e-')), 'db');
   delete process.env.DATABASE_URL;
   delete process.env.GOOGLE_CLIENT_ID;
   delete process.env.GOOGLE_CLIENT_SECRET;
@@ -18,7 +18,17 @@ await migrate(drizzle(migrationClient), { migrationsFolder: './drizzle' });
 await migrationClient.close();
 
 const { approvalToken } = await import('@/lib/approval-token');
-const { insertOpportunity, getOpportunity, getProspect, upsertProspect } = await import('@/lib/db');
+const {
+  completeMaintenanceRun,
+  getLatestMaintenanceRun,
+  insertOpportunity,
+  getOpportunity,
+  getProspect,
+  listActiveProofRecords,
+  startMaintenanceRun,
+  upsertProofRecords,
+  upsertProspect
+} = await import('@/lib/db');
 const { applyOpportunityDecision } = await import('@/lib/opportunity-decision');
 const { getProduct } = await import('@/lib/catalog/products');
 const { scoreOpportunity } = await import('@/lib/scoring');
@@ -82,7 +92,34 @@ const result = await applyOpportunityDecision(token, {
 assert.equal(result.applied, true);
 assert.equal((await getOpportunity(id))?.status, 'approved');
 assert.equal((await getProspect(domain))?.status, 'approved');
+
+await startMaintenanceRun('fixture-proof-refresh', 'proof');
+const savedProofs = await upsertProofRecords([{
+  id: 'vercel-fixture',
+  vendor: 'vercel',
+  usage: 'customer-proof',
+  company: 'Fixture Customer',
+  title: 'Fixture customer story',
+  sourceUrl: 'https://vercel.com/customers/fixture',
+  summary: 'A grounded fixture used to verify proof persistence.',
+  productIds: ['ai-gateway'],
+  industries: ['software'],
+  workloads: ['customer-facing AI'],
+  candidateClaims: ['Fixture Customer used AI Gateway.'],
+  publishedAt: '2026-10-01',
+  lastSeenAt: new Date().toISOString()
+}]);
+assert.equal(savedProofs, 1);
+assert.equal((await listActiveProofRecords()).length, 1);
+await completeMaintenanceRun('fixture-proof-refresh', {
+  refreshedAt: new Date().toISOString(),
+  discovered: 1,
+  saved: 1,
+  byVendor: { vercel: 1, cloudflare: 0, railway: 0 }
+});
+assert.equal((await getLatestMaintenanceRun('proof'))?.status, 'complete');
   console.log('✓ e2e: account → scored expansion opportunity → grounded draft → approval → parent status');
+  console.log('✓ maintenance: proof upsert → durable refresh status');
 }
 
 main().then(() => process.exit(0)).catch((error) => {
