@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { OPPORTUNITY_PRODUCTS, PRODUCTS, getProduct } from '@/lib/catalog/products';
 import { isCronAuthorized } from '@/lib/cron-auth';
 import { contactActivityEvidence, contactActivityId, containsFullName } from '@/lib/contact-activity';
+import { relativeTime } from '@/lib/format';
 import { freshnessMultiplier, scoreOpportunity } from '@/lib/scoring';
 
 const ids = PRODUCTS.map((product) => product.id);
@@ -23,6 +24,11 @@ for (const product of PRODUCTS) {
 
 assert.equal(freshnessMultiplier(), 0, 'undated freshness-sensitive evidence must not score');
 assert.equal(freshnessMultiplier('not-a-date'), 0, 'invalid freshness-sensitive evidence must not score');
+assert.equal(
+  relativeTime('2026-01-01T00:00:00Z', Date.parse('2026-01-01T00:01:00Z')),
+  '1m ago',
+  'relative time should be deterministic when the render timestamp is supplied'
+);
 
 process.env.CRON_SECRET = 'fixture-cron-secret';
 assert.equal(isCronAuthorized(new Request('https://example.com/api/cron', {

@@ -8,6 +8,7 @@ import { STATUS } from '@/lib/format';
 export const dynamic = 'force-dynamic';
 
 export default async function Dashboard() {
+  const renderedAt = Date.now();
   const p = schema.prospects;
   const [rows, allOpportunities] = await Promise.all([db()
     .select({
@@ -79,7 +80,7 @@ export default async function Dashboard() {
         ))}
       </dl>
 
-      <ProspectsTable items={items} />
+      <ProspectsTable items={items} renderedAt={renderedAt} />
     </div>
   );
 }
