@@ -14,7 +14,7 @@ flowchart TD
   DETECT --> PERF[PageSpeed mobile and desktop]
   PERF --> RESEARCH[Public company research]
   RESEARCH --> PLAN[Catalog routing and deterministic scoring]
-  PLAN --> ENRICH[Buyer, rescore, product-specific draft]
+  PLAN --> ENRICH[Buyer activity, proof selection, rescore, product-specific draft]
   ENRICH --> REVIEW[Dashboard and optional Slack review]
   REVIEW -->|approve| GMAIL[Optional Gmail draft]
   DETECT & PERF & RESEARCH --> LEDGER[(Evidence ledger)]
@@ -43,6 +43,7 @@ opportunities so stale approval actions cannot remain live.
 | Decisions and Gmail handoff | `lib/opportunity-decision.ts`, `lib/gmail.ts` |
 | Slack cards and interactions | `lib/slack.ts`, `app/api/slack/route.ts` |
 | Persistence | `lib/db/`, `drizzle/` |
+| Weekly catalog/proof maintenance | `workflows/maintenance/`, `lib/refresh/` |
 | Evaluation fixtures and scripts | `eval/` |
 
 ## Server and client boundaries
@@ -69,9 +70,13 @@ changes relative to older training data.
 ## State model
 
 `prospects` stores the latest account-level run state and shared evidence.
-`opportunities` stores product-specific recommendations, contacts, scores,
-drafts, review state, and Slack/Gmail metadata. `psi_cache` prevents redundant
-PageSpeed work.
+`opportunities` stores product-specific recommendations, contacts and their
+attributable public activity, scores, selected proof/context IDs, drafts,
+review state, and Slack/Gmail metadata. The opportunity review surface shows
+buyer activity and Vercel precedent alongside each pitch, while labeling
+competitor material as internal-only. `psi_cache` prevents redundant PageSpeed
+work. `maintenance_runs` records weekly refresh outcomes, while `proof_records`
+stores non-scoring customer proof and competitive context.
 
 The account status is a summary for dashboard filtering. Each opportunity has
 its own decision lifecycle and is the authoritative unit of review.

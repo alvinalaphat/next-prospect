@@ -12,12 +12,12 @@ Node 22.17, with the pnpm version pinned in `package.json`. It performs a
 frozen-lockfile install, then runs:
 
 1. `pnpm typecheck`
-2. `pnpm eval:v2`
-3. `pnpm test:v2-e2e`
+2. `pnpm eval`
+3. `pnpm test:e2e`
 4. `pnpm build`
 
 Concurrent runs for the same branch cancel older in-progress runs. CI has no
-application, Vercel, database, Gmail, Slack, or AI credentials. The v2 end-to-
+application, Vercel, database, Gmail, Slack, or AI credentials. The end-to-
 end test creates a temporary isolated PGlite database and does not need them.
 
 ## Core checks
@@ -27,8 +27,8 @@ end test creates a temporary isolated PGlite database and does not need them.
 | Markdown only | Link/path review and `git diff --check` |
 | TypeScript or React | `pnpm typecheck` |
 | Production-facing code | `pnpm build` |
-| Scoring, catalog, decisions, or persistence | `pnpm eval:v2` and `pnpm test:v2-e2e` |
-| Detection | `pnpm eval` and targeted `pnpm detect <domain>` when network access is available |
+| Scoring, catalog, decisions, or persistence | `pnpm eval` and `pnpm test:e2e` |
+| Detection | `pnpm eval:detect` and targeted `pnpm detect <domain>` when network access is available |
 | UI or interaction | Core checks plus Chrome desktop/mobile interaction and console review |
 | Schema or migration | `pnpm db:migrate` against an isolated/local database, then the relevant tests |
 
@@ -60,19 +60,19 @@ pnpm exec next build --webpack
 The fallback is for verification constraints; do not silently change the
 project's build script to work around an agent sandbox.
 
-### `pnpm eval:v2`
+### `pnpm eval`
 
 Exercises catalog and deterministic scoring expectations. Use it when product
 rules, shared account rules, confidence, caps, or suppression behavior changes.
 
-### `pnpm test:v2-e2e`
+### `pnpm test:e2e`
 
 Creates an isolated temporary PGlite database and proves the account to scored
 opportunity to grounded draft fixture to approval path. It deliberately removes
 Gmail credentials. A Slack-not-configured warning is expected when Slack env
 vars are absent.
 
-### `pnpm eval`
+### `pnpm eval:detect`
 
 Runs the labelled detector evaluation in `eval/labels.csv`. The dataset is a
 sanity check, not an unbiased benchmark; read `eval/README.md` before quoting
@@ -98,7 +98,7 @@ tab.
 
 `pnpm db:reset` is destructive. It uses `DATABASE_URL` when present and local
 `.pglite` otherwise. Never run it as a generic test setup without resolving the
-target database first. The v2 end-to-end script is safer because it supplies an
+target database first. The end-to-end script is safer because it supplies an
 isolated temporary `PGLITE_PATH` and deletes `DATABASE_URL` in-process.
 
 ## Automation boundaries

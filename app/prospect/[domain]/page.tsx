@@ -5,7 +5,8 @@ import { AutoRefresh } from '@/components/auto-refresh';
 import { Score, StatusBadge } from '@/components/badges';
 import { Disclosure } from '@/components/disclosure';
 import { OpportunityCards } from '@/components/opportunity-cards';
-import { getOpportunities, getProspect } from '@/lib/db';
+import { contactActivityEvidence } from '@/lib/contact-activity';
+import { getOpportunities, getProofRecords, getProspect } from '@/lib/db';
 import { HOST_LABEL, ms, RATING_TONE, relativeTime, STATUS } from '@/lib/format';
 import { rate } from '@/lib/psi';
 import type { Detection, EvidenceItem, PerfResult, Research } from '@/lib/types';
@@ -17,10 +18,18 @@ export default async function ProspectPage({ params }: { params: Promise<{ domai
   const prospect = await getProspect(decodeURIComponent(domain));
   if (!prospect) notFound();
   const opportunities = await getOpportunities(prospect.domain, prospect.runId);
+  const proofIds = [...new Set(opportunities.flatMap((opportunity) => [
+    ...(opportunity.proofIds ?? []),
+    ...(opportunity.competitiveContextIds ?? [])
+  ]))];
+  const proofRecords = await getProofRecords(proofIds);
 
   const detection = prospect.detection;
   const research = prospect.research;
-  const ledger = prospect.evidence ?? [];
+  const ledger = [
+    ...(prospect.evidence ?? []),
+    ...opportunities.flatMap((opportunity) => contactActivityEvidence(opportunity.contactActivity ?? []))
+  ].filter((item, index, items) => items.findIndex((candidate) => candidate.id === item.id) === index);
   const running = STATUS[prospect.status].group === 'running';
   const topScore = opportunities[0]?.score ?? prospect.fitScore;
 
@@ -65,7 +74,7 @@ export default async function ProspectPage({ params }: { params: Promise<{ domai
 
       {research && hasCompanyContext(research) && <CompanyBackground research={research} />}
 
-      <OpportunityCards opportunities={opportunities} ledger={ledger} />
+      <OpportunityCards opportunities={opportunities} ledger={ledger} proofRecords={proofRecords} />
 
       {(prospect.perf || detection || ledger.length > 0) && (
         <section aria-labelledby="supporting-evidence-title" className="max-w-5xl">

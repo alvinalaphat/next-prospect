@@ -12,7 +12,8 @@ optional batch delay
   → research public account signals
   → assemble the shared evidence ledger
   → plan and score up to three product opportunities
-  → for each opportunity: find buyer, rescore, draft, request review
+  → for each opportunity: find buyer, research public buyer activity, attach
+    customer proof and competitive context, rescore, draft, request review
   → stop at awaiting approval
 ```
 
@@ -39,7 +40,7 @@ decisions after the durable run reaches `awaiting_approval`.
 
 ### Detect
 
-Uses a polite plain fetch plus DNS. It does not run a headless browser. V2
+Uses a polite plain fetch plus DNS. It does not run a headless browser. Product
 product eligibility is evaluated later, so being off Next.js or already on
 Vercel does not stop the entire account. An unreachable site is recorded but
 the current workflow still returns `stop: false`; change this only with an
@@ -66,9 +67,13 @@ sorts by score, and keeps up to three.
 ### Enrich opportunity
 
 Buyer discovery runs after the product angle is known. The presence of a named,
-grounded buyer affects buyer-confidence points. Drafting receives only evidence
-selected for that opportunity, plus exact observed-host evidence for expansion
-copy when needed.
+grounded buyer affects buyer-confidence points. A second grounded search may
+add the selected buyer's recent public posts, blogs, talks, podcasts, or GitHub
+activity to drafting context, but it does not change product ranking or scoring.
+Relevant Vercel customer proof and competitor case studies are selected from
+the refreshed proof library and stored on the opportunity. Competitive context
+is never passed to drafting. Drafting receives only prospect/buyer evidence,
+plus exact observed-host evidence for expansion copy when needed.
 
 ### Request review
 
@@ -79,6 +84,6 @@ the dashboard remains a valid review surface. Nothing sends automatically.
 
 1. Update this file if stage order, retry behavior, or a status invariant changes.
 2. Run `pnpm typecheck` and `pnpm build`.
-3. Run `pnpm eval:v2` for planning or scoring changes.
-4. Run `pnpm test:v2-e2e` for opportunity, persistence, token, or decision changes.
+3. Run `pnpm eval` for planning or scoring changes.
+4. Run `pnpm test:e2e` for opportunity, persistence, token, or decision changes.
 5. Exercise a real local run when changing an external stage or its degradation path.
