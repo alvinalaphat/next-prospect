@@ -14,8 +14,29 @@ const activitySchema = z.object({
   })).max(5)
 });
 
-function activityId(sourceUrl: string): string {
-  return `research.buyer-activity.${createHash('sha256').update(sourceUrl).digest('hex').slice(0, 20)}`;
+export function contactActivityId({
+  sourceUrl,
+  text,
+  relevance
+}: Pick<ContactActivity, 'sourceUrl' | 'text' | 'relevance'>): string {
+  const receipt = [sourceUrl, text, relevance].join('\0');
+  return `research.buyer-activity.${createHash('sha256').update(receipt).digest('hex').slice(0, 20)}`;
+}
+
+function normalizeIdentityText(value: string): string {
+  return value
+    .normalize('NFKC')
+    .toLocaleLowerCase('en')
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+
+export function containsFullName(text: string, name: string): boolean {
+  const normalizedName = normalizeIdentityText(name);
+  const normalizedText = normalizeIdentityText(text);
+  if (!normalizedName || !normalizedText) return false;
+  return ` ${normalizedText} `.includes(` ${normalizedName} `);
 }
 
 export async function researchContactActivity({
@@ -59,10 +80,9 @@ export async function researchContactActivity({
       highlights: (result.highlights ?? []).slice(0, 4)
     });
   }
-  const nameParts = contact.name.toLowerCase().split(/\s+/).filter((part) => part.length > 2);
   const attributable = [...retrieved.entries()].filter(([, result]) => {
-    const text = [result.title, result.author, ...result.highlights].filter(Boolean).join(' ').toLowerCase();
-    return nameParts.every((part) => text.includes(part));
+    const text = [result.title, result.author, ...result.highlights].filter(Boolean).join(' ');
+    return containsFullName(text, contact.name!);
   });
   if (!attributable.length) return [];
 
@@ -88,7 +108,7 @@ export async function researchContactActivity({
   return output.items
     .filter((item) => allowedSources.has(item.sourceUrl))
     .map((item) => ({
-      id: activityId(item.sourceUrl),
+      id: contactActivityId(item),
       personName: contact.name!,
       ...item,
       publishedAt: allowedSources.get(item.sourceUrl)?.publishedDate ?? null

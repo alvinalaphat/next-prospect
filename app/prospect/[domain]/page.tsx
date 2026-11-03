@@ -5,6 +5,7 @@ import { AutoRefresh } from '@/components/auto-refresh';
 import { Score, StatusBadge } from '@/components/badges';
 import { Disclosure } from '@/components/disclosure';
 import { OpportunityCards } from '@/components/opportunity-cards';
+import { contactActivityEvidence } from '@/lib/contact-activity';
 import { getOpportunities, getProspect } from '@/lib/db';
 import { HOST_LABEL, ms, RATING_TONE, relativeTime, STATUS } from '@/lib/format';
 import { rate } from '@/lib/psi';
@@ -20,7 +21,10 @@ export default async function ProspectPage({ params }: { params: Promise<{ domai
 
   const detection = prospect.detection;
   const research = prospect.research;
-  const ledger = prospect.evidence ?? [];
+  const ledger = [
+    ...(prospect.evidence ?? []),
+    ...opportunities.flatMap((opportunity) => contactActivityEvidence(opportunity.contactActivity ?? []))
+  ].filter((item, index, items) => items.findIndex((candidate) => candidate.id === item.id) === index);
   const running = STATUS[prospect.status].group === 'running';
   const topScore = opportunities[0]?.score ?? prospect.fitScore;
 

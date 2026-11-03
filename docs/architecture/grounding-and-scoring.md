@@ -97,11 +97,14 @@ When no person is sufficiently supported, store null contact fields and retain
 the explicit target role. That is a valid, honest result.
 
 After a named buyer is grounded, a separate search may find public posts,
-blogs, talks, podcasts, or GitHub activity from the prior year. The full buyer
-name must appear in the retrieved title, author, or highlights before the
-result reaches the model. The retrieved source owns the publication date;
-undated material is never described as recent. Buyer activity may ground a
-draft, but it does not change product ranking or numeric scoring.
+blogs, talks, podcasts, or GitHub activity from the prior year. The complete
+buyer name must appear as one boundary-aware phrase in the retrieved title,
+author, or highlights before the result reaches the model. The retrieved
+source owns the publication date; undated material is never described as
+recent. Buyer activity may ground a draft, but it does not change product
+ranking or numeric scoring. Its receipt ID includes the selected summary and
+relevance context so two opportunity-specific interpretations of one URL do
+not collide in the review ledger.
 
 ## Customer proof and competitive context
 
