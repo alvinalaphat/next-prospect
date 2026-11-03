@@ -30,6 +30,8 @@ Do not loosen these checks to make a draft look more complete.
 | Match evidence to catalog rules | Proposes rule IDs and evidence IDs | Rejects unknown rules and evidence |
 | Score an opportunity | Never chooses final number | Applies weights, confidence, freshness, caps, and risk |
 | Choose buyer | Selects from retrieved people | Verifies the selected name exists in retrieved text |
+| Find buyer activity | Selects and summarizes attributable public results | Requires the full selected name in retrieved content and preserves source dates |
+| Select customer proof | Never chooses scoring inputs | Matches active proof records to the selected catalog product |
 | Draft outreach | Writes from selected evidence and approved claims | Checks citations, numbers, formatting, and leaks |
 
 The model may interpret evidence. It may not create new facts, product claims,
@@ -93,6 +95,22 @@ only when found in retrieved public text; addresses are never constructed.
 
 When no person is sufficiently supported, store null contact fields and retain
 the explicit target role. That is a valid, honest result.
+
+After a named buyer is grounded, a separate search may find public posts,
+blogs, talks, podcasts, or GitHub activity from the prior year. The full buyer
+name must appear in the retrieved title, author, or highlights before the
+result reaches the model. The retrieved source owns the publication date;
+undated material is never described as recent. Buyer activity may ground a
+draft, but it does not change product ranking or numeric scoring.
+
+## Customer proof and competitive context
+
+The weekly proof library is supporting sales context, not prospect evidence.
+Vercel customer proof is selected only when its stored product IDs include the
+opportunity product. Competitor case studies are stored separately as internal
+competitive context and are never passed to outreach drafting. Neither proof
+type contributes signal matches or scoring points. Automatically extracted
+claims remain candidates for human review, not approved product claims.
 
 ## Draft contract
 

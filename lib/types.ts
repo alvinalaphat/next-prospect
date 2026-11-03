@@ -177,6 +177,16 @@ export type Research = z.infer<typeof researchSchema> & {
   buyerEmail?: { address: string; sourceUrl: string } | null;
 };
 
+export type ContactActivity = {
+  id: string;
+  personName: string;
+  text: string;
+  sourceUrl: string;
+  sourceType: 'linkedin-post' | 'blog' | 'talk' | 'podcast' | 'github' | 'other';
+  publishedAt: string | null;
+  relevance: string;
+};
+
 /**
  * ------------------------------------------------------------
  * Qualification (step 5)

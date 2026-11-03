@@ -4,6 +4,8 @@ import { getProspect, upsertProspect } from '@/lib/db';
 import { getOpportunity, insertOpportunity, updateOpportunity } from '@/lib/db';
 import { researchEvidence } from '@/lib/grounding';
 import { findOpportunityContact, planOpportunities, writeOpportunityDraft } from '@/lib/opportunity-services';
+import { contactActivityEvidence, researchContactActivity } from '@/lib/contact-activity';
+import { selectOpportunityProof } from '@/lib/proof-selection';
 import { emptyPerfResult, perfEvidence, PsiRateLimitError, runPsi } from '@/lib/psi';
 import { scoreOpportunity } from '@/lib/scoring';
 import { getProduct } from '@/lib/catalog/products';
@@ -247,6 +249,17 @@ export const stepEnrichOpportunity = async (
 
   const product = getProduct(opportunity.productId);
   if (!product) throw new FatalError(`Unknown product ${opportunity.productId}`);
+  const activity = contact.name && process.env.EXA_API_KEY
+    ? await researchContactActivity({
+        contact,
+        companyName: researchResult?.companyName ?? opportunity.domain,
+        domain: opportunity.domain,
+        productName: product.name,
+        angle: opportunity.angle
+      })
+    : [];
+  const activityEvidence = contactActivityEvidence(activity);
+  const proof = await selectOpportunityProof(product.id);
   const rescored = scoreOpportunity({
     product,
     matches: opportunity.matchedSignals,
@@ -254,6 +267,7 @@ export const stepEnrichOpportunity = async (
     buyerQuality: contact.name ? 15 : 5
   });
   const selectedEvidence = evidence.filter((item) => opportunity.evidenceIds.includes(item.id));
+  selectedEvidence.push(...activityEvidence);
   // Expansion copy may state the observed hosting footprint, so include that
   // exact evidence even when it was not a product-fit match.
   if (
@@ -267,6 +281,9 @@ export const stepEnrichOpportunity = async (
   await updateOpportunity(opportunityId, {
     status: 'drafting',
     contact,
+    contactActivity: activity,
+    proofIds: proof.proofIds,
+    competitiveContextIds: proof.competitiveContextIds,
     score: rescored.score,
     scoreBreakdown: rescored.breakdown,
     matchedSignals: rescored.signals

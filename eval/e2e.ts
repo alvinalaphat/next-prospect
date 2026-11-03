@@ -26,12 +26,14 @@ const {
   getProspect,
   listActiveProofRecords,
   startMaintenanceRun,
+  updateOpportunity,
   upsertProofRecords,
   upsertProspect
 } = await import('@/lib/db');
 const { applyOpportunityDecision } = await import('@/lib/opportunity-decision');
 const { getProduct } = await import('@/lib/catalog/products');
 const { scoreOpportunity } = await import('@/lib/scoring');
+const { selectOpportunityProof } = await import('@/lib/proof-selection');
 
 const domain = 'fixture.example';
 const runId = 'fixture-run';
@@ -94,28 +96,65 @@ assert.equal((await getOpportunity(id))?.status, 'approved');
 assert.equal((await getProspect(domain))?.status, 'approved');
 
 await startMaintenanceRun('fixture-proof-refresh', 'proof');
-const savedProofs = await upsertProofRecords([{
-  id: 'vercel-fixture',
-  vendor: 'vercel',
-  usage: 'customer-proof',
-  company: 'Fixture Customer',
-  title: 'Fixture customer story',
-  sourceUrl: 'https://vercel.com/customers/fixture',
-  summary: 'A grounded fixture used to verify proof persistence.',
-  productIds: ['ai-gateway'],
-  industries: ['software'],
-  workloads: ['customer-facing AI'],
-  candidateClaims: ['Fixture Customer used AI Gateway.'],
-  publishedAt: '2026-10-01',
-  lastSeenAt: new Date().toISOString()
-}]);
-assert.equal(savedProofs, 1);
-assert.equal((await listActiveProofRecords()).length, 1);
+const savedProofs = await upsertProofRecords([
+  {
+    id: 'vercel-fixture',
+    vendor: 'vercel',
+    usage: 'customer-proof',
+    company: 'Fixture Customer',
+    title: 'Fixture customer story',
+    sourceUrl: 'https://vercel.com/customers/fixture',
+    summary: 'A grounded fixture used to verify proof persistence.',
+    productIds: ['ai-gateway'],
+    industries: ['software'],
+    workloads: ['customer-facing AI'],
+    candidateClaims: ['Fixture Customer used AI Gateway.'],
+    publishedAt: '2026-10-01',
+    lastSeenAt: new Date().toISOString()
+  },
+  {
+    id: 'cloudflare-fixture',
+    vendor: 'cloudflare',
+    usage: 'competitive-context',
+    company: 'Competitor Fixture',
+    title: 'Competitor customer story',
+    sourceUrl: 'https://cloudflare.com/case-studies/fixture',
+    summary: 'Internal competitive context only.',
+    productIds: ['ai-gateway'],
+    industries: ['software'],
+    workloads: ['AI platform'],
+    candidateClaims: [],
+    publishedAt: null,
+    lastSeenAt: new Date().toISOString()
+  }
+]);
+assert.equal(savedProofs, 2);
+assert.equal((await listActiveProofRecords()).length, 2);
+const selectedProof = await selectOpportunityProof('ai-gateway');
+assert.deepEqual(selectedProof.proofIds, ['vercel-fixture']);
+assert.deepEqual(selectedProof.competitiveContextIds, ['cloudflare-fixture']);
+await updateOpportunity(id, {
+  contactActivity: [{
+    id: 'research.buyer-activity.fixture',
+    personName: 'Taylor Example',
+    text: 'Taylor discussed durable AI systems.',
+    sourceUrl: 'https://example.com/taylor-post',
+    sourceType: 'blog',
+    publishedAt: null,
+    relevance: 'Relevant to durable agents'
+  }],
+  proofIds: selectedProof.proofIds,
+  competitiveContextIds: selectedProof.competitiveContextIds
+});
+const enrichedOpportunity = await getOpportunity(id);
+assert.equal(enrichedOpportunity?.contactActivity?.length, 1);
+assert.deepEqual(enrichedOpportunity?.proofIds, ['vercel-fixture']);
+assert.deepEqual(enrichedOpportunity?.competitiveContextIds, ['cloudflare-fixture']);
 await completeMaintenanceRun('fixture-proof-refresh', {
   refreshedAt: new Date().toISOString(),
-  discovered: 1,
-  saved: 1,
-  byVendor: { vercel: 1, cloudflare: 0, railway: 0 }
+  discovered: 2,
+  saved: 2,
+  byVendor: { vercel: 1, cloudflare: 1, railway: 0 }
 });
 assert.equal((await getLatestMaintenanceRun('proof'))?.status, 'complete');
   console.log('✓ e2e: account → scored expansion opportunity → grounded draft → approval → parent status');
