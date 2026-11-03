@@ -299,6 +299,7 @@ function scoreDriverSummary(opportunity: OpportunityRow) {
 
 function ScoreExplanation({ opportunity, ledger }: { opportunity: OpportunityRow; ledger: EvidenceItem[] }) {
   const breakdown = opportunity.scoreBreakdown;
+  const isLegacyScore = typeof breakdown.risk === 'number';
   const assessment = scoreAssessment(opportunity.score);
   const positive = [
     { label: 'Product fit', value: breakdown.productFit, description: 'Public evidence connects this Vercel product to a specific need.' },
@@ -308,7 +309,7 @@ function ScoreExplanation({ opportunity, ledger }: { opportunity: OpportunityRow
   ].filter((item) => item.value > 0);
   const missing = [
     breakdown.trigger === 0 && 'a timely trigger',
-    breakdown.accountValue === 0 && 'a qualifying account profile',
+    breakdown.accountValue === 0 && (isLegacyScore ? 'account-value evidence' : 'a qualifying account profile'),
     breakdown.buyerQuality === 0 && 'a verified buyer'
   ].filter(Boolean) as string[];
 
@@ -341,11 +342,15 @@ function ScoreExplanation({ opportunity, ledger }: { opportunity: OpportunityRow
           </p>
         </div>
         <div>
-          <p className="font-medium">Account profile</p>
+          <p className="font-medium">{isLegacyScore ? 'Legacy score' : 'Account profile'}</p>
           <p className="text-muted-foreground mt-1 leading-6">
-            {breakdown.accountValue > 0
-              ? 'Account-potential points reflect the highest supported sales-fit tier and any observed Vercel expansion context.'
-              : 'No target-account tier was supported; traditional SMB and professional-services profiles do not receive account-potential points by default.'}
+            {isLegacyScore
+              ? breakdown.risk! < 0
+                ? `This saved opportunity uses the previous scoring model, which removed ${Math.abs(breakdown.risk!)} points for its account-priority signal. Its stored score is shown as originally calculated.`
+                : 'This saved opportunity uses the previous account-potential model. Its stored score is shown as originally calculated.'
+              : breakdown.accountValue > 0
+                ? 'Account-potential points reflect the highest supported sales-fit tier and any observed Vercel expansion context.'
+                : 'No target-account tier was supported; traditional SMB and professional-services profiles do not receive account-potential points by default.'}
           </p>
         </div>
       </div>

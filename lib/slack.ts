@@ -242,6 +242,7 @@ function opportunityBlocks(
   const d = opportunity.draft;
   const c = opportunity.contact;
   const b = opportunity.scoreBreakdown;
+  const legacyRisk = typeof b.risk === 'number' && b.risk < 0 ? ` · legacy risk ${b.risk}` : '';
   const blocks: KnownBlock[] = [
     {
       type: 'header',
@@ -252,7 +253,7 @@ function opportunityBlocks(
       fields: [
         { type: 'mrkdwn', text: `*Motion*\n${opportunity.salesMotion === 'expansion' ? 'Expansion' : 'New business'}` },
         { type: 'mrkdwn', text: `*Target*\n${c?.name ?? opportunity.targetRole}${c?.title ? ` — ${c.title}` : ''}`.slice(0, 1900) },
-        { type: 'mrkdwn', text: `*Score*\nFit ${b.productFit} · timing ${b.trigger} · account ${b.accountValue} · buyer ${b.buyerQuality}` },
+        { type: 'mrkdwn', text: `*Score*\nFit ${b.productFit} · timing ${b.trigger} · account ${b.accountValue} · buyer ${b.buyerQuality}${legacyRisk}` },
         { type: 'mrkdwn', text: `*Angle*\n${opportunity.angle}`.slice(0, 1900) }
       ]
     },

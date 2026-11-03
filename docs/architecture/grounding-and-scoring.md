@@ -67,6 +67,12 @@ Each rule ID scores at most once. If the planner repeats a rule, scoring keeps
 the strongest supported match and combines its evidence receipts. When more
 than one account tier is proposed, only the highest supported tier remains.
 
+Scores are stored with each opportunity rather than recalculated on read.
+Historical opportunities may therefore retain the previous model's `risk`
+field and deduction. Review surfaces label those breakdowns as legacy and show
+their original stored score; new opportunities use only the positive sales-fit
+account tiers above.
+
 The planner keeps grounded product-fit candidates even when their total is
 weak. `productFit === 0` is the hard suppression boundary.
 
