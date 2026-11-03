@@ -42,9 +42,9 @@ const CAPS: Record<Exclude<SignalCategory, 'risk'>, number> = {
 };
 
 export function freshnessMultiplier(observedAt?: string | null, now = new Date()): number {
-  if (!observedAt) return 1;
+  if (!observedAt) return 0;
   const timestamp = new Date(observedAt).getTime();
-  if (!Number.isFinite(timestamp)) return 0.6;
+  if (!Number.isFinite(timestamp)) return 0;
   const days = Math.max(0, (now.getTime() - timestamp) / 86_400_000);
   if (days <= 30) return 1;
   if (days <= 90) return 0.85;

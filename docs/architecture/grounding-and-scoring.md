@@ -49,7 +49,8 @@ are:
 
 Risk can subtract up to 30 points. Signal confidence and, where configured,
 freshness reduce a rule's base points before category caps are applied. The
-final score is clamped to 0–100.
+final score is clamped to 0–100. Freshness-sensitive triggers require a valid
+observation date; missing or invalid dates contribute zero trigger points.
 
 The planner keeps grounded product-fit candidates even when their total is
 weak. `productFit === 0` is the hard suppression boundary.
@@ -62,6 +63,9 @@ roles, signals, and approved claims.
 - Products with `canCreateOpportunity` may produce a standalone pitch.
 - Capabilities roll up to a parent product and must not create repetitive
   micro-opportunities.
+- Product-fit rules describe durable workload or need evidence. Trigger rules
+  describe time-bound events, are explicitly classified, and cannot establish
+  product relevance on their own.
 - Shared account rules live in `lib/scoring.ts`.
 - A catalog claim is permission to use that exact supported idea, not to extend
   it with model knowledge.
