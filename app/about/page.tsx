@@ -2,23 +2,17 @@ import Link from 'next/link';
 import {
   ArrowLeft,
   ArrowRight,
-  Braces,
-  ChevronDown,
-  Cloud,
   Database,
   FileCheck2,
   Globe2,
   Layers3,
-  Mail,
   Search,
   ShieldCheck,
   Sparkles,
   UserRoundCheck,
   Workflow
 } from 'lucide-react';
-import { AnimatedDetails } from '@/components/disclosure';
-import { getProduct, OPPORTUNITY_PRODUCTS, PRODUCTS } from '@/lib/catalog/products';
-import { scoreOpportunity, type ScoredSignal, type SignalMatch } from '@/lib/scoring';
+import { OPPORTUNITY_PRODUCTS, PRODUCTS } from '@/lib/catalog/products';
 
 export const metadata = {
   title: 'About · Next Prospect',
@@ -28,155 +22,93 @@ export const metadata = {
 const FLOW = [
   {
     icon: Globe2,
-    label: 'Collect',
-    title: 'Observe the account',
-    body: 'Inspect the public site, hosting, performance, company activity, hiring, launches, and region.'
-  },
-  {
-    icon: FileCheck2,
-    label: 'Ground',
-    title: 'Build an evidence ledger',
-    body: 'Normalize each supported observation into a stable record with its source and collection context.'
+    label: 'Observe',
+    title: 'Research the account',
+    body: 'Inspect the site, host, performance, company profile, region, launches, hiring, and public technical signals.'
   },
   {
     icon: Layers3,
-    label: 'Evaluate',
-    title: 'Compare the full catalog',
-    body: 'Match evidence to known product signals, score each valid motion, and keep the strongest distinct opportunities.'
+    label: 'Rank',
+    title: 'Evaluate the catalog',
+    body: 'Match grounded evidence against every Vercel sales motion, score it in code, and keep up to three distinct opportunities.'
   },
   {
     icon: UserRoundCheck,
     label: 'Enrich',
-    title: 'Pair product and buyer',
-    body: 'Find a relevant person or target role, then draft concise outreach from selected evidence and approved claims.'
+    title: 'Build each opportunity',
+    body: 'Find a product-specific buyer, review their public activity, attach relevant proof, and draft grounded outreach.'
   },
   {
     icon: ShieldCheck,
     label: 'Review',
-    title: 'Put a human in control',
-    body: 'A rep can approve, edit, or reject each opportunity. Approval may create a Gmail draft. Nothing is sent.'
+    title: 'Keep a human in control',
+    body: 'Review in the dashboard or Slack. Approval may create a Gmail draft, but nothing sends automatically.'
   }
 ];
 
 const SCORE_CATEGORIES = [
   { label: 'Product fit', cap: 45, color: 'bg-foreground' },
-  { label: 'Timing trigger', cap: 20, color: 'bg-success' },
+  { label: 'Timing', cap: 20, color: 'bg-success' },
   { label: 'Account potential', cap: 20, color: 'bg-violet' },
   { label: 'Buyer confidence', cap: 15, color: 'bg-positive' }
 ];
 
-const EXAMPLE_MATCHES = [
-  {
-    ruleId: 'multi-model-ai',
-    evidenceIds: ['research.technical.0'],
-    confidence: 'high',
-    explanation: 'The engineering blog documents multiple model providers.'
-  },
-  {
-    ruleId: 'customer-ai-product',
-    evidenceIds: ['research.product.0'],
-    confidence: 'medium',
-    explanation: 'A public product page describes a customer-facing AI agent.'
-  },
-  {
-    ruleId: 'ai-product-launch',
-    evidenceIds: ['research.news.0'],
-    confidence: 'high',
-    observedAt: '2026-09-18',
-    explanation: 'The company launched the AI feature 45 days ago.'
-  },
-  {
-    ruleId: 'account.growth-scale',
-    evidenceIds: ['research.size.0'],
-    confidence: 'high',
-    explanation: 'Public company data supports meaningful growth-stage scale.'
-  }
-] satisfies SignalMatch[];
-
-const AI_GATEWAY = getProduct('ai-gateway');
-if (!AI_GATEWAY) throw new Error('AI Gateway must exist in the product catalog');
-
-const EXAMPLE_SCORE = scoreOpportunity({
-  product: AI_GATEWAY,
-  matches: EXAMPLE_MATCHES,
-  usesVercel: true,
-  buyerQuality: 15,
-  now: new Date('2026-11-02T00:00:00Z')
-});
-
-const EXAMPLE_SIGNALS = Object.fromEntries(
-  EXAMPLE_SCORE.signals.map((signal) => [signal.ruleId, signal])
-) as Record<string, ScoredSignal>;
-
-const RESPONSIBILITIES = [
-  {
-    concern: 'Product signals',
-    model: 'Proposes rule and evidence matches',
-    code: 'Rejects unknown rules, missing evidence, and unsupported product fit'
-  },
-  {
-    concern: 'Opportunity score',
-    model: 'Does not choose the number',
-    code: 'Applies weights, confidence, freshness, category caps, and one account tier'
-  },
-  {
-    concern: 'Buyer',
-    model: 'Selects from retrieved people',
-    code: 'Requires the selected name to exist in retrieved public content'
-  },
-  {
-    concern: 'Outreach',
-    model: 'Writes from selected context',
-    code: 'Checks citations, numbers, approved claims, formatting, and leaks'
-  }
+const ACCOUNT_TIERS = [
+  { label: 'Enterprise', points: 20 },
+  { label: 'Growth', points: 15 },
+  { label: 'Product-led', points: 10 },
+  { label: 'Digital SMB', points: 5 },
+  { label: 'Other SMB / services', points: 0 }
 ];
+
+const OPPORTUNITY_CONTENTS = [
+  ['Product motion', 'The Vercel product, sales angle, why now, and why Vercel.'],
+  ['Score and evidence', 'A visible category breakdown with links back to public source receipts.'],
+  ['Buyer context', 'A grounded person or target role, plus relevant public posts, blogs, talks, or GitHub activity.'],
+  ['Proof and competition', 'Relevant Vercel customer precedent and separately labeled internal-only competitor context.'],
+  ['Review-ready draft', 'Concise outreach using prospect evidence and approved catalog claims only.']
+] as const;
 
 export default function About() {
   return (
     <article className="mx-auto max-w-6xl space-y-16 pb-8 sm:space-y-20">
       <header className="max-w-4xl pt-2 sm:pt-6">
-        <p className="text-muted-foreground text-xs font-medium uppercase tracking-[0.16em]">System overview</p>
+        <p className="text-muted-foreground text-xs font-medium uppercase tracking-[0.16em]">How it works</p>
         <h1 className="mt-4 max-w-3xl text-4xl font-semibold tracking-tight text-balance sm:text-5xl">
-          From public evidence to a review-ready sales motion
+          One domain in. A few credible conversations out.
         </h1>
         <p className="text-muted-foreground mt-5 max-w-3xl text-lg leading-8 text-pretty">
-          NextProspect turns a company domain into ranked, product-specific Vercel opportunities. It explains why each
-          conversation matters, identifies the relevant buyer, and prepares grounded outreach for human review.
+          NextProspect turns public account evidence into ranked Vercel product opportunities, the right buyer for each,
+          and grounded outreach for a rep to review.
         </p>
+        <div className="mt-6 flex flex-wrap gap-2 text-xs">
+          <Pill>Public evidence</Pill>
+          <Pill>Deterministic scoring</Pill>
+          <Pill>Human review</Pill>
+          <Pill>Never automatic sending</Pill>
+        </div>
       </header>
 
-      <section aria-labelledby="system-scale-title">
-        <div className="max-w-3xl">
-          <p className="text-muted-foreground text-xs font-medium uppercase tracking-[0.16em]">Current scope</p>
-          <h2 id="system-scale-title" className="mt-2 text-2xl font-semibold tracking-tight">
-            One account, several possible conversations
-          </h2>
-        </div>
-        <div className="mt-6 grid overflow-hidden rounded-xl border sm:grid-cols-2 lg:grid-cols-4">
-          <Fact
-            value={PRODUCTS.length.toString()}
-            label="Catalog entries"
-            detail="Products and supporting capabilities"
-          />
-          <Fact
-            value={OPPORTUNITY_PRODUCTS.length.toString()}
-            label="Independent motions"
-            detail="Eligible to lead a product pitch"
-          />
-          <Fact value="3" label="Ranked opportunities" detail="Maximum returned for one company" />
-          <Fact value="1" label="Human review gate" detail="Required before optional Gmail drafting" />
+      <section aria-labelledby="scope-title">
+        <SectionIntro eyebrow="Current scope" title="Broad catalog, focused output" id="scope-title">
+          The system considers the full Vercel product surface, then narrows the result to the conversations a rep can
+          actually act on.
+        </SectionIntro>
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Fact value={PRODUCTS.length.toString()} label="Catalog entries" detail="Products and capabilities" />
+          <Fact value={OPPORTUNITY_PRODUCTS.length.toString()} label="Sales motions" detail="Eligible to lead outreach" />
+          <Fact value="3" label="Ranked opportunities" detail="Maximum per account" />
+          <Fact value="1" label="Human decision" detail="Per product opportunity" />
         </div>
       </section>
 
       <section aria-labelledby="workflow-title">
-        <SectionIntro
-          eyebrow="Workflow"
-          title="How the system works"
-          description="Each domain gets an independent durable workflow. External work is checkpointed in retry-safe steps, while the account and its product opportunities are persisted separately."
-          id="workflow-title"
-        />
+        <SectionIntro eyebrow="Workflow" title="From domain to review" id="workflow-title">
+          Each domain runs in its own durable workflow. Missing optional data shrinks the result; it never licenses the
+          system to invent facts.
+        </SectionIntro>
 
-        <ol className="mt-8 grid gap-3 lg:grid-cols-[1fr_auto_1fr_auto_1fr_auto_1fr_auto_1fr] lg:items-stretch">
+        <ol className="mt-8 grid gap-3 lg:grid-cols-[1fr_auto_1fr_auto_1fr_auto_1fr] lg:items-stretch">
           {FLOW.map((step, index) => {
             const Icon = step.icon;
             return (
@@ -200,35 +132,43 @@ export default function About() {
           })}
         </ol>
 
-        <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-3 rounded-xl border px-5 py-4 text-sm">
-          <StackItem icon={Braces}>Next.js App Router</StackItem>
-          <StackItem icon={Workflow}>Vercel Workflow</StackItem>
-          <StackItem icon={Sparkles}>AI SDK and AI Gateway</StackItem>
-          <StackItem icon={Cloud}>Vercel Functions</StackItem>
-          <StackItem icon={Database}>Neon Postgres, PGlite locally</StackItem>
-          <StackItem icon={Search}>Exa, PageSpeed, DNS and HTTP signals</StackItem>
-          <StackItem icon={Mail}>Dashboard, Slack and optional Gmail drafts</StackItem>
+        <div className="mt-5 flex items-start gap-3 rounded-xl border px-5 py-4">
+          <Database className="text-violet mt-0.5 size-4 shrink-0" aria-hidden />
+          <div>
+            <p className="text-sm font-medium">One shared evidence ledger</p>
+            <p className="text-muted-foreground mt-1 text-sm leading-6">
+              Website detection, performance, and research become source receipts. Signal matches, buyer context, and
+              draft claims must resolve back to those receipts.
+            </p>
+          </div>
         </div>
       </section>
 
-      <section aria-labelledby="scoring-title">
-        <SectionIntro
-          eyebrow="Prioritization"
-          title="A deterministic score with visible inputs"
-          description="The model interprets evidence, but it never chooses the final score. Code applies a small shared weighting model so the same evidence is treated consistently across the catalog."
-          id="scoring-title"
-        />
+      <section aria-labelledby="output-title">
+        <SectionIntro eyebrow="Output" title="Every recommendation is a complete sales motion" id="output-title">
+          The unit of review is the product opportunity, not a generic contact or a pile of account research.
+        </SectionIntro>
 
-        <div className="mt-8 grid gap-5 lg:grid-cols-[1.08fr_0.92fr]">
-          <div className="rounded-xl border p-5 sm:p-6">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-baseline sm:justify-between">
-              <div>
-                <h3 className="font-semibold tracking-tight">Category caps</h3>
-                <p className="text-muted-foreground mt-1 max-w-xl text-sm leading-6">
-                  Evidence activates catalog rules. Adjusted rule points are added inside their category, then limited by
-                  that category&apos;s cap.
-                </p>
+        <div className="mt-8 grid gap-5 lg:grid-cols-[1.05fr_0.95fr]">
+          <div className="overflow-hidden rounded-xl border">
+            {OPPORTUNITY_CONTENTS.map(([title, detail], index) => (
+              <div key={title} className="grid grid-cols-[2rem_1fr] gap-3 border-b p-5 last:border-b-0">
+                <span className="text-muted-foreground font-mono text-xs">0{index + 1}</span>
+                <div>
+                  <h3 className="text-sm font-medium">{title}</h3>
+                  <p className="text-muted-foreground mt-1 text-sm leading-6">{detail}</p>
+                </div>
               </div>
+            ))}
+          </div>
+
+          <div className="rounded-xl bg-hover p-5 sm:p-6">
+            <div className="flex items-baseline justify-between gap-4">
+              <div>
+                <p className="text-muted-foreground text-xs font-medium uppercase tracking-[0.14em]">Prioritization</p>
+                <h3 className="mt-2 font-semibold tracking-tight">A deterministic 100-point score</h3>
+              </div>
+              <span className="font-mono text-2xl tabular-nums">/100</span>
             </div>
 
             <div className="mt-6 flex h-3 overflow-hidden rounded-full bg-border" aria-hidden>
@@ -236,247 +176,97 @@ export default function About() {
                 <span key={category.label} className={category.color} style={{ width: `${category.cap}%` }} />
               ))}
             </div>
-
             <dl className="mt-5 grid gap-3 sm:grid-cols-2">
               {SCORE_CATEGORIES.map((category) => (
-                <div key={category.label} className="flex items-center justify-between rounded-lg bg-hover px-4 py-3">
+                <div key={category.label} className="flex items-center justify-between gap-3">
                   <dt className="flex items-center gap-2 text-sm">
                     <span className={`size-2 rounded-full ${category.color}`} aria-hidden />
                     {category.label}
                   </dt>
-                  <dd className="font-mono text-sm tabular-nums">{category.cap} max</dd>
+                  <dd className="font-mono text-sm tabular-nums">{category.cap}</dd>
                 </div>
               ))}
             </dl>
 
-            <div className="mt-4 flex items-start justify-between gap-6 rounded-lg border px-4 py-3">
-              <div>
-                <p className="text-sm font-medium">Sales-fit account tier</p>
-                <p className="text-muted-foreground mt-1 text-xs leading-5">
-                  Only the highest evidence-backed company profile contributes. Traditional SMB and professional-services
-                  profiles receive no account points by default.
-                </p>
+            <div className="mt-6 border-t pt-5">
+              <p className="text-sm font-medium">Account potential is positive sales fit</p>
+              <div className="mt-3 grid grid-cols-5 overflow-hidden rounded-lg border text-center">
+                {ACCOUNT_TIERS.map((tier) => (
+                  <div key={tier.label} className="border-r px-1.5 py-3 last:border-r-0">
+                    <p className="font-mono text-sm tabular-nums">{tier.points}</p>
+                    <p className="text-muted-foreground mt-1 text-[0.65rem] leading-4">{tier.label}</p>
+                  </div>
+                ))}
               </div>
-              <span className="shrink-0 font-mono text-sm">0 to 20</span>
+              <p className="text-muted-foreground mt-4 text-xs leading-5">
+                Only the highest supported tier counts. Observed Vercel hosting suppresses only an invalid migration pitch;
+                it can add expansion context to other products.
+              </p>
             </div>
-            <p className="text-muted-foreground mt-4 text-xs leading-5">
-              Scores are stored on a 0 to 100 scale, and the four positive category caps total 100 points.
-            </p>
-          </div>
-
-          <div className="rounded-xl bg-hover p-5 sm:p-6">
-            <h3 className="font-semibold tracking-tight">Calculation order</h3>
-            <ol className="mt-5 space-y-5">
-              <FormulaStep number="1" title="Validate the match" formula="evidence → known rule">
-                A signal is discarded unless it cites known evidence and a rule defined for that product.
-              </FormulaStep>
-              <FormulaStep number="2" title="Adjust each rule" formula="round(base × confidence × freshness)">
-                Confidence is 1.0, 0.7, or 0.4. Time-sensitive signals use 1.0, 0.85, 0.6, or 0.3 as they age.
-              </FormulaStep>
-              <FormulaStep number="3" title="Calculate each category" formula="min(sum of rule points, category cap)">
-                A rule ID scores only once. Product and timing rules can combine, while only the highest supported account
-                tier contributes.
-              </FormulaStep>
-              <FormulaStep number="4" title="Calculate the final score" formula="clamp(fit + timing + account + buyer)">
-                Zero product fit suppresses the motion. Other grounded candidates remain visible with their lower score.
-              </FormulaStep>
-            </ol>
-            <p className="text-muted-foreground mt-6 border-t pt-4 text-xs leading-5">
-              Observed Vercel hosting suppresses an incorrect platform migration pitch. For other products, it adds 5
-              account-potential points as expansion context without implying a private contract or broader adoption.
-            </p>
           </div>
         </div>
+      </section>
 
-        <AnimatedDetails
-          className="mt-5 overflow-hidden rounded-xl border"
-          summaryClassName="flex cursor-pointer list-none items-center justify-between gap-5 px-5 py-5 outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:px-6 [&::-webkit-details-marker]:hidden"
-          summary={
-            <>
-              <span className="min-w-0">
-                <span className="text-muted-foreground block text-xs font-medium uppercase tracking-[0.14em]">
-                  Worked example
-                </span>
-                <span className="mt-1 block font-semibold tracking-tight">How an AI Gateway opportunity scores</span>
-                <span className="text-muted-foreground mt-1 block text-sm leading-6">
-                  Trace six grounded inputs through adjustments, category caps, and the final result.
-                </span>
-              </span>
-              <span className="flex shrink-0 items-center gap-3">
-                <span className="font-mono text-lg font-medium tabular-nums">{EXAMPLE_SCORE.score}/100</span>
-                <ChevronDown className="disclosure-chevron text-muted-foreground size-4 group-open:rotate-180" aria-hidden />
-              </span>
-            </>
-          }
-        >
-          <div className="border-t p-5 sm:p-6">
-            <p className="text-muted-foreground max-w-3xl text-sm leading-6">
-              This illustrative account has an existing Vercel footprint, a public AI product, a recent launch, meaningful
-              company scale, and a verified buyer. Each row below shows the evidence, the rule it activates, and the points
-              produced before category caps.
-            </p>
+      <section aria-labelledby="maintenance-title">
+        <SectionIntro eyebrow="Weekly maintenance" title="The reference material stays current" id="maintenance-title">
+          Vercel Cron starts two authenticated, durable refreshes every Monday. Public findings are stored for review, not
+          allowed to rewrite scoring or approved claims on their own.
+        </SectionIntro>
 
-            <div className="mt-5 rounded-lg bg-hover p-4 sm:p-5">
-              <p className="text-sm font-semibold">Where the base points come from</p>
-              <p className="text-muted-foreground mt-2 max-w-3xl text-sm leading-6">
-                Base points are code-reviewed product-policy weights stored with each rule in{' '}
-                <code className="text-foreground font-mono text-xs">ProductDefinition.signals</code>. They are not generated
-                by the model or inferred from this company&apos;s evidence. The exact values should be calibrated against reply
-                and conversion data over time.
-              </p>
-              <dl className="mt-4 grid gap-3 sm:grid-cols-2">
-                <div className="rounded-md border bg-background p-3">
-                  <dt className="font-mono text-sm font-medium">24 catalog points</dt>
-                  <dd className="text-muted-foreground mt-1 text-xs leading-5">
-                    Multiple model providers directly match AI Gateway&apos;s routing and unified model-access value.
-                  </dd>
-                </div>
-                <div className="rounded-md border bg-background p-3">
-                  <dt className="font-mono text-sm font-medium">21 catalog points</dt>
-                  <dd className="text-muted-foreground mt-1 text-xs leading-5">
-                    A customer-facing AI product supports likely demand, but does not alone prove multi-provider complexity.
-                  </dd>
-                </div>
-              </dl>
-            </div>
-
-            <div className="mt-6 grid gap-4 lg:grid-cols-2">
-              <ExampleCategory
-                title="Product fit"
-                score={`${EXAMPLE_SCORE.breakdown.productFit}/45`}
-                note="39 adjusted points remain below the 45-point cap."
-              >
-                <EvidenceCalculation
-                  evidence="Engineering blog documents multiple model providers"
-                  rule="multi-model-ai"
-                  signal={EXAMPLE_SIGNALS['multi-model-ai']}
-                />
-                <EvidenceCalculation
-                  evidence="Product page describes a customer-facing AI agent"
-                  rule="customer-ai-product"
-                  signal={EXAMPLE_SIGNALS['customer-ai-product']}
-                />
-              </ExampleCategory>
-
-              <ExampleCategory title="Timing trigger" score={`${EXAMPLE_SCORE.breakdown.trigger}/20`}>
-                <EvidenceCalculation
-                  evidence="AI feature launched 45 days ago"
-                  rule="ai-product-launch"
-                  signal={EXAMPLE_SIGNALS['ai-product-launch']}
-                />
-              </ExampleCategory>
-
-              <ExampleCategory title="Account potential" score={`${EXAMPLE_SCORE.breakdown.accountValue}/20`}>
-                <EvidenceCalculation
-                  evidence="Public company data supports growth-stage scale"
-                  rule="account.growth-scale"
-                  signal={EXAMPLE_SIGNALS['account.growth-scale']}
-                />
-                <EvidenceCalculation
-                  evidence="Host detection confirms an existing Vercel footprint"
-                  rule="expansion context"
-                  formula="5 point bonus"
-                  points={5}
-                />
-              </ExampleCategory>
-
-              <ExampleCategory title="Buyer confidence" score={`${EXAMPLE_SCORE.breakdown.buyerQuality}/15`}>
-                <EvidenceCalculation
-                  evidence="Retrieved public content verifies the Head of AI"
-                  rule="buyer confidence"
-                  formula="verified buyer"
-                  points={EXAMPLE_SCORE.breakdown.buyerQuality}
-                />
-              </ExampleCategory>
-            </div>
-
-            <div className="mt-5 flex flex-col gap-3 rounded-lg bg-hover px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-sm font-medium">Final opportunity score</p>
-                <p className="text-muted-foreground mt-1 font-mono text-xs">
-                  {EXAMPLE_SCORE.breakdown.productFit} fit + {EXAMPLE_SCORE.breakdown.trigger} timing +{' '}
-                  {EXAMPLE_SCORE.breakdown.accountValue} account + {EXAMPLE_SCORE.breakdown.buyerQuality} buyer
-                </p>
-              </div>
-              <p className="font-mono text-2xl font-medium tabular-nums">= {EXAMPLE_SCORE.score}/100</p>
-            </div>
-          </div>
-        </AnimatedDetails>
+        <div className="mt-8 grid gap-4 md:grid-cols-2">
+          <MaintenanceCard icon={Search} time="Monday · 14:00 UTC" title="Vercel catalog audit">
+            Checks official docs, changelog, and announcements for new products or possible changes. Updating the active
+            catalog still requires a reviewed code change.
+          </MaintenanceCard>
+          <MaintenanceCard icon={Workflow} time="Monday · 15:00 UTC" title="Customer-proof refresh">
+            Refreshes Vercel, Cloudflare, and Railway case studies. Vercel proof supports review; competitor stories remain
+            internal-only. Neither contributes scoring points.
+          </MaintenanceCard>
+        </div>
       </section>
 
       <section aria-labelledby="boundaries-title">
-        <SectionIntro
-          eyebrow="Control plane"
-          title="The model interprets. Code enforces."
-          description="The language model is useful for connecting evidence to a plausible sales motion. Deterministic code owns the boundaries that must be repeatable and auditable."
-          id="boundaries-title"
-        />
+        <SectionIntro eyebrow="Boundaries" title="The model proposes. Code enforces." id="boundaries-title">
+          Language models interpret public evidence and write concise copy. Deterministic code owns the decisions that must
+          remain repeatable and safe.
+        </SectionIntro>
 
-        <div className="mt-8 overflow-hidden rounded-xl border">
-          <div className="hidden grid-cols-[0.7fr_1fr_1.25fr] border-b bg-hover text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground sm:grid">
-            <div className="px-5 py-3">Decision</div>
-            <div className="border-l px-5 py-3">Model</div>
-            <div className="border-l px-5 py-3">Deterministic code</div>
-          </div>
-          {RESPONSIBILITIES.map((row) => (
-            <div
-              key={row.concern}
-              className="grid gap-4 border-b p-5 text-sm last:border-b-0 sm:grid-cols-[0.7fr_1fr_1.25fr] sm:gap-0 sm:p-0"
-            >
-              <div className="font-medium sm:px-5 sm:py-4">{row.concern}</div>
-              <div className="sm:border-l sm:px-5 sm:py-4">
-                <p className="text-muted-foreground mb-1 text-xs sm:hidden">Model</p>
-                <p className="text-muted-foreground leading-6">{row.model}</p>
-              </div>
-              <div className="sm:border-l sm:px-5 sm:py-4">
-                <p className="text-muted-foreground mb-1 text-xs sm:hidden">Deterministic code</p>
-                <p className="leading-6">{row.code}</p>
-              </div>
-            </div>
-          ))}
+        <div className="mt-8 grid overflow-hidden rounded-xl border md:grid-cols-2">
+          <Responsibility icon={Sparkles} title="Model-assisted">
+            Research public sources, propose catalog matches, select a grounded buyer, summarize relevant activity, and
+            draft from approved context.
+          </Responsibility>
+          <Responsibility icon={FileCheck2} title="Code-controlled">
+            Validate URLs and evidence IDs, apply confidence and freshness, select one account tier, calculate the score,
+            suppress invalid motions, and validate approval tokens.
+          </Responsibility>
         </div>
+
+        <ul className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Guardrail title="Public evidence only">Unsupported facts and citations are removed.</Guardrail>
+          <Guardrail title="Catalog-owned claims">Product language does not come from model memory.</Guardrail>
+          <Guardrail title="Separated context">Competitor proof never enters outreach drafting.</Guardrail>
+          <Guardrail title="Human control">Approval may create a draft. It never sends it.</Guardrail>
+        </ul>
       </section>
 
-      <section aria-labelledby="guardrails-title" className="rounded-xl bg-hover p-6 sm:p-8">
-        <div className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr]">
-          <div>
-            <p className="text-muted-foreground text-xs font-medium uppercase tracking-[0.16em]">Safety</p>
-            <h2 id="guardrails-title" className="mt-2 text-2xl font-semibold tracking-tight">
-              Guardrails that survive prompt changes
-            </h2>
-          </div>
-          <ul className="grid gap-5 sm:grid-cols-2">
-            <Guardrail title="Public evidence only">Unsupported research URLs and unknown evidence references are removed.</Guardrail>
-            <Guardrail title="Approved product claims">Product language comes from the catalog, not model memory.</Guardrail>
-            <Guardrail title="Honest degradation">Missing research or performance data produces a smaller brief, not invented context.</Guardrail>
-            <Guardrail title="Human control">Approval records a decision and may create a draft. It never sends the email.</Guardrail>
-          </ul>
-        </div>
-      </section>
+      <Link href="/" className="inline-flex items-center gap-2 text-sm font-medium hover:underline">
+        <ArrowLeft className="size-4" aria-hidden /> Back to prospects
+      </Link>
     </article>
-  );
-}
-
-function Fact({ value, label, detail }: { value: string; label: string; detail: string }) {
-  return (
-    <div className="border-b p-5 last:border-b-0 lg:border-r lg:border-b-0 lg:last:border-r-0">
-      <p className="font-mono text-3xl font-medium tabular-nums">{value}</p>
-      <h3 className="mt-3 text-sm font-medium">{label}</h3>
-      <p className="text-muted-foreground mt-1 text-xs leading-5">{detail}</p>
-    </div>
   );
 }
 
 function SectionIntro({
   eyebrow,
   title,
-  description,
-  id
+  id,
+  children
 }: {
   eyebrow: string;
   title: string;
-  description: string;
   id: string;
+  children: React.ReactNode;
 }) {
   return (
     <div className="max-w-3xl">
@@ -484,108 +274,64 @@ function SectionIntro({
       <h2 id={id} className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
         {title}
       </h2>
-      <p className="text-muted-foreground mt-3 text-base leading-7 text-pretty">{description}</p>
+      <p className="text-muted-foreground mt-3 text-base leading-7 text-pretty">{children}</p>
     </div>
   );
 }
 
-function StackItem({ icon: Icon, children }: { icon: typeof Database; children: React.ReactNode }) {
+function Fact({ value, label, detail }: { value: string; label: string; detail: string }) {
   return (
-    <span className="text-muted-foreground inline-flex items-center gap-2">
-      <Icon className="size-4" aria-hidden /> {children}
-    </span>
+    <div className="rounded-xl border p-5">
+      <p className="font-mono text-3xl font-medium tabular-nums">{value}</p>
+      <h3 className="mt-3 text-sm font-medium">{label}</h3>
+      <p className="text-muted-foreground mt-1 text-xs leading-5">{detail}</p>
+    </div>
   );
 }
 
-function FormulaStep({
-  number,
+function Pill({ children }: { children: React.ReactNode }) {
+  return <span className="rounded-full border px-3 py-1.5">{children}</span>;
+}
+
+function MaintenanceCard({
+  icon: Icon,
+  time,
   title,
-  formula,
   children
 }: {
-  number: string;
+  icon: typeof Search;
+  time: string;
   title: string;
-  formula: string;
   children: React.ReactNode;
 }) {
   return (
-    <li className="grid grid-cols-[1.5rem_1fr] gap-3">
-      <span className="flex size-6 items-center justify-center rounded-full bg-background font-mono text-xs" aria-hidden>
-        {number}
-      </span>
-      <div>
-        <h4 className="text-sm font-medium">{title}</h4>
-        <code className="text-foreground mt-1 block font-mono text-xs leading-5">{formula}</code>
-        <p className="text-muted-foreground mt-1 text-sm leading-6">{children}</p>
+    <div className="rounded-xl bg-hover p-5 sm:p-6">
+      <div className="flex items-center justify-between gap-4">
+        <Icon className="text-muted-foreground size-4" aria-hidden />
+        <span className="text-muted-foreground font-mono text-xs">{time}</span>
       </div>
-    </li>
+      <h3 className="mt-5 font-semibold tracking-tight">{title}</h3>
+      <p className="text-muted-foreground mt-2 text-sm leading-6">{children}</p>
+    </div>
   );
 }
 
-function ExampleCategory({
-  title,
-  score,
-  note,
-  children
-}: {
-  title: string;
-  score: string;
-  note?: string;
-  children: React.ReactNode;
-}) {
+function Responsibility({ icon: Icon, title, children }: { icon: typeof Sparkles; title: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-lg border p-4">
-      <div className="flex items-baseline justify-between gap-4">
-        <h4 className="text-sm font-semibold">{title}</h4>
-        <span className="shrink-0 font-mono text-sm tabular-nums">{score}</span>
-      </div>
-      <div className="mt-4 divide-y">{children}</div>
-      {note ? <p className="text-muted-foreground mt-3 text-xs leading-5">{note}</p> : null}
-    </section>
-  );
-}
-
-function EvidenceCalculation({
-  evidence,
-  rule,
-  signal,
-  formula,
-  points
-}: {
-  evidence: string;
-  rule: string;
-  signal?: ScoredSignal;
-  formula?: string;
-  points?: number;
-}) {
-  const resolvedPoints = signal?.points ?? points ?? 0;
-  const resolvedFormula = signal
-    ? `${signal.basePoints} base × ${signal.multiplier.toFixed(2)} adjustment`
-    : formula ?? 'direct adjustment';
-
-  return (
-    <div className="grid gap-2 py-3 first:pt-0 last:pb-0 sm:grid-cols-[1fr_auto] sm:items-end">
-      <div>
-        <p className="text-sm leading-6">{evidence}</p>
-        <p className="text-muted-foreground mt-1 text-xs">
-          Maps to <code className="font-mono">{rule}</code>
-        </p>
-      </div>
-      <p className="font-mono text-xs tabular-nums sm:text-right">
-        {resolvedFormula} = <span className="text-sm font-medium">{resolvedPoints}</span>
-      </p>
+    <div className="border-b p-5 last:border-b-0 md:border-r md:border-b-0 md:last:border-r-0 sm:p-6">
+      <Icon className="text-muted-foreground size-4" aria-hidden />
+      <h3 className="mt-4 font-semibold tracking-tight">{title}</h3>
+      <p className="text-muted-foreground mt-2 text-sm leading-6">{children}</p>
     </div>
   );
 }
 
 function Guardrail({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <li className="flex gap-3">
-      <ShieldCheck className="text-positive mt-0.5 size-4 shrink-0" aria-hidden />
-      <div>
-        <h3 className="text-sm font-medium">{title}</h3>
-        <p className="text-muted-foreground mt-1 text-sm leading-6">{children}</p>
-      </div>
+    <li className="rounded-lg border p-4">
+      <ShieldCheck className="text-positive size-4" aria-hidden />
+      <h3 className="mt-3 text-sm font-medium">{title}</h3>
+      <p className="text-muted-foreground mt-1 text-xs leading-5">{children}</p>
     </li>
   );
 }
