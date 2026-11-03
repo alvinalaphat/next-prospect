@@ -95,7 +95,7 @@ function ViewSwitch({
   );
 }
 
-export function ProspectsTable({ items }: { items: ProspectListItem[] }) {
+export function ProspectsTable({ items, renderedAt }: { items: ProspectListItem[]; renderedAt: number }) {
   const [view, setView] = useState<keyof typeof VIEWS>('pipeline');
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'fitScore', dir: 'desc' });
@@ -190,7 +190,7 @@ export function ProspectsTable({ items }: { items: ProspectListItem[] }) {
                 </div>
                 <div>
                   <dt className="text-muted-foreground text-xs">Updated</dt>
-                  <dd className="text-muted-foreground mt-1 text-xs">{relativeTime(i.updatedAt)}</dd>
+                  <dd className="text-muted-foreground mt-1 text-xs">{relativeTime(i.updatedAt, renderedAt)}</dd>
                 </div>
               </dl>
               {i.opportunityName && (
@@ -243,7 +243,7 @@ export function ProspectsTable({ items }: { items: ProspectListItem[] }) {
                   <StatusBadge status={i.status} />
                 </td>
                 <td className="text-muted-foreground overflow-hidden px-3 py-3 text-right text-xs whitespace-nowrap">
-                  {relativeTime(i.updatedAt)}
+                  {relativeTime(i.updatedAt, renderedAt)}
                 </td>
                 <td className="overflow-hidden px-3 py-3">
                   <AccountActions domain={i.domain} />

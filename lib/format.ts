@@ -59,9 +59,9 @@ export function ms(n: number | null | undefined) {
   return n >= 1000 ? `${(n / 1000).toFixed(2)} s` : `${Math.round(n)} ms`;
 }
 
-export function relativeTime(date: Date | string) {
+export function relativeTime(date: Date | string, now = Date.now()) {
   const d = typeof date === 'string' ? new Date(date) : date;
-  const s = Math.round((Date.now() - d.getTime()) / 1000);
+  const s = Math.round((now - d.getTime()) / 1000);
   if (s < 60) return `${s}s ago`;
   if (s < 3600) return `${Math.round(s / 60)}m ago`;
   if (s < 86400) return `${Math.round(s / 3600)}h ago`;
