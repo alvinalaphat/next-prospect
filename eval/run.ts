@@ -99,14 +99,82 @@ const expansion = scoreOpportunity({
   ]
 });
 assert.deepEqual(expansion.breakdown, {
-  productFit: 18,
+  productFit: 21,
   trigger: 20,
-  accountValue: 15,
+  accountValue: 20,
   buyerQuality: 15,
-  risk: 0,
-  total: 68
+  total: 76
 });
-assert.equal(expansion.score, 68);
+assert.equal(expansion.score, 76);
+
+const duplicateAndTiered = scoreOpportunity({
+  product: gateway,
+  usesVercel: false,
+  matches: [
+    {
+      ruleId: 'customer-ai-product',
+      evidenceIds: ['research.signal.0'],
+      confidence: 'medium',
+      explanation: 'First match for the same product-fit rule'
+    },
+    {
+      ruleId: 'customer-ai-product',
+      evidenceIds: ['research.signal.1'],
+      confidence: 'high',
+      explanation: 'Stronger match for the same product-fit rule'
+    },
+    {
+      ruleId: 'account.growth-scale',
+      evidenceIds: ['research.size.0'],
+      confidence: 'high',
+      explanation: 'Growth-stage account'
+    },
+    {
+      ruleId: 'account.credible-growth',
+      evidenceIds: ['research.size.1'],
+      confidence: 'high',
+      explanation: 'A lower account tier should not stack'
+    }
+  ]
+});
+assert.equal(duplicateAndTiered.breakdown.productFit, 21, 'a repeated rule id must score only once');
+assert.equal(duplicateAndTiered.breakdown.accountValue, 15, 'only the highest supported account tier should score');
+assert.deepEqual(
+  duplicateAndTiered.signals.find((signal) => signal.ruleId === 'customer-ai-product')?.evidenceIds,
+  ['research.signal.0', 'research.signal.1'],
+  'deduplication should retain every grounded evidence receipt'
+);
+assert.equal(duplicateAndTiered.signals.some((signal) => signal.ruleId === 'account.credible-growth'), false);
+
+const maximum = scoreOpportunity({
+  product: gateway,
+  usesVercel: false,
+  buyerQuality: 15,
+  now: new Date('2026-10-30T00:00:00Z'),
+  matches: [
+    { ruleId: 'multi-model-ai', evidenceIds: ['research.technical.0'], confidence: 'high', explanation: 'Multiple model providers' },
+    { ruleId: 'customer-ai-product', evidenceIds: ['research.signal.0'], confidence: 'high', explanation: 'Customer-facing agent' },
+    { ruleId: 'ai-product-launch', evidenceIds: ['research.news.0'], confidence: 'high', observedAt: '2026-10-20', explanation: 'Recent launch' },
+    { ruleId: 'account.enterprise-scale', evidenceIds: ['research.size.0'], confidence: 'high', explanation: 'Enterprise scale' }
+  ]
+});
+assert.deepEqual(maximum.breakdown, {
+  productFit: 45,
+  trigger: 20,
+  accountValue: 20,
+  buyerQuality: 15,
+  total: 100
+});
+
+const digitalSmb = scoreOpportunity({
+  product: gateway,
+  usesVercel: false,
+  matches: [
+    { ruleId: 'customer-ai-product', evidenceIds: ['research.signal.0'], confidence: 'high', explanation: 'Customer-facing agent' },
+    { ruleId: 'account.smb-digital', evidenceIds: ['research.size.0'], confidence: 'high', explanation: 'Meaningful digital SMB workload' }
+  ]
+});
+assert.equal(digitalSmb.breakdown.accountValue, 5);
 
 const hiringOnly = scoreOpportunity({
   product: gateway,
@@ -142,7 +210,7 @@ const undatedTrigger = scoreOpportunity({
     }
   ]
 });
-assert.equal(undatedTrigger.breakdown.productFit, 18);
+assert.equal(undatedTrigger.breakdown.productFit, 21);
 assert.equal(undatedTrigger.breakdown.trigger, 0);
 assert.equal(undatedTrigger.suppressedReason, null);
 
@@ -160,4 +228,4 @@ assert.equal(proofCannotScore.score, 0);
 assert.match(proofCannotScore.suppressedReason ?? '', /No grounded product-fit signal/);
 
 console.log(`✓ catalog: ${PRODUCTS.length} entries, ${OPPORTUNITY_PRODUCTS.length} independent sales motions`);
-console.log('✓ scoring: explicit fit/trigger classification, freshness, account value, buyer quality, expansion, and suppression');
+console.log('✓ scoring: 100-point caps, unique rules, one sales-fit account tier, freshness, expansion, and suppression');

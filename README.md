@@ -31,7 +31,8 @@ For each domain in a CSV, one durable workflow:
 3. **Research**: an Exa research agent collects company, region, launches, hiring, job,
    technical, social, and timing signals. Every item must cite a URL a tool returned.
 4. **Route and score**: the model matches grounded evidence to known catalog signal rules;
-   code applies deterministic confidence, freshness, category caps, and risk deductions.
+   code applies deterministic confidence, freshness, category caps, and one evidence-backed
+   account-potential tier.
 5. **Choose a buyer**: each selected product opportunity gets its own verified contact or
    an explicit target role when no person can be grounded.
 6. **Draft**: each opportunity receives a 60–120 word email and rep brief using only its

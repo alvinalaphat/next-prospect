@@ -299,16 +299,17 @@ function scoreDriverSummary(opportunity: OpportunityRow) {
 
 function ScoreExplanation({ opportunity, ledger }: { opportunity: OpportunityRow; ledger: EvidenceItem[] }) {
   const breakdown = opportunity.scoreBreakdown;
+  const isLegacyScore = typeof breakdown.risk === 'number';
   const assessment = scoreAssessment(opportunity.score);
   const positive = [
     { label: 'Product fit', value: breakdown.productFit, description: 'Public evidence connects this Vercel product to a specific need.' },
     { label: 'Timing', value: breakdown.trigger, description: 'A recent event creates a reason to start the conversation now.' },
-    { label: 'Account potential', value: breakdown.accountValue, description: 'Company scale, growth, or existing Vercel adoption increases the opportunity.' },
+    { label: 'Account potential', value: breakdown.accountValue, description: 'The company profile matches the accounts Vercel sales should prioritize.' },
     { label: 'Buyer confidence', value: breakdown.buyerQuality, description: 'A relevant person was identified for this product conversation.' }
   ].filter((item) => item.value > 0);
   const missing = [
     breakdown.trigger === 0 && 'a timely trigger',
-    breakdown.accountValue === 0 && 'additional account-value evidence',
+    breakdown.accountValue === 0 && (isLegacyScore ? 'account-value evidence' : 'a qualifying account profile'),
     breakdown.buyerQuality === 0 && 'a verified buyer'
   ].filter(Boolean) as string[];
 
@@ -341,9 +342,15 @@ function ScoreExplanation({ opportunity, ledger }: { opportunity: OpportunityRow
           </p>
         </div>
         <div>
-          <p className="font-medium">Risk adjustment</p>
+          <p className="font-medium">{isLegacyScore ? 'Legacy score' : 'Account profile'}</p>
           <p className="text-muted-foreground mt-1 leading-6">
-            {breakdown.risk < 0 ? `${Math.abs(breakdown.risk)} points were removed for a lower-priority or lower-ROI account signal.` : 'No risk penalty was applied.'}
+            {isLegacyScore
+              ? breakdown.risk! < 0
+                ? `This saved opportunity uses the previous scoring model, which removed ${Math.abs(breakdown.risk!)} points for its account-priority signal. Its stored score is shown as originally calculated.`
+                : 'This saved opportunity uses the previous account-potential model. Its stored score is shown as originally calculated.'
+              : breakdown.accountValue > 0
+                ? 'Account-potential points reflect the highest supported sales-fit tier and any observed Vercel expansion context.'
+                : 'No target-account tier was supported; traditional SMB and professional-services profiles do not receive account-potential points by default.'}
           </p>
         </div>
       </div>

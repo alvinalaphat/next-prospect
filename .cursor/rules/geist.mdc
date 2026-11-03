@@ -1,0 +1,31 @@
+---
+description: Restyle and build UI with the Vercel Geist design system
+alwaysApply: true
+---
+
+# Geist design system
+
+Restyle and build this app to match the minimalist, modern design of Vercel using the Geist design system. Prioritize developer-focused UX, clean typography, and semantic color theming.
+
+## Typography and layout
+
+Use Geist Sans for UI and Geist Mono for code, identifiers, and numbers. Maximize readability with generous whitespace, high-contrast text, and a clear hierarchy. Body line-height is 1.5. Heading line-height is 1.2.
+
+Use a responsive layout with a centered container (`max-w-4xl mx-auto`). Keep the sticky header with branding. Spacing uses 16px, 24px, and 32px. Corners are 8px. Floating surfaces use the soft `--geist-shadow`. Page sections use a border, not a stack of heavy shadows.
+
+## Color
+
+Support light and dark mode. Replace hardcoded colors with semantic tokens:
+
+- `--geist-background`: #ffffff / #000000
+- `--geist-foreground`: #000000 / #ffffff
+- `--geist-success`: #0070f3
+- `--geist-cyan`: #79ffe1
+- `--geist-muted`: #666666 / #888888
+- `--geist-border`: #eaeaea / #333333
+
+Status text (`--geist-positive`, `--geist-warning`, `--geist-error`, `--geist-violet`) may change between themes so text stays at or above WCAG AA (4.5:1) on the background. Do not put `--geist-cyan` on a light background. Do not rely on color alone for status.
+
+## Theme
+
+`next-themes` sets the `dark` class from the system preference. The header toggle switches light and dark explicitly. New UI must be checked in both themes.

@@ -46,11 +46,6 @@ export function HostBadge({ host, cdn }: { host: HostId | string | null; cdn?: H
   );
 }
 
-const RATING_WORD: Partial<Record<keyof typeof TONE_CLASS, string>> = {
-  green: 'Good',
-  amber: 'Fair',
-  red: 'Poor'
-};
 
 export function Score({
   value,
@@ -75,7 +70,6 @@ export function Score({
     blue: 'bg-success',
     violet: 'bg-violet'
   }[tone];
-  const word = RATING_WORD[tone];
   return (
     <span className={cn('inline-flex flex-wrap items-center gap-2 font-mono tabular-nums', className)}>
       <span className={cn('size-2 shrink-0 rounded-full', dot)} aria-hidden />
@@ -83,7 +77,7 @@ export function Score({
         {value}
         {suffix}
       </span>
-      {showRating && word && <Pill tone={tone}>{word}</Pill>}
+      {showRating}
     </span>
   );
 }

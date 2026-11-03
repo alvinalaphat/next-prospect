@@ -1,10 +1,10 @@
 import type { ProductDefinition, SignalCategory } from '@/lib/catalog/types';
 
 export const ACCOUNT_SIGNAL_RULES = [
-  { id: 'account.enterprise-scale', category: 'account_value' as const, points: 15, description: 'Enterprise or strategic scale is directly supported' },
-  { id: 'account.growth-scale', category: 'account_value' as const, points: 10, description: 'Growth-stage or meaningful scale is directly supported' },
-  { id: 'account.credible-growth', category: 'account_value' as const, points: 5, description: 'Smaller company with a credible growth signal' },
-  { id: 'account.low-roi', category: 'risk' as const, points: -10, description: 'Low-priority small or professional-services account' }
+  { id: 'account.enterprise-scale', category: 'account_value' as const, points: 20, description: 'Enterprise or strategic account with substantial digital scale, engineering footprint, global operations, traffic, or multi-brand complexity' },
+  { id: 'account.growth-scale', category: 'account_value' as const, points: 15, description: 'Mid-market or growth-stage account with meaningful technical scale' },
+  { id: 'account.credible-growth', category: 'account_value' as const, points: 10, description: 'Smaller product-led company with credible growth, hiring, funding, or expansion evidence' },
+  { id: 'account.smb-digital', category: 'account_value' as const, points: 5, description: 'SMB with a meaningful digital product, commerce, or web workload' }
 ] as const;
 
 export type SignalConfidence = 'high' | 'medium' | 'low';
@@ -29,15 +29,16 @@ export type ScoreBreakdown = {
   trigger: number;
   accountValue: number;
   buyerQuality: number;
-  risk: number;
+  /** Present only on opportunities persisted under the pre-sales-fit scoring model. */
+  risk?: number;
   total: number;
 };
 
 const CONFIDENCE: Record<SignalConfidence, number> = { high: 1, medium: 0.7, low: 0.4 };
-const CAPS: Record<Exclude<SignalCategory, 'risk'>, number> = {
-  product_fit: 35,
-  trigger: 25,
-  account_value: 15,
+const CAPS: Record<SignalCategory, number> = {
+  product_fit: 45,
+  trigger: 20,
+  account_value: 20,
   buyer: 15
 };
 
@@ -68,7 +69,7 @@ export function scoreOpportunity({
   if (usesVercel && product.id === 'vercel-platform') {
     return {
       score: 0,
-      breakdown: { productFit: 0, trigger: 0, accountValue: 0, buyerQuality: 0, risk: 0, total: 0 },
+      breakdown: { productFit: 0, trigger: 0, accountValue: 0, buyerQuality: 0, total: 0 },
       signals: [],
       suppressedReason: 'The inspected website is already hosted on Vercel'
     };
@@ -76,24 +77,37 @@ export function scoreOpportunity({
 
   const rules = new Map(product.signals.map((rule) => [rule.id, rule]));
   for (const rule of ACCOUNT_SIGNAL_RULES) rules.set(rule.id, rule);
-  const signals = matches.flatMap((match): ScoredSignal[] => {
+  const signalsByRule = new Map<string, ScoredSignal>();
+  for (const match of matches) {
     const rule = rules.get(match.ruleId);
-    if (!rule || match.evidenceIds.length === 0) return [];
+    if (!rule || match.evidenceIds.length === 0) continue;
     const multiplier = CONFIDENCE[match.confidence] * (rule.freshnessSensitive ? freshnessMultiplier(match.observedAt, now) : 1);
-    return [{ ...match, category: rule.category, basePoints: rule.points, multiplier, points: Math.round(rule.points * multiplier) }];
-  });
+    const candidate = { ...match, category: rule.category, basePoints: rule.points, multiplier, points: Math.round(rule.points * multiplier) };
+    const existing = signalsByRule.get(rule.id);
+    if (!existing) {
+      signalsByRule.set(rule.id, candidate);
+      continue;
+    }
+    const evidenceIds = [...new Set([...existing.evidenceIds, ...candidate.evidenceIds])];
+    signalsByRule.set(rule.id, candidate.points > existing.points ? { ...candidate, evidenceIds } : { ...existing, evidenceIds });
+  }
+
+  const distinctSignals = [...signalsByRule.values()];
+  const accountSignal = distinctSignals
+    .filter((signal) => signal.category === 'account_value')
+    .sort((a, b) => b.points - a.points)[0];
+  const signals = distinctSignals.filter((signal) => signal.category !== 'account_value' || signal === accountSignal);
 
   const sum = (category: SignalCategory) => signals.filter((s) => s.category === category).reduce((total, signal) => total + signal.points, 0);
   const productFit = Math.min(CAPS.product_fit, Math.max(0, sum('product_fit')));
   const trigger = Math.min(CAPS.trigger, Math.max(0, sum('trigger')));
   const accountValue = Math.min(CAPS.account_value, Math.max(0, sum('account_value') + (usesVercel ? 5 : 0)));
   const buyer = Math.min(CAPS.buyer, Math.max(0, buyerQuality));
-  const risk = Math.max(-30, Math.min(0, sum('risk')));
-  const total = Math.max(0, Math.min(100, productFit + trigger + accountValue + buyer + risk));
+  const total = Math.max(0, Math.min(100, productFit + trigger + accountValue + buyer));
 
   return {
     score: total,
-    breakdown: { productFit, trigger, accountValue, buyerQuality: buyer, risk, total },
+    breakdown: { productFit, trigger, accountValue, buyerQuality: buyer, total },
     signals,
     suppressedReason: productFit === 0 ? 'No grounded product-fit signal' : null
   };

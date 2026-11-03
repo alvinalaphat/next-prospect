@@ -156,7 +156,7 @@ export function ProspectsTable({ items, renderedAt }: { items: ProspectListItem[
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Filter companies or opportunities…"
+              placeholder="Filter companies…"
               className="bg-background min-h-11 w-full rounded-lg border py-2 pr-3 pl-9 text-sm"
             />
           </label>
