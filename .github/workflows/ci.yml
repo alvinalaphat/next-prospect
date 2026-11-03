@@ -45,10 +45,10 @@ jobs:
         run: pnpm run typecheck
 
       - name: Evaluate catalog and scoring
-        run: pnpm run eval:v2
+        run: pnpm run eval
 
       - name: Test isolated approval path
-        run: pnpm run test:v2-e2e
+        run: pnpm run test:e2e
 
       - name: Build production bundle
         run: pnpm run build
