@@ -453,12 +453,6 @@ export default function About() {
           </ul>
         </div>
       </section>
-
-      <footer className="border-t pt-6">
-        <Link href="/" className="text-muted-foreground hover:text-foreground inline-flex items-center gap-2 text-sm">
-          <ArrowLeft className="size-4" aria-hidden /> Back to prospects
-        </Link>
-      </footer>
     </article>
   );
 }
