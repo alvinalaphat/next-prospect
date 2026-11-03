@@ -53,7 +53,7 @@ relevant guide under `node_modules/next/dist/docs/` first.
 - **Keep sensitive information out of prompts, logs, UI, and drafts.** Never
   print or commit `.env.local`, tokens, OAuth credentials, or database URLs.
 - **Scoring stays deterministic.** The model proposes grounded signal matches;
-  `lib/scoring.ts` owns weights, caps, freshness, and risk deductions. Do not
+  `lib/scoring.ts` owns weights, caps, freshness, and account-tier selection. Do not
   let prose generation decide the final numeric score.
 - **The catalog is the product source of truth.** Add or reshape Vercel product
   motions in `lib/catalog/products.ts`, not in prompts or UI conditionals. Read

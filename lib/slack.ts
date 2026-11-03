@@ -252,7 +252,7 @@ function opportunityBlocks(
       fields: [
         { type: 'mrkdwn', text: `*Motion*\n${opportunity.salesMotion === 'expansion' ? 'Expansion' : 'New business'}` },
         { type: 'mrkdwn', text: `*Target*\n${c?.name ?? opportunity.targetRole}${c?.title ? ` — ${c.title}` : ''}`.slice(0, 1900) },
-        { type: 'mrkdwn', text: `*Score*\nFit ${b.productFit} · timing ${b.trigger} · account ${b.accountValue} · buyer ${b.buyerQuality}${b.risk ? ` · risk ${b.risk}` : ''}` },
+        { type: 'mrkdwn', text: `*Score*\nFit ${b.productFit} · timing ${b.trigger} · account ${b.accountValue} · buyer ${b.buyerQuality}` },
         { type: 'mrkdwn', text: `*Angle*\n${opportunity.angle}`.slice(0, 1900) }
       ]
     },

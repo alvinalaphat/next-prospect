@@ -28,7 +28,7 @@ Do not loosen these checks to make a draft look more complete.
 | --- | --- | --- |
 | Find plausible public signals | Proposes | Validates source URLs |
 | Match evidence to catalog rules | Proposes rule IDs and evidence IDs | Rejects unknown rules and evidence |
-| Score an opportunity | Never chooses final number | Applies weights, confidence, freshness, caps, and risk |
+| Score an opportunity | Never chooses final number | Applies weights, confidence, freshness, caps, and one account tier |
 | Choose buyer | Selects from retrieved people | Verifies the selected name exists in retrieved text |
 | Find buyer activity | Selects and summarizes attributable public results | Requires the full selected name in retrieved content and preserves source dates |
 | Select customer proof | Never chooses scoring inputs | Matches active proof records to the selected catalog product |
@@ -44,15 +44,28 @@ are:
 
 | Category | Maximum |
 | --- | ---: |
-| Product fit | 35 |
-| Timing trigger | 25 |
-| Account potential | 15 |
+| Product fit | 45 |
+| Timing trigger | 20 |
+| Account potential | 20 |
 | Buyer confidence | 15 |
 
-Risk can subtract up to 30 points. Signal confidence and, where configured,
-freshness reduce a rule's base points before category caps are applied. The
-final score is clamped to 0–100. Freshness-sensitive triggers require a valid
-observation date; missing or invalid dates contribute zero trigger points.
+The positive category caps total 100 points. Signal confidence and, where
+configured, freshness reduce a rule's base points before category caps are
+applied. The final score is clamped to 0–100. Freshness-sensitive triggers
+require a valid observation date; missing or invalid dates contribute zero
+trigger points.
+
+Account potential measures evidence-backed sales fit, not risk. At most one
+shared account tier contributes: enterprise or strategic (20), mid-market or
+growth-stage (15), smaller product-led with credible growth (10), or an SMB
+with a meaningful digital product, commerce, or web workload (5). Traditional
+small, local, or professional-services profiles receive no account-potential
+points by default. Observed Vercel hosting can add 5 expansion-context points,
+subject to the 20-point category cap.
+
+Each rule ID scores at most once. If the planner repeats a rule, scoring keeps
+the strongest supported match and combines its evidence receipts. When more
+than one account tier is proposed, only the highest supported tier remains.
 
 The planner keeps grounded product-fit candidates even when their total is
 weak. `productFit === 0` is the hard suppression boundary.

@@ -53,6 +53,10 @@ reps do not receive repetitive micro-opportunities.
 - Every standalone product defines at least one product-fit rule.
 - Capabilities do not create standalone opportunities.
 - Existing Vercel hosting suppresses only the Vercel Platform migration motion.
+- Shared account tiers are mutually exclusive; only the highest supported
+  sales-fit tier contributes to account potential.
+- A signal rule ID scores at most once, even when the planner proposes it more
+  than once with different evidence.
 - Approved claims are not a general license to invent adjacent benefits.
 - Product IDs are persisted in the database and may appear in historical runs.
 - Avoid two products whose signals and conversation would be indistinguishable;

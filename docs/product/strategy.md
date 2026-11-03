@@ -62,7 +62,7 @@ detection. A candidate with no grounded product-fit signal is suppressed.
 ### Scoring explains confidence, not absolute truth
 
 The score is a deterministic prioritization aid. Product fit, timing, account
-potential, buyer confidence, freshness, and risk contribute within fixed caps.
+potential, buyer confidence, and freshness contribute within fixed caps.
 The UI should translate the breakdown into plain sales language and preserve
 the exact points for auditability.
 
@@ -93,8 +93,11 @@ Gmail draft. A human remains responsible for final review and sending.
 - Do not guess email addresses.
 - Do not expose evidence IDs or internal scoring mechanics in email copy.
 - Keep first-touch emails concise: a trigger, relevance, and a meeting ask.
-- Lower-ROI account types may receive a deterministic risk deduction; they are
-  not rejected through unsupported model judgment.
+- Account potential is a positive, evidence-backed sales-fit tier. Enterprise,
+  growth-stage, product-led, and digitally meaningful SMB profiles can earn
+  points; traditional small or professional-services profiles receive no
+  account-potential points unless public evidence supports meaningful digital
+  scale or workload.
 - Approved product claims come from the catalog, not model memory.
 
 ## Current non-goals

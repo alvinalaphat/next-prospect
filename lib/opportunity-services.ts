@@ -63,7 +63,17 @@ capability that says it rolls up to another product; return its parent instead.
 For each candidate:
 - Match only signal rule ids shown for that product, plus these shared account
   rules when supported: account.enterprise-scale, account.growth-scale,
-  account.credible-growth, account.low-roi.
+  account.credible-growth, account.smb-digital.
+- Match at most one shared account rule: choose the highest supported tier.
+- account.enterprise-scale requires substantial digital scale, engineering
+  footprint, global operations, traffic, or multi-brand complexity.
+- account.growth-scale requires mid-market or growth-stage technical scale.
+- account.credible-growth requires a smaller product-led company with credible
+  growth, hiring, funding, or expansion evidence.
+- account.smb-digital requires an SMB with a meaningful digital product,
+  commerce, or web workload.
+- Traditional small, local, or professional-services firms receive no account
+  tier unless evidence supports a meaningful digital product, commerce, or web workload.
 - Every match must cite evidence ids from the supplied ledger.
 - Do not infer private infrastructure, product usage, contracts, or spend.
 - One weak keyword is not product fit. Prefer direct public evidence.

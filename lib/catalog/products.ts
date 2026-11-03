@@ -99,7 +99,7 @@ export const PRODUCTS: ProductDefinition[] = [
   make({
     id: 'ai-gateway', name: 'AI Gateway', category: 'ai', roles: ai,
     summary: 'Unified model access, routing, billing, and observability for AI workloads.',
-    signals: [fit('multi-model-ai', 'Uses or evaluates multiple AI model providers', 24), fit('customer-ai-product', 'Runs a customer-facing AI application or agent', 18), trigger('ai-product-launch', 'Recently launched an AI feature or product', 20), trigger('ai-platform-hiring', 'Hiring AI platform or application engineers', 12)]
+    signals: [fit('multi-model-ai', 'Uses or evaluates multiple AI model providers', 24), fit('customer-ai-product', 'Runs a customer-facing AI application or agent', 21), trigger('ai-product-launch', 'Recently launched an AI feature or product', 20), trigger('ai-platform-hiring', 'Hiring AI platform or application engineers', 12)]
   }),
   make({
     id: 'ai-sdk', name: 'AI SDK', category: 'ai', roles: ai,

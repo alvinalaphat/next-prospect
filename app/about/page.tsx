@@ -59,9 +59,9 @@ const FLOW = [
 ];
 
 const SCORE_CATEGORIES = [
-  { label: 'Product fit', cap: 35, color: 'bg-foreground' },
-  { label: 'Timing trigger', cap: 25, color: 'bg-success' },
-  { label: 'Account potential', cap: 15, color: 'bg-violet' },
+  { label: 'Product fit', cap: 45, color: 'bg-foreground' },
+  { label: 'Timing trigger', cap: 20, color: 'bg-success' },
+  { label: 'Account potential', cap: 20, color: 'bg-violet' },
   { label: 'Buyer confidence', cap: 15, color: 'bg-positive' }
 ];
 
@@ -117,7 +117,7 @@ const RESPONSIBILITIES = [
   {
     concern: 'Opportunity score',
     model: 'Does not choose the number',
-    code: 'Applies weights, confidence, freshness, category caps, and risk'
+    code: 'Applies weights, confidence, freshness, category caps, and one account tier'
   },
   {
     concern: 'Buyer',
@@ -249,18 +249,18 @@ export default function About() {
               ))}
             </dl>
 
-            <div className="mt-4 flex items-start justify-between gap-6 rounded-lg border border-error/30 px-4 py-3">
+            <div className="mt-4 flex items-start justify-between gap-6 rounded-lg border px-4 py-3">
               <div>
-                <p className="text-sm font-medium">Risk deduction</p>
+                <p className="text-sm font-medium">Sales-fit account tier</p>
                 <p className="text-muted-foreground mt-1 text-xs leading-5">
-                  Reserved for supported concerns such as a low-priority account profile.
+                  Only the highest evidence-backed company profile contributes. Traditional SMB and professional-services
+                  profiles receive no account points by default.
                 </p>
               </div>
-              <span className="shrink-0 font-mono text-sm text-error">up to -30</span>
+              <span className="shrink-0 font-mono text-sm">0 to 20</span>
             </div>
             <p className="text-muted-foreground mt-4 text-xs leading-5">
-              Scores are stored on a 0 to 100 scale. The current positive category caps total 90 points, and risk can only
-              subtract from that result.
+              Scores are stored on a 0 to 100 scale, and the four positive category caps total 100 points.
             </p>
           </div>
 
@@ -274,9 +274,10 @@ export default function About() {
                 Confidence is 1.0, 0.7, or 0.4. Time-sensitive signals use 1.0, 0.85, 0.6, or 0.3 as they age.
               </FormulaStep>
               <FormulaStep number="3" title="Calculate each category" formula="min(sum of rule points, category cap)">
-                Multiple supported rules can contribute, but repeated evidence cannot push a category past its cap.
+                A rule ID scores only once. Product and timing rules can combine, while only the highest supported account
+                tier contributes.
               </FormulaStep>
-              <FormulaStep number="4" title="Calculate the final score" formula="clamp(fit + timing + account + buyer + risk)">
+              <FormulaStep number="4" title="Calculate the final score" formula="clamp(fit + timing + account + buyer)">
                 Zero product fit suppresses the motion. Other grounded candidates remain visible with their lower score.
               </FormulaStep>
             </ol>
@@ -331,7 +332,7 @@ export default function About() {
                   </dd>
                 </div>
                 <div className="rounded-md border bg-background p-3">
-                  <dt className="font-mono text-sm font-medium">18 catalog points</dt>
+                  <dt className="font-mono text-sm font-medium">21 catalog points</dt>
                   <dd className="text-muted-foreground mt-1 text-xs leading-5">
                     A customer-facing AI product supports likely demand, but does not alone prove multi-provider complexity.
                   </dd>
@@ -342,8 +343,8 @@ export default function About() {
             <div className="mt-6 grid gap-4 lg:grid-cols-2">
               <ExampleCategory
                 title="Product fit"
-                score={`${EXAMPLE_SCORE.breakdown.productFit}/35`}
-                note="37 adjusted points are capped at 35."
+                score={`${EXAMPLE_SCORE.breakdown.productFit}/45`}
+                note="39 adjusted points remain below the 45-point cap."
               >
                 <EvidenceCalculation
                   evidence="Engineering blog documents multiple model providers"
@@ -357,7 +358,7 @@ export default function About() {
                 />
               </ExampleCategory>
 
-              <ExampleCategory title="Timing trigger" score={`${EXAMPLE_SCORE.breakdown.trigger}/25`}>
+              <ExampleCategory title="Timing trigger" score={`${EXAMPLE_SCORE.breakdown.trigger}/20`}>
                 <EvidenceCalculation
                   evidence="AI feature launched 45 days ago"
                   rule="ai-product-launch"
@@ -365,7 +366,7 @@ export default function About() {
                 />
               </ExampleCategory>
 
-              <ExampleCategory title="Account potential" score={`${EXAMPLE_SCORE.breakdown.accountValue}/15`}>
+              <ExampleCategory title="Account potential" score={`${EXAMPLE_SCORE.breakdown.accountValue}/20`}>
                 <EvidenceCalculation
                   evidence="Public company data supports growth-stage scale"
                   rule="account.growth-scale"
@@ -379,18 +380,12 @@ export default function About() {
                 />
               </ExampleCategory>
 
-              <ExampleCategory title="Buyer and risk" score={`${EXAMPLE_SCORE.breakdown.buyerQuality}/15 buyer, 0 risk`}>
+              <ExampleCategory title="Buyer confidence" score={`${EXAMPLE_SCORE.breakdown.buyerQuality}/15`}>
                 <EvidenceCalculation
                   evidence="Retrieved public content verifies the Head of AI"
                   rule="buyer confidence"
                   formula="verified buyer"
                   points={EXAMPLE_SCORE.breakdown.buyerQuality}
-                />
-                <EvidenceCalculation
-                  evidence="No grounded low-priority account signal"
-                  rule="risk"
-                  formula="no deduction"
-                  points={EXAMPLE_SCORE.breakdown.risk}
                 />
               </ExampleCategory>
             </div>
@@ -400,8 +395,7 @@ export default function About() {
                 <p className="text-sm font-medium">Final opportunity score</p>
                 <p className="text-muted-foreground mt-1 font-mono text-xs">
                   {EXAMPLE_SCORE.breakdown.productFit} fit + {EXAMPLE_SCORE.breakdown.trigger} timing +{' '}
-                  {EXAMPLE_SCORE.breakdown.accountValue} account + {EXAMPLE_SCORE.breakdown.buyerQuality} buyer +{' '}
-                  {EXAMPLE_SCORE.breakdown.risk} risk
+                  {EXAMPLE_SCORE.breakdown.accountValue} account + {EXAMPLE_SCORE.breakdown.buyerQuality} buyer
                 </p>
               </div>
               <p className="font-mono text-2xl font-medium tabular-nums">= {EXAMPLE_SCORE.score}/100</p>

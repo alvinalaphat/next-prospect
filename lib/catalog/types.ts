@@ -8,7 +8,7 @@ export type ProductCategory =
   | 'storage'
   | 'developer-tools';
 
-export type SignalCategory = 'product_fit' | 'trigger' | 'account_value' | 'buyer' | 'risk';
+export type SignalCategory = 'product_fit' | 'trigger' | 'account_value' | 'buyer';
 
 export type ProductSignalRule = {
   id: string;

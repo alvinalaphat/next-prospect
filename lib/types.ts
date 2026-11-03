@@ -120,7 +120,7 @@ export const researchSchema = z.object({
   summary: sourced.describe('What the company does, one or two sentences'),
   sizeSignals: z
     .array(sourced)
-    .describe('Headcount, customers, traffic, funding rounds, investors'),
+    .describe('Business model, headcount, customers, traffic, funding, engineering footprint, global operations, and digital workload importance'),
   news: z
     .array(
       sourced.extend({
