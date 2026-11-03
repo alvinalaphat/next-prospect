@@ -22,7 +22,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: 'Next Prospect',
   description:
-    'Finds companies running Next.js off Vercel, researches them, and drafts grounded outreach for human approval.'
+    'Turns public company evidence into ranked, product-specific Vercel opportunities and grounded outreach for human review.'
 };
 
 export default function RootLayout({
