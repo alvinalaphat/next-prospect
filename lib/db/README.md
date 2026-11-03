@@ -15,8 +15,9 @@ storage.
 
 - `prospects`: latest account-level workflow state, shared research, detection,
   performance, evidence, and legacy account-level draft fields.
-- `opportunities`: product-specific angle, score, evidence IDs, buyer, draft,
-  approval state, and Slack/Gmail metadata.
+- `opportunities`: product-specific angle, score, evidence IDs, buyer and
+  attributable public activity, selected proof/context IDs, draft, approval
+  state, and Slack/Gmail metadata.
 - `psi_cache`: cached PageSpeed responses to reduce quota use.
 - `maintenance_runs`: durable status and results for weekly catalog/proof jobs.
 - `proof_records`: refreshed Vercel customer proof and competitor context;

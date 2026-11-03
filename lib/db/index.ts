@@ -1,6 +1,6 @@
 import { neon } from '@neondatabase/serverless';
 import { drizzle as drizzleNeon, type NeonHttpDatabase } from 'drizzle-orm/neon-http';
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import * as schema from './schema';
 import type { OpportunityRow, ProspectRow } from './schema';
 import type { CatalogAuditResult, MaintenanceKind, ProofRecord, ProofRefreshResult } from '@/lib/refresh/types';
@@ -176,4 +176,12 @@ export async function listActiveProofRecords() {
     .from(schema.proofRecords)
     .where(eq(schema.proofRecords.active, true))
     .orderBy(desc(schema.proofRecords.lastSeenAt));
+}
+
+export async function getProofRecords(ids: string[]) {
+  if (!ids.length) return [];
+  return db()
+    .select()
+    .from(schema.proofRecords)
+    .where(and(eq(schema.proofRecords.active, true), inArray(schema.proofRecords.id, ids)));
 }

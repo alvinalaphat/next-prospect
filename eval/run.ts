@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { OPPORTUNITY_PRODUCTS, PRODUCTS, getProduct } from '@/lib/catalog/products';
 import { isCronAuthorized } from '@/lib/cron-auth';
+import { contactActivityEvidence, contactActivityId, containsFullName } from '@/lib/contact-activity';
 import { freshnessMultiplier, scoreOpportunity } from '@/lib/scoring';
 
 const ids = PRODUCTS.map((product) => product.id);
@@ -29,6 +30,25 @@ assert.equal(isCronAuthorized(new Request('https://example.com/api/cron', {
 })), true);
 assert.equal(isCronAuthorized(new Request('https://example.com/api/cron')), false);
 delete process.env.CRON_SECRET;
+
+const undatedActivity = contactActivityEvidence([{
+  id: 'research.buyer-activity.fixture',
+  personName: 'Taylor Example',
+  text: 'Taylor discussed durable AI systems.',
+  sourceUrl: 'https://example.com/taylor-post',
+  sourceType: 'blog',
+  publishedAt: null,
+  relevance: 'Relevant to durable agents'
+}]);
+assert.equal(undatedActivity[0].label, 'Buyer activity');
+assert.doesNotMatch(undatedActivity[0].label, /recent/i);
+assert.equal(containsFullName('A conversation with Bo Li about AI systems', 'Bo Li'), true);
+assert.equal(containsFullName('A conversation with Bo Chen about AI systems', 'Bo Li'), false);
+assert.equal(containsFullName('Annual release notes from Leeway', 'Ann Lee'), false);
+assert.notEqual(
+  contactActivityId({ sourceUrl: 'https://example.com/post', text: 'First summary', relevance: 'AI' }),
+  contactActivityId({ sourceUrl: 'https://example.com/post', text: 'Second summary', relevance: 'AI' })
+);
 
 const platform = getProduct('vercel-platform')!;
 const suppressed = scoreOpportunity({

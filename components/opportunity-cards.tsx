@@ -1,4 +1,4 @@
-import { Mail, TriangleAlert } from 'lucide-react';
+import { ArrowUpRight, Mail, TriangleAlert } from 'lucide-react';
 import { LinkedInIcon } from '@/components/linkedin-icon';
 import { OpportunityApprovalBar } from '@/components/opportunity-approval-bar';
 import { OpportunityGmailButton } from '@/components/opportunity-gmail-button';
@@ -6,7 +6,7 @@ import { Score } from '@/components/badges';
 import { Sources } from '@/components/citations';
 import { CopyButton } from '@/components/copy-button';
 import { Disclosure } from '@/components/disclosure';
-import type { OpportunityRow } from '@/lib/db/schema';
+import type { OpportunityRow, ProofRecordRow } from '@/lib/db/schema';
 import type { EvidenceItem } from '@/lib/types';
 
 const statusLabel: Record<OpportunityRow['status'], string> = {
@@ -21,8 +21,17 @@ const statusLabel: Record<OpportunityRow['status'], string> = {
   error: 'Error'
 };
 
-export function OpportunityCards({ opportunities, ledger }: { opportunities: OpportunityRow[]; ledger: EvidenceItem[] }) {
+export function OpportunityCards({
+  opportunities,
+  ledger,
+  proofRecords
+}: {
+  opportunities: OpportunityRow[];
+  ledger: EvidenceItem[];
+  proofRecords: ProofRecordRow[];
+}) {
   if (!opportunities.length) return null;
+  const proofById = new Map(proofRecords.map((record) => [record.id, record]));
   return (
     <section aria-labelledby="recommended-opportunities-title" className="max-w-5xl space-y-5">
       <div>
@@ -57,6 +66,11 @@ export function OpportunityCards({ opportunities, ledger }: { opportunities: Opp
               </dl>
 
               <Buyer opportunity={opportunity} />
+
+              <SalesContext
+                customerProof={(opportunity.proofIds ?? []).flatMap((id) => proofById.get(id) ?? [])}
+                competitiveContext={(opportunity.competitiveContextIds ?? []).flatMap((id) => proofById.get(id) ?? [])}
+              />
 
               <div className="rounded-lg bg-hover px-4 sm:px-5">
                 <Disclosure
@@ -101,6 +115,7 @@ function PitchReason({ label, children }: { label: string; children: React.React
 
 function Buyer({ opportunity }: { opportunity: OpportunityRow }) {
   const contact = opportunity.contact;
+  const activity = opportunity.contactActivity ?? [];
   return (
     <section aria-label={`Recommended buyer for ${opportunity.productName}`} className="rounded-lg border bg-hover/60 p-4 sm:p-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -141,8 +156,97 @@ function Buyer({ opportunity }: { opportunity: OpportunityRow }) {
           <p className="mt-1 text-sm leading-6 sm:mt-0">{contact.rationale}</p>
         </div>
       )}
+      {activity.length > 0 && (
+        <div className="mt-4 border-t pt-4 sm:grid sm:grid-cols-[8rem_1fr] sm:gap-4">
+          <p className="text-muted-foreground text-xs font-medium uppercase tracking-wider">Public activity</p>
+          <ul className="mt-2 space-y-3 text-sm sm:mt-0">
+            {activity.map((item) => (
+              <li key={item.id} className="leading-6">
+                <p>{item.text}</p>
+                <p className="text-muted-foreground mt-0.5 text-xs">
+                  {item.publishedAt ? `${formatSourceDate(item.publishedAt)} · ` : ''}{item.relevance}{' '}
+                  <SourceLink url={item.sourceUrl} label={sourceTypeLabel(item.sourceType)} />
+                </p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </section>
   );
+}
+
+function SalesContext({
+  customerProof,
+  competitiveContext
+}: {
+  customerProof: ProofRecordRow[];
+  competitiveContext: ProofRecordRow[];
+}) {
+  if (!customerProof.length && !competitiveContext.length) return null;
+  return (
+    <section aria-label="Customer proof and competitive context" className="grid gap-3 sm:grid-cols-2">
+      {customerProof.length > 0 && (
+        <div className="rounded-lg bg-hover p-4 sm:p-5">
+          <p className="text-muted-foreground text-xs font-medium uppercase tracking-wider">Relevant Vercel precedent</p>
+          <p className="text-muted-foreground mt-1 text-xs">Supporting context for the rep, not a scoring signal.</p>
+          <ProofList records={customerProof} />
+        </div>
+      )}
+      {competitiveContext.length > 0 && (
+        <div className="rounded-lg border border-dashed p-4 sm:p-5">
+          <p className="text-muted-foreground text-xs font-medium uppercase tracking-wider">Competitive context</p>
+          <p className="text-muted-foreground mt-1 text-xs">Internal only. Never included in draft outreach.</p>
+          <ProofList records={competitiveContext} />
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ProofList({ records }: { records: ProofRecordRow[] }) {
+  return (
+    <ul className="mt-4 space-y-4">
+      {records.map((record) => (
+        <li key={record.id}>
+          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+            <p className="text-sm font-medium">{record.company}</p>
+            <span className="text-muted-foreground text-xs capitalize">{record.vendor}</span>
+          </div>
+          <p className="mt-1 text-sm leading-6">{record.summary}</p>
+          <p className="text-muted-foreground mt-1 text-xs">
+            {record.publishedAt ? `${formatSourceDate(record.publishedAt)} · ` : ''}
+            <SourceLink url={record.sourceUrl} label={record.title} />
+          </p>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function SourceLink({ url, label }: { url: string; label: string }) {
+  return (
+    <a href={url} target="_blank" rel="noreferrer" className="hover:text-foreground inline-flex items-center gap-1 underline decoration-dotted underline-offset-2">
+      {label} <ArrowUpRight className="size-3" aria-hidden />
+    </a>
+  );
+}
+
+function sourceTypeLabel(sourceType: NonNullable<OpportunityRow['contactActivity']>[number]['sourceType']) {
+  return {
+    'linkedin-post': 'LinkedIn post',
+    blog: 'Blog',
+    talk: 'Talk',
+    podcast: 'Podcast',
+    github: 'GitHub',
+    other: 'Source'
+  }[sourceType];
+}
+
+function formatSourceDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(date);
 }
 
 function DraftPreview({ opportunity, ledger }: { opportunity: OpportunityRow; ledger: EvidenceItem[] }) {

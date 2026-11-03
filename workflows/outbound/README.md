@@ -12,7 +12,8 @@ optional batch delay
   → research public account signals
   → assemble the shared evidence ledger
   → plan and score up to three product opportunities
-  → for each opportunity: find buyer, rescore, draft, request review
+  → for each opportunity: find buyer, research public buyer activity, attach
+    customer proof and competitive context, rescore, draft, request review
   → stop at awaiting approval
 ```
 
@@ -66,9 +67,13 @@ sorts by score, and keeps up to three.
 ### Enrich opportunity
 
 Buyer discovery runs after the product angle is known. The presence of a named,
-grounded buyer affects buyer-confidence points. Drafting receives only evidence
-selected for that opportunity, plus exact observed-host evidence for expansion
-copy when needed.
+grounded buyer affects buyer-confidence points. A second grounded search may
+add the selected buyer's recent public posts, blogs, talks, podcasts, or GitHub
+activity to drafting context, but it does not change product ranking or scoring.
+Relevant Vercel customer proof and competitor case studies are selected from
+the refreshed proof library and stored on the opportunity. Competitive context
+is never passed to drafting. Drafting receives only prospect/buyer evidence,
+plus exact observed-host evidence for expansion copy when needed.
 
 ### Request review
 

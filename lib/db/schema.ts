@@ -5,6 +5,7 @@ import type { ScoreBreakdown, ScoredSignal } from '@/lib/scoring';
 import type { CatalogAuditResult, MaintenanceKind, MaintenanceStatus, ProofRefreshResult, ProofUsage, ProofVendor } from '@/lib/refresh/types';
 import type {
   Approval,
+  ContactActivity,
   Detection,
   Draft,
   EvidenceItem,
@@ -94,6 +95,9 @@ export const opportunities = pgTable(
     evidenceIds: jsonb('evidence_ids').$type<string[]>().notNull(),
 
     contact: jsonb('contact').$type<OpportunityContact>(),
+    contactActivity: jsonb('contact_activity').$type<ContactActivity[]>(),
+    proofIds: jsonb('proof_ids').$type<string[]>(),
+    competitiveContextIds: jsonb('competitive_context_ids').$type<string[]>(),
     draft: jsonb('draft').$type<Draft>(),
     decision: jsonb('decision').$type<Approval>(),
     approvalToken: text('approval_token'),
