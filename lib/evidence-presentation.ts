@@ -71,12 +71,15 @@ export function presentEvidence(evidence: EvidenceItem): PresentedEvidence {
   }
 
   if (evidence.id.startsWith('detect.nextjs.')) {
+    const isSummary = evidence.id === 'detect.nextjs.summary';
     const found = !/not detected/i.test(evidence.value);
     return {
       label: 'Website technology',
-      statement: found
-        ? 'The public website shows a reliable signal that it uses Next.js.'
-        : 'The website scan did not find a reliable Next.js signal.',
+      statement: isSummary
+        ? found
+          ? 'The website scan found enough public signals to identify Next.js.'
+          : 'The website scan did not find enough public signals to confirm Next.js.'
+        : 'The website scan found a Next.js-related marker. Its strength is reflected in the score above.',
       sourceLabel: sourceLabel(evidence.url)
     };
   }
@@ -87,7 +90,7 @@ export function presentEvidence(evidence: EvidenceItem): PresentedEvidence {
       label: 'Website hosting',
       statement: host
         ? `The public website shows a hosting signal for ${host}.`
-        : 'The public website reveals a detectable hosting provider.',
+        : 'The website scan could not identify a hosting provider.',
       sourceLabel: sourceLabel(evidence.url)
     };
   }

@@ -74,6 +74,24 @@ const plainHosting = presentEvidence({
 });
 assert.match(plainHosting.statement, /hosting signal for Cloudflare/i);
 assert.doesNotMatch(plainHosting.statement, /primary host/i);
+assert.match(presentEvidence({
+  id: 'detect.host.summary',
+  source: 'detect',
+  label: 'Hosting',
+  value: 'Primary host: unknown'
+}).statement, /could not identify a hosting provider/i);
+assert.match(presentEvidence({
+  id: 'detect.nextjs.next-root',
+  source: 'detect',
+  label: 'Pages Router root element',
+  value: '<div id="__next">'
+}).statement, /Next\.js-related marker/i);
+assert.doesNotMatch(presentEvidence({
+  id: 'detect.nextjs.next-root',
+  source: 'detect',
+  label: 'Pages Router root element',
+  value: '<div id="__next">'
+}).statement, /reliable|confirm/i);
 assert.equal(
   salesLanguage('CrUX p75 LCP 3040 ms behind a CDN'),
   'real-user performance data the experience for most visitors main-content load time 3 seconds behind a content delivery network'
