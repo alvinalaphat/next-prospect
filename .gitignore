@@ -43,6 +43,11 @@ next-env.d.ts
 
 # generated
 .well-known*
+.codex-presentation-build
+.codex-slide-*
+artifacts/
+deliverables/
+output/
 
 # misc
 .swc
