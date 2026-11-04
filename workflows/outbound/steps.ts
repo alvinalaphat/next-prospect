@@ -1,7 +1,7 @@
 import { FatalError, getStepMetadata, RetryableError } from 'workflow';
 import { detect, detectionEvidence } from '@/lib/detect';
 import { claimProspectRun, getProspect, updateProspectForRun } from '@/lib/db';
-import { getOpportunity, insertOpportunity, updateOpportunity } from '@/lib/db';
+import { getOpportunity, insertOpportunity, updateOpportunity, updateOpportunityForActiveRun } from '@/lib/db';
 import { researchEvidence } from '@/lib/grounding';
 import { findOpportunityContact, planOpportunities, writeOpportunityDraft } from '@/lib/opportunity-services';
 import { contactActivityEvidence, researchContactActivity } from '@/lib/contact-activity';
@@ -28,11 +28,12 @@ export const stepDetect = async (domain: string, runId: string) => {
   // Eligibility is evaluated per product. Being on Vercel or not using
   // Next.js can suppress a hosting motion, but must not eliminate AI,
   // observability, security, or other product opportunities.
-  const status: ProspectStatus | null =
-    detection.outcome === 'unreachable' ? 'unreachable' : null;
-
   const active = await updateProspectForRun(domain, runId, {
-    status: status ?? 'measuring',
+    // Detection may report an unreachable homepage while PSI retries or
+    // research can still produce useful evidence. Keep the account visibly
+    // in flight until that work ends so the dashboard continues to offer
+    // cancellation.
+    status: 'measuring',
     detection,
     evidence,
     host: detection.host.primary,
@@ -320,12 +321,11 @@ export const stepRequestOpportunityApproval = async (
 
   const current = await getOpportunity(opportunityId);
   if (!current) throw new FatalError(`Opportunity ${opportunityId} is missing`);
-  if (!(await isProspectRunActive(current.domain, current.runId))) return;
-  const opportunity = await updateOpportunity(opportunityId, {
+  const opportunity = await updateOpportunityForActiveRun(opportunityId, {
     status: 'awaiting_approval',
     approvalToken: token
   });
-  if (!opportunity) throw new FatalError(`Opportunity ${opportunityId} is missing`);
+  if (!opportunity) return;
   if (!process.env.SLACK_BOT_TOKEN || !process.env.SLACK_SIGNING_SECRET) return;
   if (!(await isProspectRunActive(opportunity.domain, opportunity.runId))) return;
   const prospect = await getProspect(opportunity.domain);

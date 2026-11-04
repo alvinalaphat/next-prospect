@@ -1,6 +1,6 @@
 import { neon } from '@neondatabase/serverless';
 import { drizzle as drizzleNeon, type NeonHttpDatabase } from 'drizzle-orm/neon-http';
-import { and, desc, eq, inArray, isNull, ne, or, sql } from 'drizzle-orm';
+import { and, desc, eq, exists, inArray, isNull, ne, or, sql } from 'drizzle-orm';
 import * as schema from './schema';
 import type { OpportunityRow, ProspectRow } from './schema';
 import type { CatalogAuditResult, MaintenanceKind, ProofRecord, ProofRefreshResult } from '@/lib/refresh/types';
@@ -120,6 +120,24 @@ export async function updateOpportunity(id: string, patch: OpportunityPatch) {
     .update(schema.opportunities)
     .set({ ...patch, updatedAt: sql`now()` })
     .where(eq(schema.opportunities.id, id))
+    .returning();
+  return rows[0] ?? null;
+}
+
+/** Publish opportunity state only while its owning run still owns the account. */
+export async function updateOpportunityForActiveRun(id: string, patch: OpportunityPatch) {
+  const owningRunIsActive = db()
+    .select({ value: sql`1` })
+    .from(schema.prospects)
+    .where(and(
+      eq(schema.prospects.domain, schema.opportunities.domain),
+      eq(schema.prospects.runId, schema.opportunities.runId),
+      ne(schema.prospects.status, 'cancelled')
+    ));
+  const rows = await db()
+    .update(schema.opportunities)
+    .set({ ...patch, updatedAt: sql`now()` })
+    .where(and(eq(schema.opportunities.id, id), exists(owningRunIsActive)))
     .returning();
   return rows[0] ?? null;
 }

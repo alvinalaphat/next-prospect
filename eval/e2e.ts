@@ -30,6 +30,7 @@ const {
   listActiveProofRecords,
   startMaintenanceRun,
   updateOpportunity,
+  updateOpportunityForActiveRun,
   updateProspectForRun,
   upsertProofRecords,
   upsertProspect
@@ -132,6 +133,19 @@ await insertOpportunity({
   runId: reviewCancellationRun,
   status: 'awaiting_approval',
   decision: null,
+  approvalToken: reviewCancellationToken
+});
+await updateOpportunity(reviewCancellationId, { status: 'drafting', approvalToken: null });
+assert.equal(
+  await updateOpportunityForActiveRun(reviewCancellationId, {
+    status: 'awaiting_approval',
+    approvalToken: reviewCancellationToken
+  }),
+  null
+);
+assert.equal((await getOpportunity(reviewCancellationId))?.status, 'drafting');
+await updateOpportunity(reviewCancellationId, {
+  status: 'awaiting_approval',
   approvalToken: reviewCancellationToken
 });
 await expireOpportunities(cancelledDomain, reviewCancellationRun);
