@@ -11,7 +11,7 @@ import {
   updateProspectForRun
 } from '@/lib/db';
 import { precedentEvidence, researchEvidence } from '@/lib/grounding';
-import { findOpportunityContacts, planOpportunities, writeOpportunityDraft } from '@/lib/opportunity-services';
+import { findOpportunityContacts, planOpportunities, scoreDraft, writeOpportunityDraft } from '@/lib/opportunity-services';
 import { contactActivityEvidence, researchContactActivities } from '@/lib/contact-activity';
 import { emptyPerfResult, perfEvidence, PsiRateLimitError, runPsi } from '@/lib/psi';
 import { buyerRegionEvidence, opportunityRegion } from '@/lib/region';
@@ -314,6 +314,32 @@ export const stepEnrichOpportunity = async (
   }
   await updateOpportunityForRun(opportunityId, { draft });
   return { opportunityId, score: rescored.score };
+};
+
+export const stepScoreDraft = async (opportunityId: string) => {
+  'use step';
+
+  const opportunity = await getOpportunity(opportunityId);
+  if (!opportunity) throw new FatalError(`Opportunity ${opportunityId} is missing`);
+  const draft = opportunity.draft;
+  if (!draft) throw new FatalError(`Draft for opportunity ${opportunityId} is missing`);
+  if (draft.draftScore != null) return { opportunityId, score: draft.draftScore };
+
+  const score = await scoreDraft(draft);
+  const current = await getOpportunity(opportunityId);
+  if (!current?.draft) throw new FatalError(`Draft for opportunity ${opportunityId} is missing`);
+  if (current.draft.draftScore != null) {
+    return { opportunityId, score: current.draft.draftScore };
+  }
+  if (current.draft.subject !== draft.subject || current.draft.body !== draft.body) {
+    throw new FatalError(`Draft for opportunity ${opportunityId} changed while it was being scored`);
+  }
+
+  const updated = await updateOpportunityForRun(opportunityId, {
+    draft: { ...current.draft, draftScore: score }
+  });
+  if (!updated) throw new FatalError(`Opportunity ${opportunityId} is no longer current`);
+  return { opportunityId, score };
 };
 
 /** Ask for a separate decision on each opportunity. */

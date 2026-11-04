@@ -5,6 +5,7 @@ import { OpportunityGmailButton } from '@/components/opportunity-gmail-button';
 import { Score } from '@/components/badges';
 import { CopyButton } from '@/components/copy-button';
 import { Disclosure } from '@/components/disclosure';
+import { DraftScoreButton } from '@/components/draft-score-button';
 import { ScoreCategorySwitcher, type ScoreCategoryTab } from '@/components/score-category-switcher';
 import type { OpportunityRow } from '@/lib/db/schema';
 import { presentEvidence, salesLanguage } from '@/lib/evidence-presentation';
@@ -210,7 +211,14 @@ function DraftPreview({ opportunity, ledger }: { opportunity: OpportunityRow; le
   return (
     <section aria-label={`Draft for ${opportunity.productName}`} className="rounded-lg border bg-hover/60 px-4 sm:px-5">
       <Disclosure title="Email draft" hint={`${recipient} · ${draft.subject}`}>
-        <div className="flex justify-end">
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          {draft.draftScore == null ? (
+            <DraftScoreButton opportunityId={opportunity.id} />
+          ) : (
+            <span className="text-muted-foreground text-xs">
+              Draft score: <span className="text-foreground font-mono tabular-nums">{draft.draftScore}/100</span>
+            </span>
+          )}
           <CopyButton text={`Subject: ${draft.subject}\n\n${draft.body}`} />
         </div>
         <div className="mt-3 rounded-lg bg-background p-4 sm:p-5">

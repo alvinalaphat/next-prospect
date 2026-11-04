@@ -19,7 +19,12 @@ export async function applyOpportunityDecision(
   if (!current?.draft) return { applied: false, reason: 'not_awaiting' };
   const draft =
     decision.decision === 'approved' && decision.editedDraft
-      ? { ...current.draft, ...decision.editedDraft, editedBy: decision.by }
+      ? {
+          ...current.draft,
+          ...decision.editedDraft,
+          draftScore: undefined,
+          editedBy: decision.by
+        }
       : current.draft;
   const rows = await db()
     .update(schema.opportunities)

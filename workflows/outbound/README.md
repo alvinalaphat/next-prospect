@@ -21,6 +21,10 @@ optional batch delay
 The workflow does not wait for a decision. Dashboard and Slack routes record
 decisions after the durable run reaches `awaiting_approval`.
 
+Draft quality scoring is optional and on demand. The protected draft-score API
+starts a separate one-step workflow that grades the persisted draft against
+`DRAFT_INSTRUCTIONS` and stores a 0–100 score inside the draft JSON.
+
 An account-level failure exposes a protected **Try again** action. It expires any
 still-reviewable opportunities, clears the failed account state, and starts the
 same durable workflow from the beginning on the latest deployment. Within that

@@ -205,6 +205,7 @@ export const draftSchema = z.object({
 
 export type Draft = z.infer<typeof draftSchema> & {
   warnings: string[];
+  draftScore?: number;
   editedBy?: string;
   /** Recipient, from grounded research — shown to the reviewer to verify. */
   to?: { name: string; title: string | null; email: string | null; linkedinUrl: string | null } | null;
