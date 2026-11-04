@@ -3,7 +3,8 @@
 **Next Prospect** is an account-level outbound opportunity planner for Vercel. It researches a
 company, evaluates the evidence against Vercel's full product catalog, ranks up to three
 product-specific conversations, finds the right buyer for each, and drafts personalized,
-fully cited outreach for **human approval**.
+source-grounded outreach for **human approval**. The rep brief keeps the supporting
+evidence and source links visible; the customer-facing email stays clean and readable.
 
 > Nothing is ever sent. "Approve" only marks a draft approved.
 
@@ -23,17 +24,25 @@ For each domain in a CSV, one durable workflow:
    it suppresses only an incorrect hosting-migration opportunity.
 2. **Measure**: PageSpeed Insights for mobile and desktop. Lighthouse lab LCP/CLS/TTFB/TBT
    and CrUX real-user p75 LCP/INP/CLS/TTFB are kept separate. Cached for 24h.
-3. **Research**: an Exa research agent collects company, region, launches, hiring, job,
-   technical, social, and timing signals. Every item must cite a URL a tool returned.
+3. **Research**: an Exa research agent collects company, headquarters region, launches,
+   hiring, job, technical, social, and timing signals. Every item must cite a URL a tool
+   returned.
 4. **Route and score**: the model matches grounded evidence to known catalog signal rules;
    code applies deterministic confidence, freshness, category caps, and one evidence-backed
    account-potential tier.
-5. **Choose buyers**: one people search assigns a verified contact to each selected product
-   opportunity. Public activity is researched once per unique buyer and tailored to each
-   opportunity; an explicit target role remains when no person can be grounded.
-6. **Draft**: each opportunity receives a 60–120 word email and rep brief using only its
-   selected evidence and approved product claims. Expansion drafts may build on an observed
-   Vercel hosting footprint without claiming private account knowledge.
+5. **Choose buyers**: a shared people search assigns a verified contact to each selected
+   product opportunity. Any missing assignment gets a second, opportunity-specific search
+   for the nearest relevant functional leader; a generic target role is retained only when
+   neither search can ground a named person. Public activity is researched once per unique
+   buyer and tailored to each opportunity. A verified buyer work location can qualify the
+   opportunity as EMEA; an EMEA headquarters qualifies it regardless of the buyer's location.
+6. **Draft**: each opportunity receives a 70–110 word email and rep brief using only its
+   selected evidence and approved catalog claims. Every EMEA-qualified email closes with
+   an approved, concise "By the way," note covering GDPR support, privacy and security
+   commitments backed by independently audited controls, and the Data Processing Addendum.
+   The note appears after the meeting ask and before the rep's sign-off. Expansion drafts
+   may build on an observed Vercel hosting footprint without claiming private account
+   knowledge.
 7. **Approve**: each opportunity independently ends at Needs review. Slack or the dashboard
    records Approve / Edit / Reject. Nothing is automatically sent.
 8. **Gmail draft**: on approval, the final (possibly edited) email becomes a **draft in
@@ -56,7 +65,7 @@ flowchart TD
         P --> R["stepResearch<br/>ToolLoopAgent + Exa search/fetch"]
         R --> Q["stepPlanOpportunities<br/>full catalog routing + deterministic score"]
         Q -->|no supported product fit| STOP2([stop])
-        Q --> BR["stepResearchOpportunityBuyers<br/>one people search + activity per unique buyer"]
+        Q --> BR["stepResearchOpportunityBuyers<br/>shared + targeted people search<br/>activity per unique buyer"]
         BR --> B["stepEnrichOpportunity × up to 3<br/>rescore + draft"]
         B --> H["stepRequestOpportunityApproval<br/>one Slack card per opportunity"]
         H --> DONE([Needs review])
@@ -89,7 +98,9 @@ Every observation becomes an `EvidenceItem` with a stable id:
   pass**, then the claims are pruned.
 - Numbers in the email that don't appear in the ledger are retried once, then shown to the
   reviewer as warnings.
-- The UI renders every citation as a chip that jumps to the ledger row.
+- The prospect page colocates sales-readable evidence with each opportunity and score
+  category. Reps can scan the reason, point contribution, and original public source
+  without working through a separate technical ledger.
 
 ## Project structure
 

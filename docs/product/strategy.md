@@ -35,7 +35,9 @@ For each submitted domain, NextProspect:
 - researches public company, hiring, launch, regional, and timing signals;
 - evaluates grounded evidence against the full Vercel product catalog;
 - deterministically scores and ranks up to three distinct product motions;
-- identifies a product-specific buyer or an explicit target role;
+- identifies a product-specific named buyer whenever public results support a
+  direct or reasonably adjacent owner, using an explicit target role only when
+  expanded search still cannot ground a relevant person;
 - drafts concise outreach using only approved product claims and cited public
   evidence; and
 - waits for a human to approve, edit, or reject each opportunity.
@@ -83,9 +85,12 @@ is treated as EMEA when public evidence places either the company headquarters
 or the selected buyer's work location there. A buyer location expands EMEA
 coverage; it never overrides an EMEA headquarters. An office location alone is
 insufficient unless public evidence connects the buyer to it. Every EMEA draft
-must include the approved, concise Vercel platform statement covering GDPR,
-independently audited security controls, and the Data Processing Addendum.
-Location is never a license to invent any additional compliance concern.
+must close with the approved, concise Vercel platform note beginning "By the
+way," and covering GDPR, independently audited security controls, and the Data
+Processing Addendum. It
+appears after the meeting ask and before the sign-off so it does not interrupt
+the product argument. Location is never a license to invent any additional
+compliance concern.
 
 ### Human review is permanent
 

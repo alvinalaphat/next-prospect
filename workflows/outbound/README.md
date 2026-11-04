@@ -80,9 +80,11 @@ sorts by score, and keeps up to three.
 
 Buyer discovery runs after every product angle is known. One combined people
 search supplies candidates for all opportunities, then the model assigns the
-best grounded buyer to each. The presence of a named buyer affects
-buyer-confidence points. Public activity is searched once per unique selected
-buyer and selected separately for each of that buyer's opportunities. It may
+best grounded buyer to each. Missing assignments receive a targeted second
+search for direct and adjacent functional owners before a generic role is
+allowed. The presence of a named buyer affects buyer-confidence points. Public
+activity is searched once per unique selected buyer and selected separately
+for each of that buyer's opportunities. It may
 add recent posts, blogs, talks, podcasts, or GitHub activity to drafting
 context, but it does not change product ranking or scoring.
 Drafting receives only prospect and buyer evidence, the selected product

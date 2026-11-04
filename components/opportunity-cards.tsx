@@ -155,9 +155,12 @@ function Buyer({ opportunity }: { opportunity: OpportunityRow }) {
         </div>
       )}
       {activity.length > 0 && (
-        <div className="mt-4 border-t pt-4 sm:grid sm:grid-cols-[8rem_1fr] sm:gap-4">
-          <p className="text-muted-foreground text-xs font-medium uppercase tracking-wider">Public activity</p>
-          <ul className="mt-2 space-y-3 text-sm sm:mt-0">
+        <Disclosure
+          className="mt-4 border-t"
+          title="Public activity"
+          hint={`${activity.length} relevant public ${activity.length === 1 ? 'item' : 'items'}`}
+        >
+          <ul className="space-y-3 text-sm">
             {activity.map((item) => (
               <li key={item.id} className="leading-6">
                 <p>{item.text}</p>
@@ -168,7 +171,7 @@ function Buyer({ opportunity }: { opportunity: OpportunityRow }) {
               </li>
             ))}
           </ul>
-        </div>
+        </Disclosure>
       )}
     </section>
   );

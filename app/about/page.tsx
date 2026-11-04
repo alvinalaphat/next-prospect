@@ -62,7 +62,7 @@ const ACCOUNT_TIERS = [
 const OPPORTUNITY_CONTENTS = [
   ['Product motion', 'The Vercel product, sales angle, why now, and why Vercel.'],
   ['Score and evidence', 'A plain-language category breakdown with the supporting public evidence beside each point contribution.'],
-  ['Buyer context', 'A grounded person or target role, plus relevant public posts, blogs, talks, or GitHub activity.'],
+  ['Buyer context', 'The best grounded named person available, with an explicit target role only as a last resort, plus relevant public activity.'],
   ['Review-ready draft', 'Concise outreach using prospect evidence and approved catalog claims only.']
 ] as const;
 

@@ -21,7 +21,7 @@ const commonProhibited = [
 ];
 
 /** Approved platform-level copy required in every EMEA-qualified draft. */
-export const EMEA_TRUST_SENTENCE = 'Vercel supports GDPR compliance and backs its privacy and security commitments with independently audited controls and a Data Processing Addendum.';
+export const EMEA_TRUST_NOTE = 'By the way, Vercel supports GDPR compliance and backs its privacy and security commitments with independently audited controls and a Data Processing Addendum.';
 
 const fit = (id: string, description: string, points: number): ProductSignalRule => ({
   id,
