@@ -36,6 +36,13 @@
       "when": 1793732312626,
       "tag": "0004_normal_iceman",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793759225902,
+      "tag": "0005_round_grey_gargoyle",
+      "breakpoints": true
     }
   ]
 }

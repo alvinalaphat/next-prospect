@@ -1,7 +1,7 @@
 import { inArray } from 'drizzle-orm';
 import { start } from 'workflow/api';
 import { isAuthorized, unauthorized } from '@/lib/auth';
-import { db, expireOpportunities, schema, upsertProspect } from '@/lib/db';
+import { db, expireOpportunities, resetProspectForNewRun, schema, upsertProspect } from '@/lib/db';
 import { parseDomains } from '@/lib/domains';
 import type { ProspectStatus } from '@/lib/types';
 import { markSuperseded } from '@/lib/slack';
@@ -72,15 +72,7 @@ export async function POST(request: Request) {
       await markSuperseded(prev.slack, domain).catch((err) => console.warn('supersede failed', err));
     }
     await expireOpportunities(domain);
-    await upsertProspect(domain, {
-      status: 'queued',
-      runId: null,
-      batch,
-      error: null,
-      approval: null,
-      approvalToken: null,
-      slack: null
-    });
+    await resetProspectForNewRun(domain, batch);
     const run = await start(workflowOutbound, [domain, i * STAGGER_SECONDS]);
     await upsertProspect(domain, { runId: run.runId });
     started.push({ domain, runId: run.runId });

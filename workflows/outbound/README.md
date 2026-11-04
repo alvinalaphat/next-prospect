@@ -20,6 +20,19 @@ optional batch delay
 The workflow does not wait for a decision. Dashboard and Slack routes record
 decisions after the durable run reaches `awaiting_approval`.
 
+An account-level failure exposes a protected Retry action. Retry starts a new
+durable run on the latest deployment, transfers the failed run's persisted
+opportunity checkpoints to it, and continues from the first incomplete stage.
+Completed detection, performance, research, planning, drafts, and reviewable
+opportunities are reused rather than repeated. A missing Slack receipt is
+republished without regenerating its draft, while already-decided opportunities
+stay final and determine the restored account status. This is application-level
+checkpoint recovery: Workflow SDK terminal runs themselves are not reopened.
+The account claim and opportunity transfer happen in one database statement,
+so a failed handoff cannot split checkpoint ownership across runs. Planning has
+an explicit completion marker; partial planner writes are cleared and replanned
+before enrichment instead of being mistaken for a completed product set.
+
 ## Durable execution rules
 
 - Keep orchestration in the `'use workflow'` function and side-effecting or
@@ -27,6 +40,11 @@ decisions after the durable run reaches `awaiting_approval`.
 - Step inputs and outputs must be serializable.
 - Make each step retry-safe. A retry must converge on the same prospect or
   opportunity state rather than duplicate externally visible work.
+- A replacement retry run must claim the account before it can publish, and
+  unfinished opportunities must move to that run atomically before enrichment
+  resumes.
+- Starting a brand-new run clears every prior account-stage checkpoint; only a
+  replacement retry run may adopt the failed run's persisted checkpoints.
 - Persist a status before or with meaningful work so the dashboard explains
   where a run is.
 - Treat missing optional integrations as degradation, not permission to invent

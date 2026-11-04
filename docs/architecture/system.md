@@ -89,5 +89,8 @@ its own decision lifecycle and is the authoritative unit of review.
 - Invalid research credentials fail fast and continue without research.
 - Unexpected stage failures call `stepFail`, storing a bounded account error
   before the workflow rethrows.
+- Failed accounts can be retried from the account error banner. The protected
+  retry route starts a replacement durable run and resumes from persisted
+  application checkpoints instead of repeating completed research.
 - Planner suppression is expected behavior and must not be rendered as an
   account-level fatal error.

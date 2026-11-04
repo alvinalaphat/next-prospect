@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { ArrowDown, ArrowUp, Search } from 'lucide-react';
 import { AccountActions } from '@/components/account-actions';
 import { Score, StatusBadge } from '@/components/badges';
@@ -19,10 +20,20 @@ export type ProspectListItem = {
 
 type SortKey = 'domain' | 'fitScore' | 'status' | 'updatedAt';
 
+const ACTION_STATUSES = new Set<ProspectStatus>(['awaiting_approval', 'error', 'expired']);
+const REVIEWED_STATUSES = new Set<ProspectStatus>(['approved', 'rejected']);
+
 const VIEWS = {
-  pipeline: { label: 'Pipeline', test: (i: ProspectListItem) => STATUS[i.status].group !== 'skipped' },
-  review: { label: 'Needs review', test: (i: ProspectListItem) => i.status === 'awaiting_approval' },
-  skipped: { label: 'Skipped', test: (i: ProspectListItem) => STATUS[i.status].group === 'skipped' },
+  action: {
+    label: 'Action needed',
+    test: (i: ProspectListItem) => ACTION_STATUSES.has(i.status)
+  },
+  running: { label: 'In progress', test: (i: ProspectListItem) => STATUS[i.status].group === 'running' },
+  reviewed: { label: 'Reviewed', test: (i: ProspectListItem) => REVIEWED_STATUSES.has(i.status) },
+  noPitch: {
+    label: 'No pitch',
+    test: (i: ProspectListItem) => STATUS[i.status].group === 'skipped' && i.status !== 'error'
+  },
   all: { label: 'All', test: () => true }
 } as const;
 
@@ -96,7 +107,8 @@ function ViewSwitch({
 }
 
 export function ProspectsTable({ items, renderedAt }: { items: ProspectListItem[]; renderedAt: number }) {
-  const [view, setView] = useState<keyof typeof VIEWS>('pipeline');
+  const router = useRouter();
+  const [view, setView] = useState<keyof typeof VIEWS>('action');
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'fitScore', dir: 'desc' });
 
@@ -172,7 +184,11 @@ export function ProspectsTable({ items, renderedAt }: { items: ProspectListItem[
         <>
         <ul className="space-y-3 lg:hidden">
           {rows.map((i) => (
-            <li key={i.domain} className="rounded-lg border p-4">
+            <li
+              key={i.domain}
+              className="cursor-pointer rounded-lg border p-4 hover:bg-accent/50"
+              onClick={(event) => openProspect(event, i.domain, router.push)}
+            >
               <div className="flex items-start justify-between gap-3">
                 <Link href={`/prospect/${i.domain}`} className="min-w-0 font-medium break-all hover:underline">
                   {i.domain}
@@ -225,7 +241,11 @@ export function ProspectsTable({ items, renderedAt }: { items: ProspectListItem[
           </thead>
           <tbody className="divide-y">
             {rows.map((i) => (
-              <tr key={i.domain} className="hover:bg-accent/50 group">
+              <tr
+                key={i.domain}
+                className="group cursor-pointer hover:bg-accent/50"
+                onClick={(event) => openProspect(event, i.domain, router.push)}
+              >
                 <td className="overflow-hidden px-3 py-3">
                   <Link href={`/prospect/${i.domain}`} className="block truncate font-medium group-hover:underline">
                     {i.domain}
@@ -258,4 +278,13 @@ export function ProspectsTable({ items, renderedAt }: { items: ProspectListItem[
       </div>
     </div>
   );
+}
+
+function openProspect(
+  event: MouseEvent,
+  domain: string,
+  navigate: (href: string) => void
+) {
+  if ((event.target as HTMLElement).closest('a, button, input, textarea, select, [role="menuitem"]')) return;
+  navigate(`/prospect/${encodeURIComponent(domain)}`);
 }

@@ -26,6 +26,13 @@ storage.
 The opportunity is the unit of review. The prospect status is a dashboard-level
 summary and must remain consistent with child decisions.
 
+A brand-new run clears account-level detection, performance, research,
+evidence, scoring, and legacy draft fields before it starts. A retry replacement
+is different: it deliberately adopts only the failed run's persisted state and
+transfers that run's opportunities to the replacement run ID in the same atomic
+claim. `planning_complete` distinguishes a fully persisted product set from
+partial planner writes; incomplete sets are cleared before the planner retries.
+
 ## Schema changes
 
 1. Edit `lib/db/schema.ts`.

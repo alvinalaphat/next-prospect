@@ -9,6 +9,9 @@ async function main() {
   delete process.env.GOOGLE_CLIENT_ID;
   delete process.env.GOOGLE_CLIENT_SECRET;
   delete process.env.GMAIL_REFRESH_TOKEN;
+  delete process.env.SLACK_BOT_TOKEN;
+  delete process.env.SLACK_SIGNING_SECRET;
+  delete process.env.SLACK_CHANNEL_ID;
 
   const { PGlite } = await import('@electric-sql/pglite');
 const { drizzle } = await import('drizzle-orm/pglite');
@@ -20,12 +23,18 @@ await migrationClient.close();
 const { approvalToken } = await import('@/lib/approval-token');
 const {
   claimProspectRun,
+  claimRetryRunWithOpportunities,
+  clearIncompleteOpportunityPlanning,
   completeMaintenanceRun,
   getLatestMaintenanceRun,
   insertOpportunity,
   getOpportunity,
+  getOpportunities,
   getProspect,
   listActiveProofRecords,
+  resetProspectForNewRun,
+  reserveProspectRetry,
+  restoreProspectRetry,
   startMaintenanceRun,
   updateOpportunity,
   updateOpportunityForRun,
@@ -37,6 +46,7 @@ const { applyOpportunityDecision } = await import('@/lib/opportunity-decision');
 const { getProduct } = await import('@/lib/catalog/products');
 const { scoreOpportunity } = await import('@/lib/scoring');
 const { selectOpportunityProof } = await import('@/lib/proof-selection');
+const { stepFinishOpportunityPlanning, stepRequestOpportunityApproval } = await import('@/workflows/outbound/steps');
 
 const domain = 'fixture.example';
 const runId = 'fixture-run';
@@ -64,6 +74,42 @@ assert.equal(
   false
 );
 assert.equal((await getProspect(supersededDomain))?.status, 'approved');
+
+const resetDomain = 'fresh-run.example';
+await upsertProspect(resetDomain, {
+  status: 'error',
+  runId: 'stale-run',
+  fitScore: 99,
+  research: {
+    companyName: 'Stale Company',
+    summary: { text: 'Stale summary', sourceUrl: 'https://old.example/source' },
+    sizeSignals: [],
+    news: [],
+    likelyBuyer: {
+      role: 'VP Engineering',
+      name: null,
+      title: null,
+      linkedinUrl: null,
+      sourceUrl: null,
+      rationale: 'Stale buyer',
+      alternates: []
+    },
+    whyNow: [],
+    region: { group: 'unknown', label: 'Unknown', sourceUrl: null },
+    productSignals: []
+  },
+  evidence: [{ id: 'research.stale', source: 'research', label: 'Stale', value: 'Old evidence' }],
+  error: 'Old run failed'
+});
+await resetProspectForNewRun(resetDomain, 'fresh-batch');
+const resetProspect = await getProspect(resetDomain);
+assert.equal(resetProspect?.status, 'queued');
+assert.equal(resetProspect?.runId, null);
+assert.equal(resetProspect?.research, null);
+assert.equal(resetProspect?.evidence, null);
+assert.equal(resetProspect?.fitScore, null);
+assert.equal(resetProspect?.error, null);
+assert.equal(resetProspect?.planningComplete, false);
 
 const product = getProduct('ai-gateway')!;
 const scored = scoreOpportunity({
@@ -131,6 +177,105 @@ assert.equal(
   null
 );
 assert.equal((await getOpportunity(supersededOpportunityId))?.status, 'drafting');
+
+const retryDomain = 'retry.example';
+const failedRunId = 'failed-run';
+const retryRunId = 'retry-run';
+const retryOpportunityId = crypto.randomUUID();
+await upsertProspect(retryDomain, {
+  status: 'error',
+  runId: failedRunId,
+  error: 'Temporary provider credit error'
+});
+await insertOpportunity({
+  ...reviewableOpportunity,
+  id: retryOpportunityId,
+  domain: retryDomain,
+  runId: failedRunId,
+  status: 'drafting',
+  decision: null,
+  approvalToken: null
+});
+assert.equal(await reserveProspectRetry(retryDomain, failedRunId), true);
+assert.equal(await reserveProspectRetry(retryDomain, failedRunId), false);
+assert.equal((await getProspect(retryDomain))?.status, 'queued');
+assert.equal(
+  await restoreProspectRetry(retryDomain, failedRunId, 'Temporary provider credit error'),
+  true
+);
+assert.equal((await getProspect(retryDomain))?.status, 'error');
+assert.equal(await reserveProspectRetry(retryDomain, failedRunId), true);
+assert.equal(await claimRetryRunWithOpportunities(retryDomain, failedRunId, retryRunId), true);
+await updateProspectForRun(retryDomain, retryRunId, { status: 'error', error: 'Fast retry failure' });
+assert.equal(await claimProspectRun(retryDomain, retryRunId, {}), true);
+assert.equal((await getProspect(retryDomain))?.status, 'error');
+assert.equal((await getProspect(retryDomain))?.error, 'Fast retry failure');
+assert.equal((await getOpportunity(retryOpportunityId))?.runId, retryRunId);
+assert.equal(await reserveProspectRetry(retryDomain, retryRunId), true);
+assert.equal(await claimRetryRunWithOpportunities(retryDomain, retryRunId, 'second-retry-run'), true);
+assert.equal((await getProspect(retryDomain))?.runId, 'second-retry-run');
+assert.equal((await getOpportunity(retryOpportunityId))?.runId, 'second-retry-run');
+await updateProspectForRun(retryDomain, 'second-retry-run', { status: 'queued' });
+assert.equal(await reserveProspectRetry(retryDomain, retryRunId), false);
+
+const partialPlanningDomain = 'partial-planning.example';
+const partialPlanningRunId = 'partial-planning-run';
+const partialOpportunityId = crypto.randomUUID();
+await upsertProspect(partialPlanningDomain, {
+  status: 'qualifying',
+  runId: partialPlanningRunId,
+  fitScore: 72,
+  angle: 'Incomplete planner result',
+  planningComplete: false
+});
+await insertOpportunity({
+  ...reviewableOpportunity,
+  id: partialOpportunityId,
+  domain: partialPlanningDomain,
+  runId: partialPlanningRunId,
+  status: 'candidate',
+  decision: null,
+  approvalToken: null
+});
+assert.equal(await clearIncompleteOpportunityPlanning(partialPlanningDomain, partialPlanningRunId), true);
+assert.equal((await getOpportunities(partialPlanningDomain, partialPlanningRunId)).length, 0);
+assert.equal((await getProspect(partialPlanningDomain))?.fitScore, null);
+assert.equal((await getProspect(partialPlanningDomain))?.planningComplete, false);
+
+await updateProspectForRun(partialPlanningDomain, partialPlanningRunId, {
+  planningComplete: true,
+  fitScore: 72,
+  angle: 'Complete planner result'
+});
+await insertOpportunity({
+  ...reviewableOpportunity,
+  id: crypto.randomUUID(),
+  domain: partialPlanningDomain,
+  runId: partialPlanningRunId,
+  status: 'candidate',
+  decision: null,
+  approvalToken: null
+});
+assert.equal(await clearIncompleteOpportunityPlanning(partialPlanningDomain, partialPlanningRunId), false);
+assert.equal((await getOpportunities(partialPlanningDomain, partialPlanningRunId)).length, 1);
+
+const activeRetryRunId = 'second-retry-run';
+assert.equal(
+  await updateOpportunityForRun(retryOpportunityId, { status: 'awaiting_approval' }) !== null,
+  true
+);
+const retryApprovalToken = approvalToken(retryOpportunityId, activeRetryRunId, 'opportunity');
+await stepRequestOpportunityApproval(retryOpportunityId, retryApprovalToken);
+assert.equal((await getOpportunity(retryOpportunityId))?.status, 'awaiting_approval');
+assert.equal((await getOpportunity(retryOpportunityId))?.approvalToken, retryApprovalToken);
+await updateOpportunity(retryOpportunityId, { status: 'rejected' });
+await updateProspectForRun(retryDomain, activeRetryRunId, { status: 'researching', error: null });
+assert.equal(await stepFinishOpportunityPlanning(retryDomain, activeRetryRunId), 'rejected');
+assert.equal((await getProspect(retryDomain))?.status, 'rejected');
+await updateOpportunity(retryOpportunityId, { status: 'approved' });
+await updateProspectForRun(retryDomain, activeRetryRunId, { status: 'researching', error: null });
+assert.equal(await stepFinishOpportunityPlanning(retryDomain, activeRetryRunId), 'approved');
+assert.equal((await getProspect(retryDomain))?.status, 'approved');
 
 const result = await applyOpportunityDecision(token, {
   decision: 'approved',
@@ -206,6 +351,8 @@ assert.equal((await getLatestMaintenanceRun('proof'))?.status, 'complete');
   console.log('✓ e2e: account → scored expansion opportunity → grounded draft → approval → parent status');
   console.log('✓ maintenance: proof upsert → durable refresh status');
   console.log('✓ run ownership: superseded runs cannot overwrite current account or opportunity state');
+  console.log('✓ retry checkpoints: fresh runs clear stale data and replacement runs preserve advanced state');
+  console.log('✓ retry completion: missing review publication resumes and final decisions restore parent state');
 }
 
 main().then(() => process.exit(0)).catch((error) => {

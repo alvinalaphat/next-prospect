@@ -36,6 +36,7 @@ export const prospects = pgTable(
     perfScore: integer('perf_score'), // mobile Lighthouse score
     fitScore: integer('fit_score'),
     angle: text('angle'),
+    planningComplete: boolean('planning_complete').notNull().default(false),
 
     detection: jsonb('detection').$type<Detection>(),
     perf: jsonb('perf').$type<Perf>(),

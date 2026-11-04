@@ -1,7 +1,16 @@
 import { FatalError, getStepMetadata, RetryableError } from 'workflow';
 import { detect, detectionEvidence } from '@/lib/detect';
-import { claimProspectRun, getProspect, updateProspectForRun } from '@/lib/db';
-import { getOpportunity, insertOpportunity, updateOpportunity, updateOpportunityForRun } from '@/lib/db';
+import {
+  claimProspectRun,
+  claimRetryRunWithOpportunities,
+  clearIncompleteOpportunityPlanning,
+  getOpportunities,
+  getOpportunity,
+  getProspect,
+  insertOpportunity,
+  updateOpportunityForRun,
+  updateProspectForRun
+} from '@/lib/db';
 import { researchEvidence } from '@/lib/grounding';
 import { findOpportunityContact, planOpportunities, writeOpportunityDraft } from '@/lib/opportunity-services';
 import { contactActivityEvidence, researchContactActivity } from '@/lib/contact-activity';
@@ -170,6 +179,48 @@ export const stepFail = async (domain: string, runId: string, message: string) =
   await updateProspectForRun(domain, runId, { status: 'error', error: message.slice(0, 500) });
 };
 
+/** Adopt the persisted checkpoints from a failed run under its replacement run. */
+export const stepResumeOutbound = async (
+  domain: string,
+  failedRunId: string,
+  retryRunId: string
+) => {
+  'use step';
+
+  if (!(await claimRetryRunWithOpportunities(domain, failedRunId, retryRunId))) {
+    return { stop: true as const };
+  }
+  const prospect = await getProspect(domain);
+  if (!prospect || prospect.runId !== retryRunId) return { stop: true as const };
+  const opportunities = await getOpportunities(domain, retryRunId);
+  const url = prospect.detection?.finalUrl ?? `https://${domain}/`;
+  const evidence = [
+    ...(prospect.detection ? detectionEvidence(prospect.detection) : []),
+    ...(prospect.perf ? perfEvidence(prospect.perf, url) : []),
+    ...(prospect.research ? researchEvidence(prospect.research) : [])
+  ];
+  await updateProspectForRun(domain, retryRunId, {
+    status: prospect.planningComplete
+      ? opportunities.length ? 'researching' : 'disqualified'
+      : prospect.detection ? 'qualifying' : 'detecting',
+    error: null
+  });
+  return {
+    stop: false as const,
+    detection: prospect.detection,
+    perf: prospect.perf,
+    research: prospect.research,
+    planningComplete: prospect.planningComplete,
+    evidence,
+    opportunities: opportunities.map((opportunity) => ({
+      id: opportunity.id,
+      status: opportunity.status,
+      hasDraft: Boolean(opportunity.draft),
+      hasSlack: Boolean(opportunity.slack)
+    }))
+  };
+};
+
 /** Plan and persist up to three product-specific opportunities. */
 export const stepPlanOpportunities = async (
   domain: string,
@@ -178,6 +229,11 @@ export const stepPlanOpportunities = async (
 ) => {
   'use step';
 
+  const existing = await getProspect(domain);
+  if (existing?.runId === runId && existing.planningComplete) {
+    return (await getOpportunities(domain, runId)).map((opportunity) => opportunity.id);
+  }
+  if (!(await clearIncompleteOpportunityPlanning(domain, runId))) return [];
   if (!(await updateProspectForRun(domain, runId, { status: 'qualifying', evidence }))) return [];
   const prospect = await getProspect(domain);
   if (!prospect?.detection) throw new FatalError(`Prospect ${domain} is missing detection`);
@@ -215,6 +271,7 @@ export const stepPlanOpportunities = async (
     status: rows.length ? 'researching' : 'disqualified',
     fitScore: top?.score ?? 0,
     angle: top?.angle ?? null,
+    planningComplete: true,
     // Candidate-level suppression is expected planner behavior, not an
     // account failure. Keep the error field reserved for stepFail so the UI
     // never renders discarded product ideas as fatal errors.
@@ -236,7 +293,9 @@ export const stepEnrichOpportunity = async (
   if (!(await updateProspectForRun(opportunity.domain, opportunity.runId, { status: 'drafting' }))) {
     return { opportunityId, score: opportunity.score };
   }
-  await updateOpportunity(opportunityId, { status: 'researching_contact' });
+  if (!(await updateOpportunityForRun(opportunityId, { status: 'researching_contact' }))) {
+    return { opportunityId, score: opportunity.score };
+  }
 
   let contact = null;
   if (process.env.EXA_API_KEY) {
@@ -283,7 +342,7 @@ export const stepEnrichOpportunity = async (
     return { opportunityId, score: rescored.score };
   }
 
-  await updateOpportunity(opportunityId, {
+  if (!(await updateOpportunityForRun(opportunityId, {
     status: 'drafting',
     contact,
     contactActivity: activity,
@@ -292,7 +351,7 @@ export const stepEnrichOpportunity = async (
     score: rescored.score,
     scoreBreakdown: rescored.breakdown,
     matchedSignals: rescored.signals
-  });
+  }))) return { opportunityId, score: rescored.score };
   const draft = await writeOpportunityDraft({
     domain: opportunity.domain,
     productId: opportunity.productId,
@@ -307,7 +366,7 @@ export const stepEnrichOpportunity = async (
   if (!(await isProspectRunCurrent(opportunity.domain, opportunity.runId))) {
     return { opportunityId, score: rescored.score };
   }
-  await updateOpportunity(opportunityId, { draft });
+  await updateOpportunityForRun(opportunityId, { draft });
   return { opportunityId, score: rescored.score };
 };
 
@@ -320,6 +379,9 @@ export const stepRequestOpportunityApproval = async (
 
   const current = await getOpportunity(opportunityId);
   if (!current) throw new FatalError(`Opportunity ${opportunityId} is missing`);
+  if (current.status === 'approved' || current.status === 'rejected' || current.slack) {
+    return current.slack;
+  }
   const opportunity = await updateOpportunityForRun(opportunityId, {
     status: 'awaiting_approval',
     approvalToken: token
@@ -330,20 +392,37 @@ export const stepRequestOpportunityApproval = async (
   const prospect = await getProspect(opportunity.domain);
   if (!prospect) throw new FatalError(`Prospect ${opportunity.domain} is missing`);
   const slack = await postOpportunityApprovalRequest(prospect, opportunity, token);
-  await updateOpportunity(opportunityId, { slack });
+  await updateOpportunityForRun(opportunityId, { slack });
   return slack;
 };
 
-/** Mark the account reviewable only after every planned opportunity is ready. */
+/** Derive the account summary from every planned opportunity after recovery. */
 export const stepFinishOpportunityPlanning = async (domain: string, runId: string) => {
   'use step';
 
+  const opportunities = await getOpportunities(domain, runId);
+  const allDecided = opportunities.length > 0 && opportunities.every(
+    (opportunity) => opportunity.status === 'approved' || opportunity.status === 'rejected'
+  );
+  if (allDecided) {
+    const status = opportunities.some((opportunity) => opportunity.status === 'approved')
+      ? 'approved'
+      : 'rejected';
+    await updateProspectForRun(
+      domain,
+      runId,
+      { status },
+      ['qualifying', 'researching', 'drafting', 'awaiting_approval']
+    );
+    return status;
+  }
   await updateProspectForRun(
     domain,
     runId,
     { status: 'awaiting_approval' },
     ['qualifying', 'researching', 'drafting']
   );
+  return 'awaiting_approval' as const;
 };
 
 async function isProspectRunCurrent(domain: string, runId: string) {

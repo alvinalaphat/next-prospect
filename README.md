@@ -44,6 +44,10 @@ For each domain in a CSV, one durable workflow:
    the rep's Gmail**, linked from Slack and the brief. It uses the `gmail.compose` scope
    and only calls `drafts.create`, so the rep still reviews it and clicks Send.
 
+If a durable run exhausts its automatic retries, the account error banner offers a
+protected **Retry** action. It starts a replacement run and continues from the last
+persisted application checkpoint instead of repeating completed stages.
+
 ## Architecture
 
 ```mermaid
