@@ -35,5 +35,4 @@ export type ProductDefinition = {
   signals: ProductSignalRule[];
   approvedClaims: string[];
   prohibitedClaims: string[];
-  emeaNotes?: string[];
 };
