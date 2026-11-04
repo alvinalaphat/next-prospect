@@ -31,6 +31,7 @@ const REVIEWED_STATUSES = new Set<ProspectStatus>(['approved', 'rejected']);
 const MAX_BULK_SELECTION = 250;
 
 const VIEWS = {
+  all: { label: 'All', test: () => true },
   action: {
     label: 'Action needed',
     test: (i: ProspectListItem) => ACTION_STATUSES.has(i.status)
@@ -40,8 +41,7 @@ const VIEWS = {
   noPitch: {
     label: 'No pitch',
     test: (i: ProspectListItem) => STATUS[i.status].group === 'no_pitch'
-  },
-  all: { label: 'All', test: () => true }
+  }
 } as const;
 
 /** Inset track so the active fill never sits on the border. The fill slides between options. */
@@ -116,7 +116,7 @@ function ViewSwitch({
 export function ProspectsTable({ items, renderedAt }: { items: ProspectListItem[]; renderedAt: number }) {
   const router = useRouter();
   const secretField = useRunSecret();
-  const [view, setView] = useState<keyof typeof VIEWS>('action');
+  const [view, setView] = useState<keyof typeof VIEWS>('all');
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'fitScore', dir: 'desc' });
   const [selected, setSelected] = useState<Set<string>>(() => new Set());

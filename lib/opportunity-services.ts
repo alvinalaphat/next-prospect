@@ -1,8 +1,9 @@
 import { generateText, Output } from 'ai';
 import { z } from 'zod';
 import { getProduct, productIndexForPrompt } from '@/lib/catalog/products';
+import { containsFullName } from '@/lib/contact-activity';
 import { exa } from '@/lib/exa';
-import { findPublishedEmail, formatLedger, normalizeId, unknownCitations, unverifiedNumbers } from '@/lib/grounding';
+import { findPublishedEmail, formatLedger, latestEvidenceDate, normalizeId, unknownCitations, unverifiedNumbers } from '@/lib/grounding';
 import { stripEmDashes } from '@/lib/email-text';
 import { DRAFT_INSTRUCTIONS } from '@/lib/prompts';
 import { configuredRepName, enforceEmailIdentity, MODEL, stripCitationLeaks } from '@/lib/services';
@@ -22,7 +23,6 @@ const signalMatchSchema = z.object({
   ruleId: z.string(),
   evidenceIds: z.array(z.string()).min(1),
   confidence: z.enum(['high', 'medium', 'low']),
-  observedAt: z.string().nullable(),
   explanation: z.string()
 });
 
@@ -117,10 +117,14 @@ export async function planOpportunities(
       warnings.push(`Dropped unknown or non-opportunity product: ${candidate.productId}`);
       continue;
     }
-    const matches: SignalMatch[] = candidate.matches.map((match) => ({
-      ...match,
-      evidenceIds: [...new Set(match.evidenceIds.map(normalizeId).filter((id) => knownEvidence.has(id)))]
-    })).filter((match) => match.evidenceIds.length > 0);
+    const matches: SignalMatch[] = candidate.matches.map((match) => {
+      const evidenceIds = [...new Set(match.evidenceIds.map(normalizeId).filter((id) => knownEvidence.has(id)))];
+      return {
+        ...match,
+        evidenceIds,
+        observedAt: latestEvidenceDate(evidenceIds, ledger)
+      };
+    }).filter((match) => match.evidenceIds.length > 0);
     const result = scoreOpportunity({ product, matches, usesVercel });
     // Keep every grounded product-fit candidate, even when the evidence is
     // weak. The score communicates confidence; a cutoff would hide the very
@@ -205,7 +209,9 @@ export async function findOpportunityContacts({
       'Assign the single best current person to each opportunity.',
       'Only choose named people from the supplied results.',
       'Prefer direct functional ownership over general seniority.',
-      'A person may own multiple opportunities. Return null person fields when nobody is sufficiently supported.'
+      'A person may own multiple opportunities. Return null person fields when nobody is sufficiently supported.',
+      'Set region only when a supplied result explicitly connects that person to a work location or regional role.',
+      'Copy the location label verbatim from that result and cite its URL. Do not infer location from company headquarters or the company having an office there.'
     ].join(' '),
     prompt: [
       `Company: ${companyName} (${domain})`,
@@ -224,14 +230,19 @@ export async function findOpportunityContacts({
     const opportunity = requested.get(assignment.opportunityId);
     if (!opportunity || contacts.has(assignment.opportunityId)) continue;
     const pageText = assignment.sourceUrl ? retrieved.get(assignment.sourceUrl) : null;
-    const grounded = !!assignment.name && !!pageText
-      && assignment.name.toLowerCase().split(/\s+/).filter((part) => part.length > 2)
-        .every((part) => pageText.toLowerCase().includes(part));
+    const grounded = !!assignment.name && !!pageText && containsFullName(pageText, assignment.name);
     if (!grounded) continue;
+    const regionText = assignment.region?.sourceUrl ? retrieved.get(assignment.region.sourceUrl) : null;
+    const region = assignment.region && regionText
+      && containsFullName(regionText, assignment.name!)
+      && containsFullName(regionText, assignment.region.label)
+      ? assignment.region
+      : null;
     const published = findPublishedEmail(assignment.name!, domain, retrieved);
     const { opportunityId: _opportunityId, ...contact } = assignment;
     contacts.set(assignment.opportunityId, {
       ...contact,
+      region,
       email: published?.address ?? null,
       linkedinUrl: assignment.linkedinUrl && /linkedin\.com\/in\//i.test(assignment.linkedinUrl)
         ? assignment.linkedinUrl
@@ -245,6 +256,7 @@ export async function findOpportunityContacts({
       linkedinUrl: null,
       email: null,
       sourceUrl: null,
+      region: null,
       rationale: `No named person was verified. Target ${opportunity.targetRole}.`
     });
   }

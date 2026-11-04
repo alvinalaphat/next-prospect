@@ -130,6 +130,7 @@ export function contactActivityEvidence(activity: ContactActivity[]): EvidenceIt
     source: 'research',
     label: `Buyer activity${item.publishedAt ? ` (${item.publishedAt})` : ''}`,
     value: item.text,
-    url: item.sourceUrl
+    url: item.sourceUrl,
+    observedAt: item.publishedAt
   }));
 }
