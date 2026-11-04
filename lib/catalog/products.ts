@@ -20,6 +20,9 @@ const commonProhibited = [
   'Do not claim compliance or data residency without an approved, directly relevant source.'
 ];
 
+/** Approved platform-level copy required in every EMEA-qualified draft. */
+export const EMEA_TRUST_SENTENCE = 'Vercel supports GDPR compliance and backs its privacy and security commitments with independently audited controls and a Data Processing Addendum.';
+
 const fit = (id: string, description: string, points: number): ProductSignalRule => ({
   id,
   description,
@@ -46,11 +49,7 @@ const make = (seed: Seed): ProductDefinition => ({
   targetRoles: seed.roles,
   signals: seed.signals,
   approvedClaims: seed.claims ?? [],
-  prohibitedClaims: [...commonProhibited, ...(seed.prohibited ?? [])],
-  emeaNotes: [
-    'Use a clear why-you, why-now structure.',
-    'Discuss privacy, governance, or control only when the evidence and approved claims support it.'
-  ]
+  prohibitedClaims: [...commonProhibited, ...(seed.prohibited ?? [])]
 });
 
 const engineering = ['VP Engineering', 'Head of Platform', 'Platform Engineering Lead', 'CTO'];

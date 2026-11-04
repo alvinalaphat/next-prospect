@@ -1,10 +1,10 @@
 import { generateText, Output } from 'ai';
 import { z } from 'zod';
-import { getProduct, productIndexForPrompt } from '@/lib/catalog/products';
+import { EMEA_TRUST_SENTENCE, getProduct, productIndexForPrompt } from '@/lib/catalog/products';
 import { containsFullName } from '@/lib/contact-activity';
 import { exa } from '@/lib/exa';
 import { findPublishedEmail, formatLedger, latestEvidenceDate, normalizeId, unknownCitations, unverifiedNumbers } from '@/lib/grounding';
-import { stripEmDashes } from '@/lib/email-text';
+import { ensureSentenceBeforeClose, stripEmDashes } from '@/lib/email-text';
 import { DRAFT_INSTRUCTIONS } from '@/lib/prompts';
 import { configuredRepName, enforceEmailIdentity, MODEL, stripCitationLeaks } from '@/lib/services';
 import { scoreOpportunity, type SignalMatch } from '@/lib/scoring';
@@ -289,6 +289,7 @@ export async function writeOpportunityDraft({
   const firstName = contact.name?.split(/\s+/)[0] ?? null;
   const repName = configuredRepName();
   const greeting = `Hi ${firstName ?? 'there'},`;
+  const requiredEmeaSentence = region?.group === 'emea' ? EMEA_TRUST_SENTENCE : null;
   const prompt = [
     `Account: ${domain}`,
     `Product: ${product.name}: ${product.summary}`,
@@ -304,7 +305,7 @@ export async function writeOpportunityDraft({
     '',
     `Approved product claims:\n${product.approvedClaims.map((claim) => `- ${claim}`).join('\n') || '- No extra uncited product claims. Use only the product summary.'}`,
     `Prohibited claims:\n${product.prohibitedClaims.map((claim) => `- ${claim}`).join('\n')}`,
-    region?.group === 'emea' ? `EMEA guidance:\n${product.emeaNotes?.map((note) => `- ${note}`).join('\n')}` : '',
+    requiredEmeaSentence ? `Required EMEA trust sentence:\n${requiredEmeaSentence}` : '',
     '',
     'EVIDENCE LEDGER:',
     formatLedger(evidence)
@@ -333,10 +334,14 @@ export async function writeOpportunityDraft({
     !output.body.trimStart().startsWith(greeting) ? `Email must begin with exactly: ${greeting}` : '',
     !output.body.trimEnd().endsWith(repName) ? `Email must end with exactly: ${repName}` : ''
   ].filter(Boolean);
-  if (bad.length || numbers.length || identity.length) {
+  const missingEmeaSentence = requiredEmeaSentence && !output.body.includes(requiredEmeaSentence)
+    ? `Email must include exactly: ${requiredEmeaSentence}`
+    : '';
+  if (bad.length || numbers.length || identity.length || missingEmeaSentence) {
     output = await generate([
       bad.length ? `Unknown evidence ids: ${bad.join(', ')}` : '',
       numbers.length ? `Numbers not present in evidence: ${numbers.join(', ')}` : '',
+      missingEmeaSentence,
       ...identity
     ].filter(Boolean).join('\n'));
     output = {
@@ -360,7 +365,8 @@ export async function writeOpportunityDraft({
   if (bad.length) warnings.push(`Unknown citations: ${bad.join(', ')}`);
   if (numbers.length) warnings.push(`Numbers not found in evidence: ${numbers.join(', ')}`);
   if (identity.length) warnings.push(...identity);
-  const body = stripEmDashes(enforceEmailIdentity(stripCitationLeaks(output.body), greeting, repName));
+  let body = stripEmDashes(enforceEmailIdentity(stripCitationLeaks(output.body), greeting, repName));
+  if (requiredEmeaSentence) body = ensureSentenceBeforeClose(body, requiredEmeaSentence);
   const words = body.split(/\s+/).filter(Boolean).length;
   if (words < 70 || words > 110) warnings.push(`Email is ${words} words (target 70–110)`);
 

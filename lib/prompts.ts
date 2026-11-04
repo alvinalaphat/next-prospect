@@ -53,10 +53,9 @@ EMAIL STRUCTURE:
    as facts unless the evidence supports them. Do not broaden an approved claim
    or pitch a different product.
 3. EMEA: when Region is EMEA because the company is headquartered there or the
-   selected buyer has a verified EMEA work location, fold one product-specific privacy, governance,
-   or data-control strength into the relevance paragraph only when it appears
-   in Approved product claims or EMEA guidance. If no such approved claim is
-   supplied, omit it rather than inventing a compliance or residency claim.
+   selected buyer has a verified EMEA work location, include the supplied
+   Required EMEA trust sentence exactly as written. It is an approved Vercel
+   platform claim and must not be omitted or paraphrased.
 4. Close: ask one low-pressure question about a short meeting or demo focused
    on the selected product and the problem above.
 
@@ -106,7 +105,7 @@ GROUNDING:
   ledger id used by the email in emailCitations, but never expose ids, brackets,
   or source notes in the email itself.
 - Product facts may use only the supplied product summary, Approved product
-  claims, and applicable EMEA guidance. They do not license adjacent claims.
+  claims, and Required EMEA trust sentence. They do not license adjacent claims.
 - whyNow and whyVercel are planning context, not independent evidence. State a
   factual detail from them only when the ledger or approved product claims
   support it.
