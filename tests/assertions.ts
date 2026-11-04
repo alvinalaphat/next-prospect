@@ -2,12 +2,13 @@ import assert from 'node:assert/strict';
 import { EMEA_TRUST_NOTE, OPPORTUNITY_PRODUCTS, PRODUCTS, getProduct } from '@/lib/catalog/products';
 import { approvalToken, parseApprovalToken } from '@/lib/approval-token';
 import { contactActivityEvidence, contactActivityId, containsFullName } from '@/lib/contact-activity';
-import { ensureQuestionPunctuation, placeClosingNoteBeforeSignoff } from '@/lib/email-text';
+import { placeClosingNoteBeforeSignoff, stripEmDashes } from '@/lib/email-text';
 import { presentEvidence, salesLanguage } from '@/lib/evidence-presentation';
 import { relativeTime } from '@/lib/format';
 import { latestEvidenceDate, researchEvidence } from '@/lib/grounding';
 import { buyerRegionEvidence, opportunityRegion } from '@/lib/region';
 import { freshnessMultiplier, scoreOpportunity } from '@/lib/scoring';
+import { enforceEmailIdentity, stripCitationLeaks } from '@/lib/services';
 
 const ids = PRODUCTS.map((product) => product.id);
 assert.deepEqual(parseApprovalToken(approvalToken('opportunity-id', 'run-id')), {
@@ -85,23 +86,12 @@ assert.ok(
   'EMEA trust copy must stay before the complete sign-off'
 );
 
-assert.equal(ensureQuestionPunctuation('Open to a short walkthrough.'), 'Open to a short walkthrough?');
-assert.equal(
-  ensureQuestionPunctuation('Given the Next.js migration, would it be useful to compare options. It could reduce platform sprawl.'),
-  'Given the Next.js migration, would it be useful to compare options? It could reduce platform sprawl.'
-);
-assert.equal(ensureQuestionPunctuation('Could we compare options? We could help.'), 'Could we compare options? We could help.');
-assert.equal(ensureQuestionPunctuation('Have you considered this approach.'), 'Have you considered this approach?');
-assert.equal(
-  ensureQuestionPunctuation('Your new storefront caught my eye. Would you be open to a short demo.'),
-  'Your new storefront caught my eye. Would you be open to a short demo?',
-  'a question after a statement in the same paragraph must be repaired'
-);
-assert.equal(
-  ensureQuestionPunctuation('Have a great week. Worth noting, Vercel supports this workflow.'),
-  'Have a great week. Worth noting, Vercel supports this workflow.',
-  'declarative sentences must keep their periods'
-);
+const questionDraft = stripEmDashes(enforceEmailIdentity(
+  stripCitationLeaks('Hi Taylor,\n\nWould a short walkthrough be useful?\n\nFixture Rep'),
+  'Hi Taylor,',
+  'Fixture Rep'
+));
+assert.ok(questionDraft.includes('Would a short walkthrough be useful?'), 'draft cleanup must preserve question marks');
 
 const emeaHeadquarters = { group: 'emea' as const, label: 'London, United Kingdom', sourceUrl: 'https://example.com/about' };
 const americasHeadquarters = { group: 'americas' as const, label: 'San Francisco, United States', sourceUrl: 'https://example.com/about' };

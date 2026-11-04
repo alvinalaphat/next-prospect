@@ -30,11 +30,12 @@ For each domain in a CSV, one durable workflow:
 4. **Route and score**: the model matches grounded evidence to known catalog signal rules;
    code applies deterministic confidence, freshness, category caps, and one evidence-backed
    account-potential tier.
-5. **Choose buyers**: one people search assigns a verified contact to each selected product
-   opportunity. Public activity is researched once per unique buyer and tailored to each
-   opportunity; an explicit target role remains when no person can be grounded. A verified
-   buyer work location can qualify the opportunity as EMEA; an EMEA headquarters qualifies
-   it regardless of the buyer's location.
+5. **Choose buyers**: a shared people search assigns a verified contact to each selected
+   product opportunity. Any missing assignment gets a second, opportunity-specific search
+   for the nearest relevant functional leader; a generic target role is retained only when
+   neither search can ground a named person. Public activity is researched once per unique
+   buyer and tailored to each opportunity. A verified buyer work location can qualify the
+   opportunity as EMEA; an EMEA headquarters qualifies it regardless of the buyer's location.
 6. **Draft**: each opportunity receives a 70–110 word email and rep brief using only its
    selected evidence and approved catalog claims. Every EMEA-qualified email closes with
    an approved, concise "By the way," note covering GDPR support, privacy and security
@@ -64,7 +65,7 @@ flowchart TD
         P --> R["stepResearch<br/>ToolLoopAgent + Exa search/fetch"]
         R --> Q["stepPlanOpportunities<br/>full catalog routing + deterministic score"]
         Q -->|no supported product fit| STOP2([stop])
-        Q --> BR["stepResearchOpportunityBuyers<br/>one people search + activity per unique buyer"]
+        Q --> BR["stepResearchOpportunityBuyers<br/>shared + targeted people search<br/>activity per unique buyer"]
         BR --> B["stepEnrichOpportunity × up to 3<br/>rescore + draft"]
         B --> H["stepRequestOpportunityApproval<br/>one Slack card per opportunity"]
         H --> DONE([Needs review])

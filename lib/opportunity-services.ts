@@ -4,7 +4,7 @@ import { EMEA_TRUST_NOTE, getProduct, productIndexForPrompt } from '@/lib/catalo
 import { containsFullName } from '@/lib/contact-activity';
 import { exa } from '@/lib/exa';
 import { findPublishedEmail, formatLedger, latestEvidenceDate, normalizeId, unknownCitations, unverifiedNumbers } from '@/lib/grounding';
-import { ensureQuestionPunctuation, placeClosingNoteBeforeSignoff, stripEmDashes } from '@/lib/email-text';
+import { placeClosingNoteBeforeSignoff, stripEmDashes } from '@/lib/email-text';
 import { DRAFT_INSTRUCTIONS } from '@/lib/prompts';
 import { configuredRepName, enforceEmailIdentity, MODEL, stripCitationLeaks } from '@/lib/services';
 import { scoreOpportunity, type SignalMatch } from '@/lib/scoring';
@@ -172,7 +172,7 @@ export type BuyerResearchOpportunity = {
   targetRole: string;
 };
 
-/** Search once and assign the best grounded buyer to each planned opportunity. */
+/** Search broadly, then target any gaps and assign the best grounded buyer. */
 export async function findOpportunityContacts({
   domain,
   companyName,
@@ -182,10 +182,11 @@ export async function findOpportunityContacts({
   companyName: string;
   opportunities: BuyerResearchOpportunity[];
 }): Promise<Map<string, OpportunityContact>> {
-  const roles = [...new Set(opportunities.flatMap((opportunity) => [
+  const rolesFor = (items: BuyerResearchOpportunity[]) => [...new Set(items.flatMap((opportunity) => [
     opportunity.targetRole,
     ...(getProduct(opportunity.productId)?.targetRoles ?? [])
   ]))].slice(0, 12);
+  const roles = rolesFor(opportunities);
   const result = await exa().search(
     `${roles.map((role) => `"${role}"`).join(' OR ')} at "${companyName}"`,
     {
@@ -196,59 +197,118 @@ export async function findOpportunityContacts({
     }
   );
   const retrieved = new Map<string, string>();
-  const people = result.results.map((person) => {
+  const collectPeople = (results: typeof result.results) => results.map((person) => {
     const text = [person.title, person.author, ...(person.highlights ?? [])].filter(Boolean).join('\n');
     retrieved.set(person.url, text);
     return { name: person.author ?? null, title: person.title, url: person.url, highlights: person.highlights ?? [] };
   });
+  let people = collectPeople(result.results);
 
-  const { output } = await generateText({
+  const assign = async (items: BuyerResearchOpportunity[], isFallback: boolean) => (await generateText({
     model: MODEL,
     providerOptions: FAST,
     system: [
-      'Assign the single best current person to each opportunity.',
+      'Assign the single best current named person to every opportunity whenever any supplied person is even somewhat relevant.',
       'Only choose named people from the supplied results.',
-      'Prefer direct functional ownership over general seniority.',
-      'A person may own multiple opportunities. Return null person fields when nobody is sufficiently supported.',
+      'Prefer direct functional ownership, then choose the nearest adjacent functional leader who could reasonably own or influence the conversation.',
+      'Do not return a generic target role merely because no title is an exact match.',
+      'A person may own multiple opportunities.',
+      isFallback
+        ? 'This is the final expanded search. Return null person fields only when every supplied named person is genuinely unrelated to the company or opportunity.'
+        : 'Return null person fields only when no supplied named person could reasonably own or influence the opportunity.',
       'Set region only when a supplied result explicitly connects that person to a work location or regional role.',
       'Copy the location label verbatim from that result and cite its URL. Do not infer location from company headquarters or the company having an office there.'
     ].join(' '),
     prompt: [
       `Company: ${companyName} (${domain})`,
-      `OPPORTUNITIES:\n${JSON.stringify(opportunities.map((opportunity) => ({
+      `OPPORTUNITIES:\n${JSON.stringify(items.map((opportunity) => ({
         ...opportunity,
         productName: getProduct(opportunity.productId)?.name ?? opportunity.productId
       })))}`,
       `PEOPLE RESULTS:\n${JSON.stringify(people)}`
     ].join('\n\n'),
     output: Output.object({ schema: contactAssignmentsSchema })
-  });
+  })).output;
 
   const requested = new Map(opportunities.map((opportunity) => [opportunity.id, opportunity]));
   const contacts = new Map<string, OpportunityContact>();
-  for (const assignment of output.assignments) {
-    const opportunity = requested.get(assignment.opportunityId);
-    if (!opportunity || contacts.has(assignment.opportunityId)) continue;
-    const pageText = assignment.sourceUrl ? retrieved.get(assignment.sourceUrl) : null;
-    const grounded = !!assignment.name && !!pageText && containsFullName(pageText, assignment.name);
-    if (!grounded) continue;
-    const regionText = assignment.region?.sourceUrl ? retrieved.get(assignment.region.sourceUrl) : null;
-    const region = assignment.region && regionText
-      && containsFullName(regionText, assignment.name!)
-      && containsFullName(regionText, assignment.region.label)
-      ? assignment.region
-      : null;
-    const published = findPublishedEmail(assignment.name!, domain, retrieved);
-    const { opportunityId: _opportunityId, ...contact } = assignment;
-    contacts.set(assignment.opportunityId, {
-      ...contact,
-      region,
-      email: published?.address ?? null,
-      linkedinUrl: assignment.linkedinUrl && /linkedin\.com\/in\//i.test(assignment.linkedinUrl)
-        ? assignment.linkedinUrl
-        : null
-    });
+  const acceptAssignments = (assignments: z.infer<typeof contactAssignmentsSchema>['assignments']) => {
+    for (const assignment of assignments) {
+      const opportunity = requested.get(assignment.opportunityId);
+      if (!opportunity || contacts.has(assignment.opportunityId)) continue;
+      const pageText = assignment.sourceUrl ? retrieved.get(assignment.sourceUrl) : null;
+      const grounded = !!assignment.name && !!pageText && containsFullName(pageText, assignment.name);
+      if (!grounded) continue;
+      const regionText = assignment.region?.sourceUrl ? retrieved.get(assignment.region.sourceUrl) : null;
+      const region = assignment.region && regionText
+        && containsFullName(regionText, assignment.name!)
+        && containsFullName(regionText, assignment.region.label)
+        ? assignment.region
+        : null;
+      const published = findPublishedEmail(assignment.name!, domain, retrieved);
+      const linkedinUrl = [assignment.linkedinUrl, assignment.sourceUrl]
+        .find((url): url is string => !!url && /linkedin\.com\/in\//i.test(url)) ?? null;
+      const { opportunityId: _opportunityId, ...contact } = assignment;
+      contacts.set(assignment.opportunityId, {
+        ...contact,
+        region,
+        email: published?.address ?? null,
+        linkedinUrl
+      });
+    }
+  };
+
+  acceptAssignments((await assign(opportunities, false)).assignments);
+
+  const missing = opportunities.filter((opportunity) => !contacts.has(opportunity.id));
+  if (missing.length) {
+    const fallbackSearches = await Promise.all(missing.map((opportunity) => exa().search(
+      `People at "${companyName}" who own or influence ${rolesFor([opportunity]).join(', ')} for ${getProduct(opportunity.productId)?.name ?? opportunity.productId}; include the nearest adjacent functional leader`,
+      {
+        numResults: 10,
+        type: 'auto',
+        category: 'people',
+        contents: { highlights: true }
+      }
+    )));
+    const fallbackPeople = new Map(missing.map((opportunity, index) => [
+      opportunity.id,
+      collectPeople(fallbackSearches[index].results)
+    ]));
+    people = [...new Map(
+      [...people, ...[...fallbackPeople.values()].flatMap((items) => items)]
+        .map((person) => [person.url, person])
+    ).values()];
+    acceptAssignments((await assign(missing, true)).assignments);
+
+    const companyMarkers = [companyName, domain.split('.')[0]]
+      .map((value) => value.normalize('NFKC').toLocaleLowerCase('en').trim())
+      .filter((value) => value.length > 2);
+    for (const opportunity of missing) {
+      if (contacts.has(opportunity.id)) continue;
+      const closest = fallbackPeople.get(opportunity.id)?.find((person) => {
+        if (!person.name) return false;
+        if (person.name.trim().split(/\s+/).length < 2) return false;
+        if (/\b(?:team|company|inc|official|careers)\b/i.test(person.name)) return false;
+        const text = retrieved.get(person.url) ?? '';
+        const normalized = text.normalize('NFKC').toLocaleLowerCase('en');
+        return containsFullName(text, person.name)
+          && companyMarkers.some((marker) => normalized.includes(marker));
+      });
+      if (!closest?.name) continue;
+      const published = findPublishedEmail(closest.name, domain, retrieved);
+      contacts.set(opportunity.id, {
+        name: closest.name,
+        title: closest.title,
+        linkedinUrl: /linkedin\.com\/in\//i.test(closest.url) ? closest.url : null,
+        email: published?.address ?? null,
+        sourceUrl: closest.url,
+        region: null,
+        rationale: `Closest named public match from the expanded search for ${opportunity.targetRole}; verify functional ownership before outreach.`
+      });
+    }
   }
+
   for (const opportunity of opportunities) {
     if (!contacts.has(opportunity.id)) contacts.set(opportunity.id, {
       name: null,
@@ -365,9 +425,7 @@ export async function writeOpportunityDraft({
   if (bad.length) warnings.push(`Unknown citations: ${bad.join(', ')}`);
   if (numbers.length) warnings.push(`Numbers not found in evidence: ${numbers.join(', ')}`);
   if (identity.length) warnings.push(...identity);
-  let body = ensureQuestionPunctuation(
-    stripEmDashes(enforceEmailIdentity(stripCitationLeaks(output.body), greeting, repName))
-  );
+  let body = stripEmDashes(enforceEmailIdentity(stripCitationLeaks(output.body), greeting, repName));
   if (requiredEmeaNote) body = placeClosingNoteBeforeSignoff(body, requiredEmeaNote);
   const words = body.split(/\s+/).filter(Boolean).length;
   if (words < 70 || words > 110) warnings.push(`Email is ${words} words (target 70–110)`);

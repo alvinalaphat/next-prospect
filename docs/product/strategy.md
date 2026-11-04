@@ -35,7 +35,9 @@ For each submitted domain, NextProspect:
 - researches public company, hiring, launch, regional, and timing signals;
 - evaluates grounded evidence against the full Vercel product catalog;
 - deterministically scores and ranks up to three distinct product motions;
-- identifies a product-specific buyer or an explicit target role;
+- identifies a product-specific named buyer whenever public results support a
+  direct or reasonably adjacent owner, using an explicit target role only when
+  expanded search still cannot ground a relevant person;
 - drafts concise outreach using only approved product claims and cited public
   evidence; and
 - waits for a human to approve, edit, or reject each opportunity.

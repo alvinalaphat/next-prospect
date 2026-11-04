@@ -17,7 +17,8 @@ import {
  *
  *   detect → PageSpeed Insights → broad account research
  *   → route across Vercel's product catalog → score up to 3 opportunities
- *   → shared buyer search → per-buyer activity → draft → Needs review
+ *   → shared buyer search + targeted fallbacks → per-buyer activity → draft
+ *   → Needs review
  *
  * The run ends once the draft is waiting for a person. Slack and the dashboard
  * record the decision themselves. Every stage appends to an evidence ledger;

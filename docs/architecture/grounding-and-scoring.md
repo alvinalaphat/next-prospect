@@ -112,15 +112,26 @@ opportunities. It must not imply:
 
 Buyer discovery happens after all product angles are selected. One combined
 people search covers the union of their target roles, and the model assigns a
-buyer to each opportunity. A named contact is accepted only when
-the selected name is present in retrieved content. Published emails are used
-only when found in retrieved public text; addresses are never constructed.
+buyer to each opportunity. Any opportunity still missing a person receives a
+second, opportunity-specific search for direct and adjacent functional owners.
+The selector must use the best reasonably relevant named person rather than
+falling back merely because no title exactly matches. A named contact is
+accepted only when the selected name is present in retrieved content. Published
+emails are used only when found in retrieved public text; addresses are never
+constructed. A retrieved LinkedIn profile is retained as the contact's
+LinkedIn URL even when the selector does not copy it into a separate field.
+If the final selector still omits an assignment, code uses the highest-ranked
+named result from that opportunity's targeted search only when the retrieved
+text also names the company. The rationale tells the rep to verify functional
+ownership rather than overstating the match.
 Buyer region is retained only when the retrieved public result explicitly
 connects the selected person to that work location or a regional role. A
 company merely having an office in a region is not buyer-location evidence.
 
-When no person is sufficiently supported, store null contact fields and retain
-the explicit target role. That is a valid, honest result.
+Only when neither search contains a named person who could reasonably own or
+influence the opportunity do we store null contact fields and retain the
+explicit target role. Generic roles are an honest last resort, not an equally
+preferred buyer result.
 
 After buyers are grounded, public activity is searched once per unique person,
 even when they own several opportunities. The model selects the relevant posts,

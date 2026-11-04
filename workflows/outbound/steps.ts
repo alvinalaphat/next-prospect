@@ -183,7 +183,7 @@ export type OpportunityBuyerResearch = {
   activity: ContactActivity[];
 };
 
-/** Search people once, then research activity once per unique selected buyer. */
+/** Search buyers broadly plus targeted fallbacks, then research each unique buyer once. */
 export const stepResearchOpportunityBuyers = async (
   domain: string,
   runId: string,
