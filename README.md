@@ -230,55 +230,6 @@ pnpm verify
 git push origin main              # CI runs; Vercel builds and deploys
 ```
 
-## Results
-
-### Detection eval (`pnpm eval`)
-
-15 domains hand-labelled in a real browser (JS executed; DOM checked for
-`#__NEXT_DATA__` / `self.__next_f` / `/_next/` scripts; headers from a same-origin fetch).
-The detector only gets **one plain GET**.
-
-| Metric | Result |
-|---|---|
-| Next.js precision / recall | **100% / 90%** (tp 9, fp 0, fn 1) |
-| On-Vercel precision / recall | **100% / 75%** (tp 3, fp 0, fn 1) |
-| Host accuracy | **93%** (14/15) |
-
-The single miss (openai.com) is a Cloudflare bot challenge in front of a Next.js site on
-Vercel: the plain GET only sees the challenge page. The detector records the blocked
-fetch and keeps any usable header and DNS evidence; the workflow still continues through
-research and product routing. Caveat: most eval domains are well-known sites, so treat
-this as a sanity check rather than a benchmark (see `eval/README.md`).
-
-### Sample detections
-
-| Domain | Next.js | Host |
-|---|---|---|
-| mongodb.com | 0.98, Pages Router | AWS (CloudFront) |
-| nike.com | 0.95, Pages Router | Akamai |
-| ticketmaster.com | 0.95, Pages Router | Fastly |
-| zillow.com | 0.90, Pages Router | AWS (CloudFront) |
-| plaid.com | 0.90, Pages Router | AWS (ELB + CloudFront) |
-| linear.app | 0.86, App Router | Cloudflare |
-| supabase.com | 0.97, App Router | Vercel (expansion context) |
-
-### End-to-end runs (seed batch, production)
-
-Reviewable outputs from `data/seed.csv` on https://nextprospect.vercel.app with
-`openai/gpt-5` (low reasoning effort) via AI Gateway, Exa research and PSI. Each resulting
-opportunity was posted to Slack for approval.
-
-| Domain | Outcome | Fit | Strongest angle | Verified stakeholder |
-|---|---|---|---|---|
-| mongodb.com | Needs review | 90 | Real-user CWV pain on AWS-hosted Next.js (field LCP 7.9s mobile) | Lead, Web Experiences |
-| plaid.com | Needs review | 82 | Mobile real-user CWV SLOW on AWS/CloudFront | Head of Platform Engineering |
-| linear.app | Needs review | 82 | Slow real-user LCP/TTFB, App Router behind Cloudflare | Head of Engineering |
-| zillow.com | Needs review | 82 | Real-user TTFB on AWS CloudFront | SVP Engineering |
-All four drafts passed grounding with zero warnings: every citation resolved and every
-number was found in the ledger. Each stakeholder was confirmed via a LinkedIn result that
-names them. No published emails were found, which is expected, and addresses are never
-guessed.
-
 ## License
 
 MIT, as is the original [lead-agent](https://github.com/vercel-labs/lead-agent).
