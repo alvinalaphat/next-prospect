@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { authHeaders, secretCheckMessage, useRunSecret } from '@/lib/client-secret';
 
 export function WorkflowRetryButton({ domain }: { domain: string }) {
@@ -46,7 +47,7 @@ export function WorkflowRetryButton({ domain }: { domain: string }) {
   return (
     <div className="flex shrink-0 flex-col gap-2 sm:items-end">
       {promptForSecret && secretField.show && (
-        <input
+        <Input
           type="password"
           value={secretField.secret}
           onChange={(event) => secretField.update(event.target.value)}
@@ -54,7 +55,7 @@ export function WorkflowRetryButton({ domain }: { domain: string }) {
           placeholder="RUN_SECRET"
           aria-label={`Run secret for retrying ${domain}`}
           aria-invalid={secretField.invalid}
-          className="bg-background h-10 w-full rounded-lg border border-error/40 px-3 text-sm text-foreground sm:w-48"
+          className="w-full border-error/40 sm:w-48"
           autoFocus
         />
       )}
