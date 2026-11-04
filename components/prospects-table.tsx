@@ -3,9 +3,12 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
-import { ArrowDown, ArrowUp, Search } from 'lucide-react';
+import { ArrowDown, ArrowUp, RefreshCw, Search, Trash2, X } from 'lucide-react';
+import { toast } from 'sonner';
 import { AccountActions } from '@/components/account-actions';
 import { Score, StatusBadge } from '@/components/badges';
+import { Button } from '@/components/ui/button';
+import { authHeaders, secretCheckMessage, useRunSecret } from '@/lib/client-secret';
 import { relativeTime, STATUS } from '@/lib/format';
 import type { ProspectStatus } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -108,9 +111,12 @@ function ViewSwitch({
 
 export function ProspectsTable({ items, renderedAt }: { items: ProspectListItem[]; renderedAt: number }) {
   const router = useRouter();
+  const secretField = useRunSecret();
   const [view, setView] = useState<keyof typeof VIEWS>('action');
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'fitScore', dir: 'desc' });
+  const [selected, setSelected] = useState<Set<string>>(() => new Set());
+  const [bulkBusy, setBulkBusy] = useState<'rerun' | 'delete' | null>(null);
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -132,6 +138,85 @@ export function ProspectsTable({ items, renderedAt }: { items: ProspectListItem[
       return (av < bv ? -1 : av > bv ? 1 : 0) * dir;
     });
   }, [items, view, query, sort]);
+
+  const selectedDomains = useMemo(
+    () => items.filter((item) => selected.has(item.domain)).map((item) => item.domain),
+    [items, selected]
+  );
+  const allVisibleSelected = rows.length > 0 && rows.every((row) => selected.has(row.domain));
+  const someVisibleSelected = rows.some((row) => selected.has(row.domain));
+
+  function toggleDomain(domain: string) {
+    setSelected((current) => {
+      const next = new Set(current);
+      if (next.has(domain)) next.delete(domain);
+      else next.add(domain);
+      return next;
+    });
+  }
+
+  function toggleVisible() {
+    setSelected((current) => {
+      const next = new Set(current);
+      if (rows.every((row) => next.has(row.domain))) rows.forEach((row) => next.delete(row.domain));
+      else rows.forEach((row) => next.add(row.domain));
+      return next;
+    });
+  }
+
+  async function authorized() {
+    const result = await secretField.commit();
+    if (result.status !== 'valid') toast.error(secretCheckMessage(result.status));
+    return result.status === 'valid' ? result.value : null;
+  }
+
+  async function rerunSelected() {
+    setBulkBusy('rerun');
+    const secret = await authorized();
+    if (!secret) return setBulkBusy(null);
+    try {
+      const response = await fetch('/api/run', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', ...authHeaders(secret) },
+        body: JSON.stringify({ domains: selectedDomains, force: true })
+      });
+      const json = await response.json();
+      if (response.status === 401) secretField.reveal();
+      if (!response.ok) throw new Error(json.error ?? `HTTP ${response.status}`);
+      toast.success(`Re-running ${json.started.length} account${json.started.length === 1 ? '' : 's'}`);
+      setSelected(new Set());
+      router.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to re-run selected accounts');
+    } finally {
+      setBulkBusy(null);
+    }
+  }
+
+  async function deleteSelected() {
+    const count = selectedDomains.length;
+    if (!window.confirm(`Delete ${count} selected account${count === 1 ? '' : 's'} and all of their opportunities and drafts?`)) return;
+    setBulkBusy('delete');
+    const secret = await authorized();
+    if (!secret) return setBulkBusy(null);
+    try {
+      const response = await fetch('/api/prospects', {
+        method: 'DELETE',
+        headers: { 'content-type': 'application/json', ...authHeaders(secret) },
+        body: JSON.stringify({ domains: selectedDomains })
+      });
+      const json = await response.json();
+      if (response.status === 401) secretField.reveal();
+      if (!response.ok) throw new Error(json.error ?? `HTTP ${response.status}`);
+      toast.success(`Deleted ${json.deleted.length} account${json.deleted.length === 1 ? '' : 's'}`);
+      setSelected(new Set());
+      router.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to delete selected accounts');
+    } finally {
+      setBulkBusy(null);
+    }
+  }
 
   const header = (key: SortKey, label: string, className?: string) => (
     <th className={cn('overflow-hidden px-3 py-3 font-medium', className)}>
@@ -175,6 +260,64 @@ export function ProspectsTable({ items, renderedAt }: { items: ProspectListItem[
         </div>
       </div>
 
+      {selectedDomains.length > 0 && (
+        <div className="flex flex-col gap-3 rounded-lg border bg-hover p-3 sm:flex-row sm:items-center">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">{selectedDomains.length} selected</span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Clear selection"
+              disabled={bulkBusy !== null}
+              onClick={() => setSelected(new Set())}
+            >
+              <X />
+            </Button>
+          </div>
+          <div className="flex flex-col gap-2 sm:ml-auto sm:flex-row sm:items-center">
+            {secretField.show && (
+              <input
+                type="password"
+                value={secretField.secret}
+                onChange={(event) => secretField.update(event.target.value)}
+                onBlur={() => void secretField.commit()}
+                placeholder="RUN_SECRET"
+                autoComplete="off"
+                aria-label="Run secret for bulk actions"
+                aria-invalid={secretField.invalid || undefined}
+                className={cn(
+                  'bg-background h-10 min-w-0 rounded-lg border px-3 text-sm sm:w-40',
+                  secretField.invalid && 'border-error'
+                )}
+              />
+            )}
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={bulkBusy !== null}
+                onClick={() => void rerunSelected()}
+              >
+                <RefreshCw className={bulkBusy === 'rerun' ? 'animate-spin' : undefined} />
+                Re-run
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                disabled={bulkBusy !== null}
+                onClick={() => void deleteSelected()}
+              >
+                <Trash2 />
+                Delete
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div key={view} className="rows-in">
       {rows.length === 0 ? (
         <p className="text-muted-foreground rounded-lg border px-4 py-8 text-center text-sm">
@@ -182,7 +325,16 @@ export function ProspectsTable({ items, renderedAt }: { items: ProspectListItem[
         </p>
       ) : (
         <>
-        <ul className="space-y-3 lg:hidden">
+        <label className="flex min-h-11 items-center gap-3 rounded-lg border px-4 text-sm lg:hidden">
+          <SelectionCheckbox
+            checked={allVisibleSelected}
+            indeterminate={someVisibleSelected && !allVisibleSelected}
+            onChange={toggleVisible}
+            label="Select all shown accounts"
+          />
+          Select all shown
+        </label>
+        <ul className="mt-3 space-y-3 lg:hidden">
           {rows.map((i) => (
             <li
               key={i.domain}
@@ -190,9 +342,16 @@ export function ProspectsTable({ items, renderedAt }: { items: ProspectListItem[
               onClick={(event) => openProspect(event, i.domain, router.push)}
             >
               <div className="flex items-start justify-between gap-3">
-                <Link href={`/prospect/${i.domain}`} className="min-w-0 font-medium break-all hover:underline">
-                  {i.domain}
-                </Link>
+                <div className="flex min-w-0 items-start gap-3">
+                  <SelectionCheckbox
+                    checked={selected.has(i.domain)}
+                    onChange={() => toggleDomain(i.domain)}
+                    label={`Select ${i.domain}`}
+                  />
+                  <Link href={`/prospect/${i.domain}`} className="min-w-0 font-medium break-all hover:underline">
+                    {i.domain}
+                  </Link>
+                </div>
                 <AccountActions domain={i.domain} />
               </div>
               <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
@@ -222,8 +381,9 @@ export function ProspectsTable({ items, renderedAt }: { items: ProspectListItem[
       <div className="hidden overflow-x-auto rounded-lg border lg:block">
         <table className="w-full table-fixed text-sm">
           <colgroup>
-            <col className="w-[22%]" />
-            <col className="w-[35%]" />
+            <col className="w-[4%]" />
+            <col className="w-[20%]" />
+            <col className="w-[33%]" />
             <col className="w-[11%]" />
             <col className="w-[15%]" />
             <col className="w-[13%]" />
@@ -231,6 +391,14 @@ export function ProspectsTable({ items, renderedAt }: { items: ProspectListItem[
           </colgroup>
           <thead className="text-muted-foreground border-b bg-hover text-left text-xs">
             <tr>
+              <th className="px-3 py-3">
+                <SelectionCheckbox
+                  checked={allVisibleSelected}
+                  indeterminate={someVisibleSelected && !allVisibleSelected}
+                  onChange={toggleVisible}
+                  label="Select all shown accounts"
+                />
+              </th>
               {header('domain', 'Company')}
               <th className="px-3 py-3 font-medium">Best sales pitch</th>
               {header('fitScore', 'Score', 'text-right')}
@@ -246,6 +414,13 @@ export function ProspectsTable({ items, renderedAt }: { items: ProspectListItem[
                 className="group cursor-pointer hover:bg-accent/50"
                 onClick={(event) => openProspect(event, i.domain, router.push)}
               >
+                <td className="px-3 py-3">
+                  <SelectionCheckbox
+                    checked={selected.has(i.domain)}
+                    onChange={() => toggleDomain(i.domain)}
+                    label={`Select ${i.domain}`}
+                  />
+                </td>
                 <td className="overflow-hidden px-3 py-3">
                   <Link href={`/prospect/${i.domain}`} className="block truncate font-medium group-hover:underline">
                     {i.domain}
@@ -277,6 +452,34 @@ export function ProspectsTable({ items, renderedAt }: { items: ProspectListItem[
       )}
       </div>
     </div>
+  );
+}
+
+function SelectionCheckbox({
+  checked,
+  indeterminate = false,
+  onChange,
+  label
+}: {
+  checked: boolean;
+  indeterminate?: boolean;
+  onChange: () => void;
+  label: string;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = indeterminate;
+  }, [indeterminate]);
+
+  return (
+    <input
+      ref={ref}
+      type="checkbox"
+      checked={checked}
+      onChange={onChange}
+      aria-label={label}
+      className="size-4 shrink-0 cursor-pointer accent-foreground"
+    />
   );
 }
 

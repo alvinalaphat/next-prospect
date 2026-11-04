@@ -44,6 +44,7 @@ opportunities so stale approval actions cannot remain live.
 | PageSpeed and CrUX | `lib/psi.ts` |
 | Decisions and Gmail handoff | `lib/opportunity-decision.ts`, `lib/gmail.ts` |
 | Slack cards and interactions | `lib/slack.ts`, `app/api/slack/route.ts` |
+| Bulk account reruns and deletion | `app/api/run/route.ts`, `app/api/prospects/route.ts` |
 | Persistence | `lib/db/`, `drizzle/` |
 | Test fixtures and scripts | `tests/` |
 

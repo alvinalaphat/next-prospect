@@ -304,7 +304,23 @@ await updateOpportunity(id, {
 });
 const enrichedOpportunity = await getOpportunity(id);
 assert.equal(enrichedOpportunity?.contactActivity?.length, 1);
+process.env.RUN_SECRET = 'bulk-action-secret';
+const { DELETE: deleteProspects } = await import('@/app/api/prospects/route');
+const deleteResponse = await deleteProspects(new Request('https://example.com/api/prospects', {
+  method: 'DELETE',
+  headers: {
+    authorization: 'Bearer bulk-action-secret',
+    'content-type': 'application/json'
+  },
+  body: JSON.stringify({ domains: [domain, completionDomain] })
+}));
+assert.equal(deleteResponse.status, 200);
+assert.deepEqual((await deleteResponse.json()).deleted.toSorted(), [completionDomain, domain].toSorted());
+assert.equal(await getProspect(domain), null);
+assert.equal(await getOpportunity(id), null, 'bulk account deletion should cascade to opportunities');
+delete process.env.RUN_SECRET;
 console.log('✓ e2e: account → scored expansion opportunity → grounded draft → approval → parent status');
+console.log('✓ bulk actions: authenticated multi-account deletion cascades to opportunities');
 console.log('✓ run ownership: superseded runs cannot overwrite current account or opportunity state');
 console.log('✓ clean retries: failed state is cleared and old opportunities are not transplanted');
 console.log('✓ opportunity completion: review publication and final decisions update parent state');
