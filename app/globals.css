@@ -225,7 +225,7 @@ html[data-secret='stored'] [data-secret-slot] {
 
     .bulk-actions-in {
       opacity: 0;
-      transform: translateY(-4px);
+      transform: translateY(8px);
     }
   }
 }
