@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { OPPORTUNITY_PRODUCTS, PRODUCTS, getProduct } from '@/lib/catalog/products';
 import { approvalToken, parseApprovalToken } from '@/lib/approval-token';
 import { contactActivityEvidence, contactActivityId, containsFullName } from '@/lib/contact-activity';
+import { presentEvidence, salesLanguage } from '@/lib/evidence-presentation';
 import { relativeTime } from '@/lib/format';
 import { freshnessMultiplier, scoreOpportunity } from '@/lib/scoring';
 
@@ -52,6 +53,48 @@ assert.equal(containsFullName('Annual release notes from Leeway', 'Ann Lee'), fa
 assert.notEqual(
   contactActivityId({ sourceUrl: 'https://example.com/post', text: 'First summary', relevance: 'AI' }),
   contactActivityId({ sourceUrl: 'https://example.com/post', text: 'Second summary', relevance: 'AI' })
+);
+
+const plainSpeed = presentEvidence({
+  id: 'psi.mobile.field.lcp',
+  source: 'psi',
+  label: 'Real-user LCP, origin-level field p75 (mobile)',
+  value: '3040 ms',
+  url: 'https://pagespeed.web.dev/analysis?url=https%3A%2F%2Fexample.com'
+});
+assert.equal(plainSpeed.label, 'Real visitor experience');
+assert.match(plainSpeed.statement, /main page content appeared in 3 seconds/i);
+assert.doesNotMatch(plainSpeed.statement, /LCP|p75|field/i);
+
+const plainHosting = presentEvidence({
+  id: 'detect.host.summary',
+  source: 'detect',
+  label: 'Hosting',
+  value: 'Primary host: cloudflare'
+});
+assert.match(plainHosting.statement, /hosting signal for Cloudflare/i);
+assert.doesNotMatch(plainHosting.statement, /primary host/i);
+assert.match(presentEvidence({
+  id: 'detect.host.summary',
+  source: 'detect',
+  label: 'Hosting',
+  value: 'Primary host: unknown'
+}).statement, /could not identify a hosting provider/i);
+assert.match(presentEvidence({
+  id: 'detect.nextjs.next-root',
+  source: 'detect',
+  label: 'Pages Router root element',
+  value: '<div id="__next">'
+}).statement, /Next\.js-related marker/i);
+assert.doesNotMatch(presentEvidence({
+  id: 'detect.nextjs.next-root',
+  source: 'detect',
+  label: 'Pages Router root element',
+  value: '<div id="__next">'
+}).statement, /reliable|confirm/i);
+assert.equal(
+  salesLanguage('CrUX p75 LCP 3040 ms behind a CDN'),
+  'real-user performance data the experience for most visitors main-content load time 3 seconds behind a content delivery network'
 );
 
 const platform = getProduct('vercel-platform')!;

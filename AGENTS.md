@@ -71,6 +71,11 @@ relevant guide under `node_modules/next/dist/docs/` first.
 - **Starting runs and recording decisions are privileged writes.** Preserve
   `RUN_SECRET` checks and approval-token validation. Reads are public only for
   the current demo form factor; this is not a multi-tenant authorization model.
+- **Interface work follows the design standard.** Read
+  [the interface design guide](./docs/design/interface.md) before creating or
+  materially changing pages, components, interactions, or visual styles. Reuse
+  Geist tokens and shared patterns, preserve accessibility, and verify both
+  themes at desktop and mobile widths.
 - **Verify in proportion to risk.** Run `pnpm check` for code changes and
   the scoped checks in [the verification guide](./docs/testing/verification.md).
   UI changes require actually opening the page in Chrome at desktop and mobile
@@ -91,6 +96,8 @@ relevant guide under `node_modules/next/dist/docs/` first.
 
 ### Architecture and code ownership
 
+- [docs/design/interface.md](./docs/design/interface.md) — required Geist design
+  baseline, layout and interaction rules, accessibility, and UI verification.
 - [docs/architecture/system.md](./docs/architecture/system.md) — request flow,
   module ownership, server/client boundaries, and the end-to-end data path.
 - [workflows/outbound/README.md](./workflows/outbound/README.md) — durable stage

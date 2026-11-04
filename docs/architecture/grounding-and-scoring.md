@@ -18,7 +18,9 @@ The ledger is the factual boundary:
 - unknown citations are repaired once and then removed;
 - unsupported numeric claims are retried once and then surfaced as warnings;
 - citation IDs are stripped from user-facing email bodies; and
-- the UI can jump from a citation chip to the exact source receipt.
+- the UI translates receipts into plain sales language, places them under the
+  opportunity and score category they support, and links to the original public
+  source without exposing internal receipt IDs.
 
 Do not loosen these checks to make a draft look more complete.
 
