@@ -261,7 +261,7 @@ export function ProspectsTable({ items, renderedAt }: { items: ProspectListItem[
   );
 
   return (
-    <div className="space-y-4">
+    <div className={cn('space-y-4', selectedDomains.length > 0 && 'pb-44 sm:pb-28')}>
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
         <ViewSwitch
           view={view}
@@ -284,58 +284,64 @@ export function ProspectsTable({ items, renderedAt }: { items: ProspectListItem[
       </div>
 
       {selectedDomains.length > 0 && (
-        <div className="bulk-actions-in flex flex-col gap-3 rounded-lg border bg-hover p-3 shadow-geist sm:flex-row sm:items-center">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">
-              {selectedDomains.length} selected
-              <span className="text-muted-foreground font-normal"> · {MAX_BULK_SELECTION} max</span>
-            </span>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              aria-label="Clear selection"
-              disabled={bulkBusy !== null}
-              onClick={() => setSelected(new Set())}
-            >
-              <X />
-            </Button>
-          </div>
-          <div className="flex flex-col gap-2 sm:ml-auto sm:flex-row sm:items-center">
-            {secretField.show && (
-              <Input
-                type="password"
-                value={secretField.secret}
-                onChange={(event) => secretField.update(event.target.value)}
-                onBlur={() => void secretField.commit()}
-                placeholder="RUN_SECRET"
-                autoComplete="off"
-                aria-label="Run secret for bulk actions"
-                aria-invalid={secretField.invalid || undefined}
-                className="min-w-0 sm:w-40"
-              />
-            )}
-            <div className="grid grid-cols-2 gap-2">
+        <div className="pointer-events-none fixed right-4 bottom-[max(1rem,env(safe-area-inset-bottom))] left-4 z-40 flex justify-center sm:right-6 sm:left-6">
+          <div
+            role="toolbar"
+            aria-label="Selected account actions"
+            className="bulk-actions-in bg-background/95 pointer-events-auto flex w-full max-w-2xl flex-col gap-3 rounded-lg border p-3 shadow-geist backdrop-blur-md sm:flex-row sm:items-center"
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium whitespace-nowrap">
+                {selectedDomains.length} selected
+                <span className="text-muted-foreground font-normal"> · {MAX_BULK_SELECTION} max</span>
+              </span>
               <Button
                 type="button"
-                variant="outline"
-                size="sm"
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Clear selection"
                 disabled={bulkBusy !== null}
-                onClick={() => void rerunSelected()}
+                onClick={() => setSelected(new Set())}
               >
-                <RefreshCw className={bulkBusy === 'rerun' ? 'animate-spin' : undefined} />
-                Re-run
+                <X />
               </Button>
-              <Button
-                type="button"
-                variant="destructive"
-                size="sm"
-                disabled={bulkBusy !== null}
-                onClick={() => setDeleteConfirmOpen(true)}
-              >
-                <Trash2 />
-                Delete
-              </Button>
+            </div>
+            <div className="flex flex-col gap-2 sm:ml-auto sm:flex-row sm:items-center">
+              {secretField.show && (
+                <Input
+                  type="password"
+                  value={secretField.secret}
+                  onChange={(event) => secretField.update(event.target.value)}
+                  onBlur={() => void secretField.commit()}
+                  placeholder="RUN_SECRET"
+                  autoComplete="off"
+                  aria-label="Run secret for bulk actions"
+                  aria-invalid={secretField.invalid || undefined}
+                  className="min-w-0 sm:w-40"
+                />
+              )}
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={bulkBusy !== null}
+                  onClick={() => void rerunSelected()}
+                >
+                  <RefreshCw className={bulkBusy === 'rerun' ? 'animate-spin' : undefined} />
+                  Re-run
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  disabled={bulkBusy !== null}
+                  onClick={() => setDeleteConfirmOpen(true)}
+                >
+                  <Trash2 />
+                  Delete
+                </Button>
+              </div>
             </div>
           </div>
         </div>
