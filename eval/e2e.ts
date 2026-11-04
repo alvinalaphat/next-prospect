@@ -22,6 +22,7 @@ const {
   cancelProspectRun,
   claimProspectRun,
   completeMaintenanceRun,
+  expireOpportunities,
   getLatestMaintenanceRun,
   insertOpportunity,
   getOpportunity,
@@ -117,6 +118,33 @@ await insertOpportunity({
   },
   approvalToken: token
 });
+
+const reviewCancellationRun = 'review-cancellation-run';
+const reviewCancellationId = crypto.randomUUID();
+const reviewCancellationToken = approvalToken(reviewCancellationId, reviewCancellationRun, 'opportunity');
+const reviewableOpportunity = await getOpportunity(id);
+assert.ok(reviewableOpportunity);
+await upsertProspect(cancelledDomain, { status: 'cancelled', runId: reviewCancellationRun });
+await insertOpportunity({
+  ...reviewableOpportunity,
+  id: reviewCancellationId,
+  domain: cancelledDomain,
+  runId: reviewCancellationRun,
+  status: 'awaiting_approval',
+  decision: null,
+  approvalToken: reviewCancellationToken
+});
+await expireOpportunities(cancelledDomain, reviewCancellationRun);
+assert.equal((await getOpportunity(reviewCancellationId))?.status, 'expired');
+assert.equal(
+  (await applyOpportunityDecision(reviewCancellationToken, {
+    decision: 'approved',
+    by: 'e2e-test',
+    via: 'dashboard'
+  })).applied,
+  false
+);
+assert.equal((await getProspect(cancelledDomain))?.status, 'cancelled');
 
 const result = await applyOpportunityDecision(token, {
   decision: 'approved',

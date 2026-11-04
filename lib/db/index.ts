@@ -145,11 +145,15 @@ export async function getOpportunities(domain: string, runId?: string | null) {
     .orderBy(desc(schema.opportunities.score), desc(schema.opportunities.createdAt));
 }
 
-export async function expireOpportunities(domain: string) {
+export async function expireOpportunities(domain: string, runId?: string | null) {
   await db()
     .update(schema.opportunities)
     .set({ status: 'expired', approvalToken: null, updatedAt: sql`now()` })
-    .where(and(eq(schema.opportunities.domain, domain), eq(schema.opportunities.status, 'awaiting_approval')));
+    .where(and(
+      eq(schema.opportunities.domain, domain),
+      eq(schema.opportunities.status, 'awaiting_approval'),
+      runId ? eq(schema.opportunities.runId, runId) : undefined
+    ));
 }
 
 export async function startMaintenanceRun(id: string, kind: MaintenanceKind) {

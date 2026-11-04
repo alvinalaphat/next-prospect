@@ -36,7 +36,8 @@ decisions after the durable run reaches `awaiting_approval`.
 - A user-cancelled in-flight run ends with account status `cancelled`.
   Cancellation is terminal for that run. Every step write is scoped to the
   owning `runId`, so a finishing step or superseded run cannot overwrite it.
-  The account can be re-run explicitly later.
+  Pending opportunity review tokens for that run are expired, and the account
+  can be re-run explicitly later.
 - Keep batch staggering unless quota and concurrency behavior is deliberately
   redesigned and tested.
 

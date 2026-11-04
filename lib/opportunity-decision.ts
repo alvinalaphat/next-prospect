@@ -1,6 +1,6 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { parseApprovalToken } from '@/lib/approval-token';
-import { db, getOpportunities, getOpportunity, schema, updateOpportunity, upsertProspect } from '@/lib/db';
+import { db, getOpportunities, getOpportunity, schema, updateOpportunity, updateProspectForRun } from '@/lib/db';
 import { createOpportunityGmailDraft, isGmailConfigured } from '@/lib/gmail';
 import { updateOpportunityApprovalMessage } from '@/lib/slack';
 import type { Approval } from '@/lib/types';
@@ -66,9 +66,12 @@ export async function applyOpportunityDecision(
   }
   const siblings = await getOpportunities(opportunity.domain, opportunity.runId);
   if (siblings.every((item) => item.status === 'approved' || item.status === 'rejected')) {
-    await upsertProspect(opportunity.domain, {
-      status: siblings.some((item) => item.status === 'approved') ? 'approved' : 'rejected'
-    });
+    await updateProspectForRun(
+      opportunity.domain,
+      opportunity.runId,
+      { status: siblings.some((item) => item.status === 'approved') ? 'approved' : 'rejected' },
+      ['qualifying', 'researching', 'drafting', 'awaiting_approval']
+    );
   }
   return { applied: true, gmailError };
 }

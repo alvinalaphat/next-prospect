@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { getRun } from 'workflow/api';
 import { isAuthorized, unauthorized } from '@/lib/auth';
-import { cancelProspectRun, db, getOpportunities, getProspect, schema } from '@/lib/db';
+import { cancelProspectRun, db, expireOpportunities, getOpportunities, getProspect, schema } from '@/lib/db';
 import { markSuperseded } from '@/lib/slack';
 
 /** Cancel the durable run for an account that is still in flight. */
@@ -30,6 +30,7 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ domain: s
   if (!(await cancelProspectRun(domain, prospect.runId))) {
     return Response.json({ error: 'This account now belongs to a different workflow run' }, { status: 409 });
   }
+  await expireOpportunities(domain, prospect.runId);
   return Response.json({ ok: true });
 }
 
