@@ -26,7 +26,10 @@ const {
   getOpportunity,
   getProspect,
   listActiveProofRecords,
+  reserveProspectRetry,
+  restoreProspectRetry,
   startMaintenanceRun,
+  transferOpportunitiesToRun,
   updateOpportunity,
   updateOpportunityForRun,
   updateProspectForRun,
@@ -132,6 +135,41 @@ assert.equal(
 );
 assert.equal((await getOpportunity(supersededOpportunityId))?.status, 'drafting');
 
+const retryDomain = 'retry.example';
+const failedRunId = 'failed-run';
+const retryRunId = 'retry-run';
+const retryOpportunityId = crypto.randomUUID();
+await upsertProspect(retryDomain, {
+  status: 'error',
+  runId: failedRunId,
+  error: 'Temporary provider credit error'
+});
+await insertOpportunity({
+  ...reviewableOpportunity,
+  id: retryOpportunityId,
+  domain: retryDomain,
+  runId: failedRunId,
+  status: 'drafting',
+  decision: null,
+  approvalToken: null
+});
+assert.equal(await reserveProspectRetry(retryDomain, failedRunId), true);
+assert.equal(await reserveProspectRetry(retryDomain, failedRunId), false);
+assert.equal((await getProspect(retryDomain))?.status, 'queued');
+assert.equal(
+  await restoreProspectRetry(retryDomain, failedRunId, 'Temporary provider credit error'),
+  true
+);
+assert.equal((await getProspect(retryDomain))?.status, 'error');
+assert.equal(await reserveProspectRetry(retryDomain, failedRunId), true);
+assert.equal(await claimProspectRun(retryDomain, retryRunId, { status: 'queued' }), true);
+await transferOpportunitiesToRun(retryDomain, failedRunId, retryRunId);
+assert.equal((await getOpportunity(retryOpportunityId))?.runId, retryRunId);
+assert.equal(
+  await updateOpportunityForRun(retryOpportunityId, { status: 'awaiting_approval' }) !== null,
+  true
+);
+
 const result = await applyOpportunityDecision(token, {
   decision: 'approved',
   by: 'e2e-test',
@@ -206,6 +244,7 @@ assert.equal((await getLatestMaintenanceRun('proof'))?.status, 'complete');
   console.log('✓ e2e: account → scored expansion opportunity → grounded draft → approval → parent status');
   console.log('✓ maintenance: proof upsert → durable refresh status');
   console.log('✓ run ownership: superseded runs cannot overwrite current account or opportunity state');
+  console.log('✓ retry checkpoints: failed accounts transfer resumable work to one replacement run');
 }
 
 main().then(() => process.exit(0)).catch((error) => {

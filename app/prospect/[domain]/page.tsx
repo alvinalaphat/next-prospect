@@ -5,6 +5,7 @@ import { AutoRefresh } from '@/components/auto-refresh';
 import { Score, StatusBadge } from '@/components/badges';
 import { Disclosure } from '@/components/disclosure';
 import { OpportunityCards } from '@/components/opportunity-cards';
+import { WorkflowRetryButton } from '@/components/workflow-retry-button';
 import { contactActivityEvidence } from '@/lib/contact-activity';
 import { getOpportunities, getProofRecords, getProspect } from '@/lib/db';
 import { HOST_LABEL, ms, RATING_TONE, relativeTime, STATUS } from '@/lib/format';
@@ -37,7 +38,7 @@ export default async function ProspectPage({ params }: { params: Promise<{ domai
     <div className="min-w-0 space-y-10 pb-8 sm:space-y-12">
       <AutoRefresh active={running} />
 
-      <header className="max-w-5xl space-y-6">
+      <header className="w-full min-w-0 max-w-5xl space-y-6">
         <Link href="/" className="text-muted-foreground hover:text-foreground inline-flex items-center gap-2 text-sm">
           <ArrowLeft className="size-4" /> Accounts
         </Link>
@@ -66,8 +67,18 @@ export default async function ProspectPage({ params }: { params: Promise<{ domai
           </dl>
         </div>
         {prospect.status === 'error' && prospect.error && (
-          <div className="rounded-lg border border-error/40 px-4 py-4 text-sm text-error" role="alert">
-            {prospect.error}
+          <div
+            className="flex w-full min-w-0 max-w-full flex-col gap-4 overflow-hidden rounded-lg border border-error/40 px-4 py-4 text-sm text-error sm:flex-row sm:items-start sm:justify-between"
+            role="alert"
+            style={{ boxSizing: 'border-box', maxWidth: 'min(64rem, calc(100vw - 2rem))' }}
+          >
+            <p
+              className="min-w-0 leading-6"
+              style={{ maxWidth: '100%', overflowWrap: 'anywhere', wordBreak: 'break-all' }}
+            >
+              {prospect.error}
+            </p>
+            <WorkflowRetryButton domain={prospect.domain} />
           </div>
         )}
       </header>

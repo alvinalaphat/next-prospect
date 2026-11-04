@@ -76,6 +76,38 @@ export async function claimProspectRun(domain: string, runId: string, patch: Pro
   return rows.length > 0;
 }
 
+/** Reserve an errored account for one retry request and block duplicate clicks. */
+export async function reserveProspectRetry(domain: string, failedRunId: string) {
+  const rows = await db()
+    .update(schema.prospects)
+    .set({ status: 'queued', runId: null, error: null, updatedAt: sql`now()` })
+    .where(and(
+      eq(schema.prospects.domain, domain),
+      eq(schema.prospects.runId, failedRunId),
+      eq(schema.prospects.status, 'error')
+    ))
+    .returning({ domain: schema.prospects.domain });
+  return rows.length > 0;
+}
+
+/** Restore the visible failure if creating its replacement run did not succeed. */
+export async function restoreProspectRetry(
+  domain: string,
+  failedRunId: string,
+  error: string | null
+) {
+  const rows = await db()
+    .update(schema.prospects)
+    .set({ status: 'error', runId: failedRunId, error, updatedAt: sql`now()` })
+    .where(and(
+      eq(schema.prospects.domain, domain),
+      eq(schema.prospects.status, 'queued'),
+      isNull(schema.prospects.runId)
+    ))
+    .returning({ domain: schema.prospects.domain });
+  return rows.length > 0;
+}
+
 /** Persist step output only while this exact run still owns the account. */
 export async function updateProspectForRun(
   domain: string,
@@ -148,6 +180,22 @@ export async function getOpportunities(domain: string, runId?: string | null) {
         : eq(schema.opportunities.domain, domain)
     )
     .orderBy(desc(schema.opportunities.score), desc(schema.opportunities.createdAt));
+}
+
+/** Move persisted opportunity checkpoints under a replacement durable run. */
+export async function transferOpportunitiesToRun(
+  domain: string,
+  failedRunId: string,
+  retryRunId: string
+) {
+  return db()
+    .update(schema.opportunities)
+    .set({ runId: retryRunId, updatedAt: sql`now()` })
+    .where(and(
+      eq(schema.opportunities.domain, domain),
+      eq(schema.opportunities.runId, failedRunId)
+    ))
+    .returning();
 }
 
 export async function expireOpportunities(domain: string) {
