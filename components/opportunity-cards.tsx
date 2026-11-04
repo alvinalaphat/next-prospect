@@ -310,7 +310,7 @@ function ScoreExplanation({ opportunity, ledger }: { opportunity: OpportunityRow
 
   return (
     <div className="mt-5">
-      <ScoreCategorySwitcher categories={categories} />
+      <ScoreCategorySwitcher categories={categories} defaultSelectedId="total" />
 
       <p className="text-muted-foreground mt-4 text-xs leading-5">
         The score is calculated in code from the points shown above. Evidence is displayed in sales language; source links open the original public record.
@@ -438,6 +438,9 @@ function TotalScore({
         ))}
       </dl>
       <p className="mt-5 border-t pt-4 text-sm leading-6">{assessment.takeaway}</p>
+      <p className="text-muted-foreground mt-2 text-xs leading-5">
+        Select any other score tile above to see exactly which signals and evidence contributed its points.
+      </p>
     </section>
   );
 }

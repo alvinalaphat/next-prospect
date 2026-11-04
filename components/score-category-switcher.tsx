@@ -11,9 +11,17 @@ export type ScoreCategoryTab = {
   panel: ReactNode;
 };
 
-export function ScoreCategorySwitcher({ categories }: { categories: ScoreCategoryTab[] }) {
+export function ScoreCategorySwitcher({
+  categories,
+  defaultSelectedId
+}: {
+  categories: ScoreCategoryTab[];
+  defaultSelectedId?: string;
+}) {
   const instanceId = useId();
-  const [selectedId, setSelectedId] = useState(categories[0]?.id ?? '');
+  const [selectedId, setSelectedId] = useState(() =>
+    categories.find((category) => category.id === defaultSelectedId)?.id ?? categories[0]?.id ?? ''
+  );
   const selected = categories.find((category) => category.id === selectedId) ?? categories[0];
 
   if (!selected) return null;
