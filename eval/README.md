@@ -7,8 +7,8 @@ headers of a same-origin fetch. The detector under test only gets **one plain HT
 (no JS), so disagreements are real detector misses, not label noise.
 
 `host` may list several acceptable answers (`akamai|aws`) when a CDN fronts another
-provider and both are defensible. `on_vercel` is the business-critical label: it decides
-whether a company is a customer (skip) or a prospect.
+provider and both are defensible. `on_vercel` is the business-critical label: it prevents
+an invalid hosting-migration motion and provides expansion context for other products.
 
 Caveat: 11 of the 15 were chosen from sites I already knew or had scanned, so this is a
 sanity check, not an unbiased benchmark. Add your own rows to widen it.

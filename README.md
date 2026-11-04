@@ -245,10 +245,10 @@ The detector only gets **one plain GET**.
 | Host accuracy | **93%** (14/15) |
 
 The single miss (openai.com) is a Cloudflare bot challenge in front of a Next.js site on
-Vercel: the plain GET only sees the challenge page. The pipeline marks that as
-`blocked` and doesn't draft, so the miss can't turn into outreach to an existing
-customer. Caveat: most eval domains are well-known sites, so treat this as a sanity check
-rather than a benchmark (see `eval/README.md`).
+Vercel: the plain GET only sees the challenge page. The detector records the blocked
+fetch and keeps any usable header and DNS evidence; the workflow still continues through
+research and product routing. Caveat: most eval domains are well-known sites, so treat
+this as a sanity check rather than a benchmark (see `eval/README.md`).
 
 ### Sample detections
 
@@ -260,13 +260,13 @@ rather than a benchmark (see `eval/README.md`).
 | zillow.com | 0.90, Pages Router | AWS (CloudFront) |
 | plaid.com | 0.90, Pages Router | AWS (ELB + CloudFront) |
 | linear.app | 0.86, App Router | Cloudflare |
-| supabase.com | 0.97, App Router | Vercel → skipped as customer |
+| supabase.com | 0.97, App Router | Vercel (expansion context) |
 
 ### End-to-end runs (seed batch, production)
 
-Run from `data/seed.csv` on https://nextprospect.vercel.app with `openai/gpt-5`
-(low reasoning effort) via AI Gateway, Exa research and PSI. Each qualified prospect was
-posted to Slack for approval.
+Reviewable outputs from `data/seed.csv` on https://nextprospect.vercel.app with
+`openai/gpt-5` (low reasoning effort) via AI Gateway, Exa research and PSI. Each resulting
+opportunity was posted to Slack for approval.
 
 | Domain | Outcome | Fit | Strongest angle | Verified stakeholder |
 |---|---|---|---|---|
@@ -274,18 +274,10 @@ posted to Slack for approval.
 | plaid.com | Needs review | 82 | Mobile real-user CWV SLOW on AWS/CloudFront | Head of Platform Engineering |
 | linear.app | Needs review | 82 | Slow real-user LCP/TTFB, App Router behind Cloudflare | Head of Engineering |
 | zillow.com | Needs review | 82 | Real-user TTFB on AWS CloudFront | SVP Engineering |
-| supabase.com | Skipped: already on Vercel | – | – | – |
-| ticketmaster.com | Skipped: bot-blocked from Vercel's IPs | – | – | – |
-
 All four drafts passed grounding with zero warnings: every citation resolved and every
 number was found in the ledger. Each stakeholder was confirmed via a LinkedIn result that
 names them. No published emails were found, which is expected, and addresses are never
 guessed.
-
-Things the first production run caught, now fixed:
-- The model echoed `[id]` ledger formatting, so valid citations were rejected. Citations are now normalized first.
-- An invalid Exa key made the agent loop on tool errors. It now fails fast and flags the brief.
-- Citation ids leaked into an email body. They're stripped, and the prompt forbids them.
 
 ## License
 
