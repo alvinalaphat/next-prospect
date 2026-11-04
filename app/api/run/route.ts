@@ -74,6 +74,7 @@ export async function POST(request: Request) {
     await expireOpportunities(domain);
     await upsertProspect(domain, {
       status: 'queued',
+      runId: null,
       batch,
       error: null,
       approval: null,

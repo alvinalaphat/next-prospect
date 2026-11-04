@@ -177,7 +177,7 @@ npx workflow web                  # inspect workflow runs locally
 | `DATABASE_URL` | storage | Added by the Neon Marketplace integration. Falls back to PGlite in dev. |
 | `SLACK_BOT_TOKEN`, `SLACK_SIGNING_SECRET`, `SLACK_CHANNEL_ID` | Slack approvals | Optional; the dashboard can approve too. |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN` | Gmail drafts | Optional; see Gmail drafts below. |
-| `REP_NAME` | drafts | Name that signs drafts (fills `{{rep_name}}`). |
+| `REP_NAME` | drafts | Required sender name written directly into every draft sign-off. |
 | `RUN_SECRET` | prod | Required to start runs and approve from the dashboard. |
 | `CRON_SECRET` | prod | Set by Vercel Cron and required by the weekly catalog/proof refresh routes. |
 | `APP_URL` | Slack links | Defaults to the Vercel production URL. |

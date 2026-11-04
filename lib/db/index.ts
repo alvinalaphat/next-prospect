@@ -1,9 +1,10 @@
 import { neon } from '@neondatabase/serverless';
 import { drizzle as drizzleNeon, type NeonHttpDatabase } from 'drizzle-orm/neon-http';
-import { and, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, desc, eq, exists, inArray, isNull, or, sql } from 'drizzle-orm';
 import * as schema from './schema';
 import type { OpportunityRow, ProspectRow } from './schema';
 import type { CatalogAuditResult, MaintenanceKind, ProofRecord, ProofRefreshResult } from '@/lib/refresh/types';
+import type { ProspectStatus } from '@/lib/types';
 
 type DB = NeonHttpDatabase<typeof schema>;
 let _db: DB | null = null;
@@ -59,6 +60,41 @@ export async function getProspect(domain: string) {
   return rows[0] ?? null;
 }
 
+/** Claim a queued account without allowing an older run to take ownership. */
+export async function claimProspectRun(domain: string, runId: string, patch: ProspectPatch) {
+  const rows = await db()
+    .update(schema.prospects)
+    .set({ ...patch, runId, updatedAt: sql`now()` })
+    .where(and(
+      eq(schema.prospects.domain, domain),
+      or(
+        eq(schema.prospects.runId, runId),
+        and(eq(schema.prospects.status, 'queued'), isNull(schema.prospects.runId))
+      )
+    ))
+    .returning({ domain: schema.prospects.domain });
+  return rows.length > 0;
+}
+
+/** Persist step output only while this exact run still owns the account. */
+export async function updateProspectForRun(
+  domain: string,
+  runId: string,
+  patch: ProspectPatch,
+  allowedStatuses?: ProspectStatus[]
+) {
+  const rows = await db()
+    .update(schema.prospects)
+    .set({ ...patch, updatedAt: sql`now()` })
+    .where(and(
+      eq(schema.prospects.domain, domain),
+      eq(schema.prospects.runId, runId),
+      allowedStatuses?.length ? inArray(schema.prospects.status, allowedStatuses) : undefined
+    ))
+    .returning({ domain: schema.prospects.domain });
+  return rows.length > 0;
+}
+
 type OpportunityInsert = typeof schema.opportunities.$inferInsert;
 type OpportunityPatch = Partial<Omit<OpportunityRow, 'id' | 'domain' | 'runId' | 'createdAt' | 'updatedAt'>>;
 
@@ -72,6 +108,23 @@ export async function updateOpportunity(id: string, patch: OpportunityPatch) {
     .update(schema.opportunities)
     .set({ ...patch, updatedAt: sql`now()` })
     .where(eq(schema.opportunities.id, id))
+    .returning();
+  return rows[0] ?? null;
+}
+
+/** Publish opportunity state only while its owning run still owns the account. */
+export async function updateOpportunityForRun(id: string, patch: OpportunityPatch) {
+  const owningRunIsCurrent = db()
+    .select({ value: sql`1` })
+    .from(schema.prospects)
+    .where(and(
+      eq(schema.prospects.domain, schema.opportunities.domain),
+      eq(schema.prospects.runId, schema.opportunities.runId)
+    ));
+  const rows = await db()
+    .update(schema.opportunities)
+    .set({ ...patch, updatedAt: sql`now()` })
+    .where(and(eq(schema.opportunities.id, id), exists(owningRunIsCurrent)))
     .returning();
   return rows[0] ?? null;
 }
@@ -101,7 +154,10 @@ export async function expireOpportunities(domain: string) {
   await db()
     .update(schema.opportunities)
     .set({ status: 'expired', approvalToken: null, updatedAt: sql`now()` })
-    .where(and(eq(schema.opportunities.domain, domain), eq(schema.opportunities.status, 'awaiting_approval')));
+    .where(and(
+      eq(schema.opportunities.domain, domain),
+      eq(schema.opportunities.status, 'awaiting_approval')
+    ));
 }
 
 export async function startMaintenanceRun(id: string, kind: MaintenanceKind) {

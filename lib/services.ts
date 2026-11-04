@@ -11,7 +11,7 @@ import {
   unknownCitations,
   unverifiedNumbers
 } from '@/lib/grounding';
-import { HOST_LABEL } from '@/lib/format';
+import { getProduct } from '@/lib/catalog/products';
 import { stripEmDashes } from '@/lib/email-text';
 import { DRAFT_INSTRUCTIONS, QUALIFY_INSTRUCTIONS, RESEARCH_INSTRUCTIONS } from '@/lib/prompts';
 import {
@@ -19,7 +19,6 @@ import {
   type Draft,
   draftSchema,
   type EvidenceItem,
-  type HostId,
   type Qualification,
   qualificationSchema,
   type Research,
@@ -262,12 +261,11 @@ export async function qualify(
 const EMAIL_JARGON =
   /\b(CrUX|p75|percentile|LCP|INP|CLS|TTFB|Core Web Vitals|Lighthouse|field data|lab data|ISR|RSC|CDN|edge network|SSR|hydration|rated slow)\b/gi;
 
-/** Sender name for sign-offs (REP_NAME); placeholders stay if unknown. */
-export function fillPlaceholders(text: string, firstName: string | null): string {
-  let out = text;
-  if (firstName) out = out.replaceAll('{{first_name}}', firstName);
-  if (process.env.REP_NAME) out = out.replaceAll('{{rep_name}}', process.env.REP_NAME);
-  return out;
+/** Configured sender identity. Drafts must never ship a name placeholder. */
+export function configuredRepName(): string {
+  const name = process.env.REP_NAME?.trim();
+  if (!name) throw new Error('REP_NAME is required to draft outreach');
+  return name;
 }
 
 /** Citations belong in emailCitations, not the prose: remove "[psi.mobile…]", "[ids below]" etc. */
@@ -291,29 +289,25 @@ export function formatEmailBody(body: string): string {
     .join('\n\n');
 }
 
-/**
- * Plain name for the detected host, when the email may say it.
- * Unknown and Vercel are omitted — one isn't a fact, the other is already a customer.
- */
-function currentHost(ledger: EvidenceItem[]): string | null {
-  const item = ledger.find((e) => e.id === 'detect.host.summary');
-  const id = item?.value.match(/Primary host: ([a-z]+)/)?.[1];
-  if (!id || id === 'unknown' || id === 'vercel' || !(id in HOST_LABEL)) return null;
-  return HOST_LABEL[id as HostId];
-}
+/** Make the verified greeting and configured sender deterministic in the saved draft. */
+export function enforceEmailIdentity(body: string, greeting: string, repName: string): string {
+  const paragraphs = formatEmailBody(body)
+    .split('\n\n')
+    .map((paragraph) => paragraph.replace(/\{\{[^{}]+\}\}/g, '').trim())
+    .filter(Boolean);
 
-function mentionsHost(body: string, label: string): boolean {
-  const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return new RegExp(`\\b${escaped}\\b`, 'i').test(body);
-}
+  if (/^Hi\b.*,$/i.test(paragraphs[0] ?? '')) paragraphs[0] = greeting;
+  else paragraphs.unshift(greeting);
 
-/** The migration line is a product fact, not a ledger claim. */
-function mentionsMigration(body: string): boolean {
-  return (
-    /Next\.js/i.test(body) &&
-    /creat(or|ed|ors)/i.test(body) &&
-    /\b(easy|straightforward|simple)\b/i.test(body)
-  );
+  if (paragraphs.at(-1) !== repName) {
+    const last = paragraphs.at(-1) ?? '';
+    const looksLikeSignature = /^(?:best|thanks|regards|cheers),?$/i.test(last)
+      || /^[\p{Lu}][\p{L}'.-]*(?:\s+[\p{Lu}][\p{L}'.-]*){0,3}$/u.test(last);
+    if (looksLikeSignature) paragraphs[paragraphs.length - 1] = repName;
+    else paragraphs.push(repName);
+  }
+
+  return paragraphs.join('\n\n');
 }
 
 /**
@@ -328,20 +322,29 @@ export async function writeDraft(
   qualification: Qualification,
   research?: Research | null
 ): Promise<Draft> {
-  const host = currentHost(ledger);
+  const product = getProduct('vercel-platform');
+  const firstName = stakeholderFirstName(research);
+  const repName = configuredRepName();
+  const greeting = `Hi ${firstName ?? 'there'},`;
   const prompt = [
     `Prospect: ${domain}`,
+    `Product: ${product?.name ?? 'Vercel Platform'}${product?.summary ? `: ${product.summary}` : ''}`,
+    `Buyer: ${research?.likelyBuyer.name ?? 'No verified name'}, ${research?.likelyBuyer.title ?? research?.likelyBuyer.role ?? 'role unknown'}`,
+    `Buyer rationale: ${research?.likelyBuyer.rationale ?? 'No buyer-specific rationale supplied.'}`,
+    `Greeting: ${greeting}`,
+    `Sign off: ${repName}`,
     `Strongest angle: ${qualification.strongestAngle.label}. ${qualification.strongestAngle.explanation}`,
     `Qualification reasoning: ${qualification.reasoning}`,
+    `Why now: ${research?.whyNow.map((item) => item.text).join('; ') || 'No timely trigger supplied. Use the strongest grounded observation without implying recency.'}`,
+    `Region: ${research?.region?.group ?? 'unknown'}${research?.region?.label ? ` (${research.region.label})` : ''}`,
+    '',
+    `Approved product claims:\n${product?.approvedClaims.map((claim) => `- ${claim}`).join('\n') || '- No extra product claims supplied.'}`,
+    `Prohibited claims:\n${product?.prohibitedClaims.map((claim) => `- ${claim}`).join('\n') || '- Do not invent product claims.'}`,
+    research?.region?.group === 'emea' ? `EMEA guidance:\n${product?.emeaNotes?.map((note) => `- ${note}`).join('\n') || '- No product-specific privacy claim supplied.'}` : '',
     '',
     'EVIDENCE LEDGER:',
-    formatLedger(ledger),
-    '',
-    host
-      ? `Current host: ${host}. Use that exact name once. The close is about moving that hosting onto Vercel. Cite detect.host.summary.`
-      : 'Current host: unknown. Do not name a hosting provider.',
-    'Migration: say moving to Vercel is easy or straightforward because it was built for Next.js by the people who created Next.js. Do not cite that line.'
-  ].join('\n');
+    formatLedger(ledger)
+  ].filter(Boolean).join('\n');
 
   const normalize = (d: z.infer<typeof draftSchema>) => ({
     ...d,
@@ -357,8 +360,10 @@ export async function writeDraft(
     jargon: jargon(d),
     bad: unknownCitations([...d.emailCitations, ...d.talkingPoints.flatMap((t) => t.citations)], ledger),
     numbers: unverifiedNumbers(`${d.subjectOptions.join('\n')}\n${d.subject}\n${d.body}`, ledger),
-    host: !!host && !mentionsHost(d.body, host),
-    migration: !mentionsMigration(d.body)
+    identity: [
+      !d.body.trimStart().startsWith(greeting) ? `Email must begin with exactly: ${greeting}` : '',
+      !d.body.trimEnd().endsWith(repName) ? `Email must end with exactly: ${repName}` : ''
+    ].filter(Boolean)
   });
 
   let { output } = await generateText({
@@ -371,7 +376,7 @@ export async function writeDraft(
   output = normalize(output);
 
   let issues = check(output);
-  if (issues.bad.length || issues.numbers.length || issues.jargon.length || issues.host || issues.migration) {
+  if (issues.bad.length || issues.numbers.length || issues.jargon.length || issues.identity.length) {
     ({ output } = await generateText({
       model: MODEL,
       providerOptions: FAST,
@@ -383,10 +388,7 @@ export async function writeDraft(
         issues.bad.length ? `- Cited ids not in the ledger: ${issues.bad.join(', ')}` : '',
         issues.numbers.length ? `- Numbers not found in the ledger: ${issues.numbers.join(', ')}` : '',
         issues.jargon.length ? `- Technical jargon in the email (rewrite in plain English): ${issues.jargon.join(', ')}` : '',
-        issues.host ? `- The email never names their current host. Say the site is hosted on ${host}, once, and that the ask is to move that hosting onto Vercel. Cite detect.host.summary.` : '',
-        issues.migration
-          ? '- The email never says why the move is easy. Say moving to Vercel is straightforward because it was built for Next.js by the people who created Next.js. Do not cite that line.'
-          : '',
+        ...issues.identity.map((issue) => `- ${issue}`),
         '',
         `Previous draft:\nSubject: ${output.subject}\n${output.body}`
       ].join('\n'),
@@ -400,23 +402,14 @@ export async function writeDraft(
   if (issues.bad.length) warnings.push(`Unknown citations: ${issues.bad.join(', ')}`);
   if (issues.numbers.length) warnings.push(`Numbers not found in evidence: ${issues.numbers.join(', ')}`);
   if (issues.jargon.length) warnings.push(`Jargon in email: ${issues.jargon.join(', ')}`);
-  if (issues.host) warnings.push(`Email doesn't name the current host (${host})`);
-  if (issues.migration) {
-    warnings.push("Email doesn't say the move is straightforward because Vercel was built for Next.js by the people who created it");
-  }
-  if (host && mentionsHost(output.body, host) && !output.emailCitations.includes('detect.host.summary')) {
-    output = { ...output, emailCitations: [...output.emailCitations, 'detect.host.summary'] };
-  }
-  // Fill the greeting from the verified stakeholder only; otherwise leave the
-  // placeholder for the rep.
-  const firstName = stakeholderFirstName(research);
+  if (issues.identity.length) warnings.push(...issues.identity);
   output = {
     ...output,
-    subject: stripEmDashes(fillPlaceholders(output.subject, firstName)),
-    subjectOptions: output.subjectOptions.map((o) => stripEmDashes(fillPlaceholders(o, firstName))),
-    body: stripEmDashes(formatEmailBody(fillPlaceholders(stripCitationLeaks(output.body), firstName)))
+    subject: stripEmDashes(output.subject),
+    subjectOptions: output.subjectOptions.map(stripEmDashes),
+    body: stripEmDashes(enforceEmailIdentity(stripCitationLeaks(output.body), greeting, repName))
   };
-  if (!firstName) warnings.push('No verified stakeholder — fill in {{first_name}} before sending');
+  if (!firstName) warnings.push('No verified stakeholder — used "Hi there," for the greeting');
 
   const b = research?.likelyBuyer;
   const to = b?.name
@@ -424,7 +417,7 @@ export async function writeDraft(
     : null;
 
   const words = output.body.split(/\s+/).filter(Boolean).length;
-  if (words > 120) warnings.push(`Email is ${words} words (target 70–110)`);
+  if (words < 70 || words > 110) warnings.push(`Email is ${words} words (target 70–110)`);
 
   return {
     ...output,

@@ -94,93 +94,91 @@ Only use ids that appear in the EVIDENCE LEDGER.
 `.trim();
 
 export const DRAFT_INSTRUCTIONS = `
-${PLAYBOOK}
+Draft a concise first-touch email and rep brief for the selected Vercel product.
 
-TASK: Draft a first-touch email and a rep brief.
+The message is about the supplied product opportunity and buyer. Do not discuss
+hosting unless the selected product is Vercel Platform and the supplied angle
+explicitly supports a hosting migration.
 
-EMAIL — written as a Vercel solutions engineer, to the likely buyer:
-- Subject: the reason they open it. Write it like a sharp engineer's note to a
-  peer, not marketing:
-  - 3–8 words, lowercase is fine, about THEIR site and a specific finding.
-  - Spark curiosity with something concrete and slightly surprising: a real
-    number, a moment their users experience, or a question they'll want
-    answered. Numbers must match the ledger.
-  - Never: "Vercel", "partnership", "opportunity", "quick question", "boost",
-    "improve your", "Re:"/"Fwd:", emojis, ALL CAPS, false urgency.
-  - Style examples (fictional company; never copy their wording — write
-    fresh lines from THIS prospect's evidence):
-    good: "acme.com's phones wait 6s for the hero", "what happens in
-    acme.com's first 900ms", "acme.com is fast on desktop. mobile?"
-    bad: "Improve your site performance", "field lcp 4.38 s mobile",
-    "Next.js hosting opportunity".
-  - Write 3 genuinely different subjectOptions (e.g. a number, a user moment,
-    a question), then put the most compelling one in subject.
-- Body: 4–5 short sentences, 70–110 words total. Plain text, no bullets, no
-  exclamation marks.
-- NEVER use an em dash (—) in the subject or the body. Use a period or a comma.
-- FORMAT: each core sentence is its own paragraph, separated by a blank line
-  (a double newline). The reader should be able to skim it in five seconds.
-- PLAIN ENGLISH. Write so a busy VP who isn't a performance engineer gets it
-  instantly. Describe what their visitors experience, not metric names.
-  Banned in the email (fine in talking points): CrUX, p75, percentile, LCP,
-  INP, CLS, TTFB, Core Web Vitals, Lighthouse, field data, lab data, ISR, RSC,
-  CDN, edge network, SSR, hydration, "assessment", "rated SLOW".
-  Translate instead:
-  - p75 of X → "1 in 4 visits wait X or longer" (p75 means 75% are FASTER
-    than X — never say "75% take X").
-  - LCP → "before the main content shows up"; TTFB → "before the server
-    even responds"; INP → "for the page to react to a tap".
-  - Round numbers the way people talk, in the subject too: "about 8
-    seconds", "over 4 seconds" (they must still match the ledger).
-- Don't cite sources or standards in the email ("Google says", "industry
-  benchmark", "according to"). State the finding plainly and move on.
-- NEVER invent personal experience or actions: no "I was on my phone", "I
-  visited", "I tested", "I noticed while browsing". Say what the data shows
-  ("1 in 4 mobile visits to mongodb.com wait…").
-- NEVER promise or estimate an improvement ("cut it to 2s", "50% faster").
-  There is no evidence for one. Offer to show them instead.
-- Structure, one short sentence each (4 or 5 sentences):
-  1. What their visitors experience today, in plain words, with one number.
-  2. Why that matters to them, in a few words (e.g. that's long enough for
-     people to leave before they see anything).
-  3. Why moving onto Vercel is straightforward, then one plain-language
-     thing it does for Next.js sites like theirs. The reason is fixed, not
-     from the ledger, and needs no citation: Vercel was built for Next.js
-     by the people who created Next.js. Say that in your own words, plainly,
-     including "Next.js", that the people who created it built Vercel, and
-     that the move is easy or straightforward. Then one concrete thing it
-     does (e.g. serving pages from servers close to each visitor, caching
-     pages so they don't rebuild on every visit, resizing images
-     automatically). Do not invent any other fact.
-  4. The close: invite a short intro conversation about FIXING this problem
-     by moving their hosting onto Vercel. It should point toward that move,
-     not just offer an explanation or a diagnosis. Low pressure, one
-     question, in your own words. Vary the phrasing.
-- CURRENT HOST: the user message has a "Current host:" line.
-  - When it names a provider, the body must use that exact name once, so the
-    reader can see where the site is hosted today. Work it into sentence 3
-    or the close. Do not add a fifth paragraph, and do not repeat the name.
-    The close has to make the ask obvious: move that hosting onto Vercel.
-    Cite detect.host.summary. Spirit (don't copy the host or the wording —
-    use the name you were given): "Worth 20 minutes to talk through moving
-    the site from Netlify onto Vercel?"
-  - When it says unknown, do not name a hosting provider. Spirit: "Worth 20
-    minutes to talk through moving it onto Vercel?"
-  - Not: "Happy to show you where the wait comes from."
-- Tone: a friendly, helpful person sharing something they noticed. Not a
-  salesperson, not a performance report. No hype words ("revolutionize",
-  "supercharge", "game-changer"), no filler ("I hope this finds you well",
-  "I wanted to reach out"), no fake familiarity.
-- Greet with exactly "Hi {{first_name}}," (the placeholder is filled in by
-  code from the verified stakeholder — never write a name yourself), and sign
-  off as "{{rep_name}}".
-- emailCitations: every ledger id your email relies on. Never put ids,
-  brackets or source notes in the email body itself.
+EMAIL STRUCTURE:
+1. Trigger, why now: lead with the most relevant public timing signal for this
+   buyer. Prefer attributable buyer activity, such as a recent post, talk, or
+   role change, when supplied and relevant. Otherwise use a company launch,
+   funding round, relevant hire, job posting, or another timely company event.
+   If there is no timely signal, use the strongest relevant public observation
+   and do not imply that it is recent. A Vercel release may be the trigger only
+   when dated, source-backed Vercel release context is explicitly supplied.
+   Never call a product new or recently released from model memory.
+2. Relevance, why you: use the supplied buyer name, role, and rationale to
+   explain why this product is relevant to what they own. Name the selected
+   Vercel product and explain one approved benefit in plain language. Tailor
+   the connection to the buyer without stating their title or responsibilities
+   as facts unless the evidence supports them. Do not broaden an approved claim
+   or pitch a different product.
+3. EMEA: when Region is EMEA, fold one product-specific privacy, governance,
+   or data-control strength into the relevance paragraph only when it appears
+   in Approved product claims or EMEA guidance. If no such approved claim is
+   supplied, omit it rather than inventing a compliance or residency claim.
+4. Close: ask one low-pressure question about a short meeting or demo focused
+   on the selected product and the problem above.
 
-TALKING POINTS — exactly 3 bullets for the rep's call prep, each citing ids.
-These can be technical (metric names, p75, hosting details): they're for the rep.
+STYLE:
+- Write as a thoughtful Vercel rep to a technical or business peer, not as a
+  marketer or a performance report.
+- Use the exact Greeting and Sign off values supplied in the user message.
+  Never output template placeholders or substitute a different name.
+- Body: 4–5 short core sentences and 70–110 words total. Plain text, no
+  bullets, no exclamation marks. Put each core sentence in its own paragraph,
+  separated by a blank line, so the email scans in five seconds.
+- Never use an em dash in the subject or body. Use a period or comma instead.
+- Use plain English a busy VP can understand immediately. Avoid internal
+  product language and unexplained technical terms.
+- These terms are banned in the email body but allowed in talking points:
+  CrUX, p75, percentile, LCP, INP, CLS, TTFB, Core Web Vitals, Lighthouse,
+  field data, lab data, ISR, RSC, CDN, edge network, SSR, hydration,
+  "assessment", and "rated slow".
+- Translate technical evidence into a human experience. For example, p75 of X
+  means "1 in 4 visits wait X or longer", LCP is "before the main content
+  shows up", TTFB is "before the server responds", and INP is "for the page
+  to react to a tap". Never say "75% take X".
+- Round numbers the way people talk, such as "about 8 seconds" or "over 4
+  seconds", while keeping them faithful to the ledger.
+- Do not cite sources or standards in the prose. Do not write "Google says",
+  "according to", or "industry benchmark".
+- Never invent personal experience or actions such as "I visited", "I
+  tested", "I noticed", or "I was on my phone". State what the evidence shows.
+- Never promise or estimate an improvement, savings, revenue, conversion, or
+  implementation result. Offer to explore or demonstrate the product instead.
+- No hype ("revolutionize", "supercharge", "game-changer"), filler ("I hope
+  this finds you well", "I wanted to reach out"), fake familiarity, or false
+  urgency.
 
-Only use facts from the EVIDENCE LEDGER, except the migration sentence in
-step 3 (Vercel was built for Next.js by the people who created it). Numbers
-must match the ledger exactly (you may convert ms ↔ s).
+SUBJECT:
+- Write three genuinely different subjectOptions, then put the strongest one
+  in subject.
+- Each option is 3–8 words, lowercase is fine, and is about the recipient's
+  triggering event, workload, or problem, not the sales motion.
+- Favor a concrete event, human consequence, grounded number, or natural
+  question. Numbers must match the evidence ledger.
+- Never use "Vercel", "partnership", "opportunity", "quick question",
+  "boost", "improve your", "Re:", "Fwd:", emojis, ALL CAPS, or false urgency.
+
+GROUNDING:
+- Prospect and buyer facts must come from the EVIDENCE LEDGER. Put every
+  ledger id used by the email in emailCitations, but never expose ids, brackets,
+  or source notes in the email itself.
+- Product facts may use only the supplied product summary, Approved product
+  claims, and applicable EMEA guidance. They do not license adjacent claims.
+- whyNow and whyVercel are planning context, not independent evidence. State a
+  factual detail from them only when the ledger or approved product claims
+  support it.
+- Numbers must match the ledger exactly, with only faithful unit conversion or
+  conversational rounding.
+- Never infer private product usage, a contract, spend, plan, internal roadmap,
+  or company-wide Vercel adoption.
+
+TALKING POINTS:
+- Return exactly three concise bullets for the rep's call preparation.
+- Talking points may use technical language, but every factual point must cite
+  supporting evidence ids.
 `.trim();

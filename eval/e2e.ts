@@ -19,6 +19,7 @@ await migrationClient.close();
 
 const { approvalToken } = await import('@/lib/approval-token');
 const {
+  claimProspectRun,
   completeMaintenanceRun,
   getLatestMaintenanceRun,
   insertOpportunity,
@@ -27,6 +28,8 @@ const {
   listActiveProofRecords,
   startMaintenanceRun,
   updateOpportunity,
+  updateOpportunityForRun,
+  updateProspectForRun,
   upsertProofRecords,
   upsertProspect
 } = await import('@/lib/db');
@@ -39,6 +42,28 @@ const domain = 'fixture.example';
 const runId = 'fixture-run';
 const id = crypto.randomUUID();
 await upsertProspect(domain, { status: 'awaiting_approval', runId, host: 'vercel' });
+
+const supersededDomain = 'superseded.example';
+await upsertProspect(supersededDomain, { status: 'queued', runId: null });
+assert.equal(await claimProspectRun(supersededDomain, 'original-run', { status: 'detecting' }), true);
+await upsertProspect(supersededDomain, { status: 'queued', runId: null });
+assert.equal(await claimProspectRun(supersededDomain, 'replacement-run', { status: 'detecting' }), true);
+assert.equal(
+  await updateProspectForRun(supersededDomain, 'original-run', { status: 'researching' }),
+  false
+);
+assert.equal((await getProspect(supersededDomain))?.runId, 'replacement-run');
+await upsertProspect(supersededDomain, { status: 'approved' });
+assert.equal(
+  await updateProspectForRun(
+    supersededDomain,
+    'replacement-run',
+    { status: 'awaiting_approval' },
+    ['qualifying', 'researching', 'drafting']
+  ),
+  false
+);
+assert.equal((await getProspect(supersededDomain))?.status, 'approved');
 
 const product = getProduct('ai-gateway')!;
 const scored = scoreOpportunity({
@@ -85,6 +110,27 @@ await insertOpportunity({
   },
   approvalToken: token
 });
+
+const supersededOpportunityId = crypto.randomUUID();
+const reviewableOpportunity = await getOpportunity(id);
+assert.ok(reviewableOpportunity);
+await insertOpportunity({
+  ...reviewableOpportunity,
+  id: supersededOpportunityId,
+  domain: supersededDomain,
+  runId: 'original-run',
+  status: 'drafting',
+  decision: null,
+  approvalToken: null
+});
+assert.equal(
+  await updateOpportunityForRun(supersededOpportunityId, {
+    status: 'awaiting_approval',
+    approvalToken: approvalToken(supersededOpportunityId, 'original-run', 'opportunity')
+  }),
+  null
+);
+assert.equal((await getOpportunity(supersededOpportunityId))?.status, 'drafting');
 
 const result = await applyOpportunityDecision(token, {
   decision: 'approved',
@@ -159,6 +205,7 @@ await completeMaintenanceRun('fixture-proof-refresh', {
 assert.equal((await getLatestMaintenanceRun('proof'))?.status, 'complete');
   console.log('✓ e2e: account → scored expansion opportunity → grounded draft → approval → parent status');
   console.log('✓ maintenance: proof upsert → durable refresh status');
+  console.log('✓ run ownership: superseded runs cannot overwrite current account or opportunity state');
 }
 
 main().then(() => process.exit(0)).catch((error) => {

@@ -216,7 +216,7 @@ export function ProspectsTable({ items, renderedAt }: { items: ProspectListItem[
           <thead className="text-muted-foreground border-b bg-hover text-left text-xs">
             <tr>
               {header('domain', 'Company')}
-              <th className="px-3 py-3 font-medium">Best product opportunity</th>
+              <th className="px-3 py-3 font-medium">Best sales pitch</th>
               {header('fitScore', 'Score', 'text-right')}
               {header('status', 'Status')}
               {header('updatedAt', 'Updated', 'text-right')}

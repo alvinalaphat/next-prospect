@@ -138,9 +138,20 @@ claims remain candidates for human review, not approved product claims.
 
 A first-touch email should contain:
 
-1. a public trigger or observation;
-2. why the selected Vercel product is relevant to the recipient's work; and
-3. a short meeting request.
+1. a public trigger or observation that explains why the timing is relevant;
+2. why the selected Vercel product is relevant to the recipient's work;
+3. for EMEA accounts, a product-specific privacy, governance, or data-control
+   strength only when approved catalog claims support it; and
+4. a short meeting or demo request about that product.
+
+Drafts do not default to a hosting migration. Hosting migration language is
+valid only for a Vercel Platform opportunity with supporting context. A recent
+Vercel release can be used as the trigger only when dated, source-backed
+release context is explicitly supplied to drafting.
+
+The verified buyer's first name and configured `REP_NAME` are supplied directly
+to drafting; generated emails do not contain identity placeholders. When no
+buyer name is verified, the draft uses `Hi there,` and warns the reviewer.
 
 Keep the email concise, plain text, and reviewable. Do not include internal
 scores, evidence IDs, implementation notes, or sensitive information. Regional

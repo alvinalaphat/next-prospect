@@ -33,6 +33,8 @@ decisions after the durable run reaches `awaiting_approval`.
   evidence.
 - Reserve account status `error` and the `error` field for unexpected failure.
   A product candidate being suppressed is normal planner behavior.
+- Scope every step write to the owning `runId`, so an older or superseded run
+  cannot overwrite the current account state.
 - Keep batch staggering unless quota and concurrency behavior is deliberately
   redesigned and tested.
 
@@ -73,7 +75,11 @@ activity to drafting context, but it does not change product ranking or scoring.
 Relevant Vercel customer proof and competitor case studies are selected from
 the refreshed proof library and stored on the opportunity. Competitive context
 is never passed to drafting. Drafting receives only prospect/buyer evidence,
-plus exact observed-host evidence for expansion copy when needed.
+the selected product context, and its approved catalog claims.
+The account remains in a running state while these opportunities are enriched
+and transitions once to `awaiting_approval` only after all of them are ready.
+That final transition is conditional on the account still being in a processing
+state, so it cannot overwrite an `approved` or `rejected` decision.
 
 ### Request review
 

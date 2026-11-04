@@ -1,7 +1,7 @@
 import { FatalError, getStepMetadata, RetryableError } from 'workflow';
 import { detect, detectionEvidence } from '@/lib/detect';
-import { getProspect, upsertProspect } from '@/lib/db';
-import { getOpportunity, insertOpportunity, updateOpportunity } from '@/lib/db';
+import { claimProspectRun, getProspect, updateProspectForRun } from '@/lib/db';
+import { getOpportunity, insertOpportunity, updateOpportunity, updateOpportunityForRun } from '@/lib/db';
 import { researchEvidence } from '@/lib/grounding';
 import { findOpportunityContact, planOpportunities, writeOpportunityDraft } from '@/lib/opportunity-services';
 import { contactActivityEvidence, researchContactActivity } from '@/lib/contact-activity';
@@ -19,7 +19,9 @@ import type { Detection, EvidenceItem, Perf, ProspectStatus, Qualification, Rese
 export const stepDetect = async (domain: string, runId: string) => {
   'use step';
 
-  await upsertProspect(domain, { status: 'detecting', runId, error: null });
+  if (!(await claimProspectRun(domain, runId, { status: 'detecting', error: null }))) {
+    return { detection: null, evidence: [] as EvidenceItem[], stop: true as const };
+  }
   const detection = await detect(domain);
   const evidence = detectionEvidence(detection);
 
@@ -29,7 +31,7 @@ export const stepDetect = async (domain: string, runId: string) => {
   const status: ProspectStatus | null =
     detection.outcome === 'unreachable' ? 'unreachable' : null;
 
-  await upsertProspect(domain, {
+  const active = await updateProspectForRun(domain, runId, {
     status: status ?? 'measuring',
     detection,
     evidence,
@@ -37,13 +39,14 @@ export const stepDetect = async (domain: string, runId: string) => {
     nextjsConfidence: Math.round(detection.nextjs.confidence * 100)
   });
 
-  return { detection, evidence, stop: false };
+  if (!active) return { detection: null, evidence: [] as EvidenceItem[], stop: true as const };
+  return { detection, evidence, stop: false as const };
 };
 
 /**
  * step: PageSpeed Insights, mobile + desktop (cached 24h)
  */
-export const stepPerf = async (domain: string, detection: Detection) => {
+export const stepPerf = async (domain: string, runId: string, detection: Detection) => {
   'use step';
 
   const url = detection.finalUrl ?? `https://${domain}/`;
@@ -52,7 +55,7 @@ export const stepPerf = async (domain: string, detection: Detection) => {
       mobile: emptyPerfResult('mobile', 'PSI_API_KEY not set — performance measurement skipped'),
       desktop: emptyPerfResult('desktop', 'PSI_API_KEY not set — performance measurement skipped')
     };
-    await upsertProspect(domain, { status: 'researching', perf, perfScore: null });
+    await updateProspectForRun(domain, runId, { status: 'researching', perf, perfScore: null });
     return { perf, evidence: [] as EvidenceItem[] };
   }
   const { attempt } = getStepMetadata();
@@ -73,7 +76,7 @@ export const stepPerf = async (domain: string, detection: Detection) => {
     };
   }
 
-  await upsertProspect(domain, { status: 'researching', perf, perfScore: perf.mobile.score });
+  await updateProspectForRun(domain, runId, { status: 'researching', perf, perfScore: perf.mobile.score });
   return { perf, evidence: perfEvidence(perf, url) };
 };
 stepPerf.maxRetries = 4;
@@ -81,22 +84,22 @@ stepPerf.maxRetries = 4;
 /**
  * step: research agent (Exa), grounded to retrieved URLs
  */
-export const stepResearch = async (domain: string, detection: Detection) => {
+export const stepResearch = async (domain: string, runId: string, detection: Detection) => {
   'use step';
 
   if (!process.env.EXA_API_KEY) {
-    await upsertProspect(domain, { status: 'qualifying' });
+    await updateProspectForRun(domain, runId, { status: 'qualifying' });
     return { research: null, evidence: [] as EvidenceItem[], dropped: [] as string[], warning: 'EXA_API_KEY not set — research skipped' };
   }
 
   try {
     const result = await research(domain, detection);
-    await upsertProspect(domain, { status: 'qualifying', research: result.research });
+    await updateProspectForRun(domain, runId, { status: 'qualifying', research: result.research });
     return { research: result.research, evidence: researchEvidence(result.research), dropped: result.dropped, warning: null };
   } catch (err) {
     // A bad key won't fix itself on retry: continue without research, loudly.
     if (!(err instanceof ResearchAuthError)) throw err;
-    await upsertProspect(domain, { status: 'qualifying' });
+    await updateProspectForRun(domain, runId, { status: 'qualifying' });
     return { research: null, evidence: [] as EvidenceItem[], dropped: [] as string[], warning: err.message };
   }
 };
@@ -104,12 +107,12 @@ export const stepResearch = async (domain: string, detection: Detection) => {
 /**
  * step: qualify against the evidence ledger
  */
-export const stepQualify = async (domain: string, evidence: EvidenceItem[]) => {
+export const stepQualify = async (domain: string, runId: string, evidence: EvidenceItem[]) => {
   'use step';
 
   const { qualification, warnings } = await qualify(domain, evidence);
   const status: ProspectStatus = qualification.verdict === 'disqualified' ? 'disqualified' : 'drafting';
-  await upsertProspect(domain, {
+  await updateProspectForRun(domain, runId, {
     status,
     qualification,
     evidence,
@@ -124,6 +127,7 @@ export const stepQualify = async (domain: string, evidence: EvidenceItem[]) => {
  */
 export const stepDraft = async (
   domain: string,
+  runId: string,
   evidence: EvidenceItem[],
   qualification: Qualification,
   research: Research | null,
@@ -133,17 +137,17 @@ export const stepDraft = async (
 
   const draft = await writeDraft(domain, evidence, qualification, research);
   draft.warnings = [...extraWarnings, ...draft.warnings];
-  await upsertProspect(domain, { draft });
+  await updateProspectForRun(domain, runId, { draft });
   return draft;
 };
 
 /**
  * step: ask a human — Slack card with Approve / Edit / Reject
  */
-export const stepRequestApproval = async (domain: string, token: string) => {
+export const stepRequestApproval = async (domain: string, runId: string, token: string) => {
   'use step';
 
-  await upsertProspect(domain, { status: 'awaiting_approval', approvalToken: token });
+  if (!(await updateProspectForRun(domain, runId, { status: 'awaiting_approval', approvalToken: token }))) return;
 
   if (!process.env.SLACK_BOT_TOKEN || !process.env.SLACK_SIGNING_SECRET) {
     console.warn('⚠️  Slack not configured — approve from the dashboard instead');
@@ -151,18 +155,19 @@ export const stepRequestApproval = async (domain: string, token: string) => {
   }
   const prospect = await getProspect(domain);
   if (!prospect) throw new FatalError(`Prospect ${domain} missing`);
+  if (!(await isProspectRunCurrent(domain, runId))) return;
   const slack = await postApprovalRequest(prospect, token);
-  await upsertProspect(domain, { slack });
+  await updateProspectForRun(domain, runId, { slack });
   return slack;
 };
 
 /**
  * step: mark a run as failed so it shows up on the dashboard
  */
-export const stepFail = async (domain: string, message: string) => {
+export const stepFail = async (domain: string, runId: string, message: string) => {
   'use step';
 
-  await upsertProspect(domain, { status: 'error', error: message.slice(0, 500) });
+  await updateProspectForRun(domain, runId, { status: 'error', error: message.slice(0, 500) });
 };
 
 /** Plan and persist up to three product-specific opportunities. */
@@ -173,14 +178,16 @@ export const stepPlanOpportunities = async (
 ) => {
   'use step';
 
-  await upsertProspect(domain, { status: 'qualifying', evidence });
+  if (!(await updateProspectForRun(domain, runId, { status: 'qualifying', evidence }))) return [];
   const prospect = await getProspect(domain);
   if (!prospect?.detection) throw new FatalError(`Prospect ${domain} is missing detection`);
   const usesVercel = prospect.detection.host.primary === 'vercel';
   const { opportunities } = await planOpportunities(domain, evidence, usesVercel);
+  if (!(await isProspectRunCurrent(domain, runId))) return [];
 
   const rows = [];
   for (const opportunity of opportunities) {
+    if (!(await isProspectRunCurrent(domain, runId))) break;
     rows.push(
       await insertOpportunity({
         id: crypto.randomUUID(),
@@ -204,7 +211,7 @@ export const stepPlanOpportunities = async (
   }
 
   const top = rows[0];
-  await upsertProspect(domain, {
+  await updateProspectForRun(domain, runId, {
     status: rows.length ? 'researching' : 'disqualified',
     fitScore: top?.score ?? 0,
     angle: top?.angle ?? null,
@@ -226,6 +233,9 @@ export const stepEnrichOpportunity = async (
 
   const opportunity = await getOpportunity(opportunityId);
   if (!opportunity) throw new FatalError(`Opportunity ${opportunityId} is missing`);
+  if (!(await updateProspectForRun(opportunity.domain, opportunity.runId, { status: 'drafting' }))) {
+    return { opportunityId, score: opportunity.score };
+  }
   await updateOpportunity(opportunityId, { status: 'researching_contact' });
 
   let contact = null;
@@ -268,14 +278,9 @@ export const stepEnrichOpportunity = async (
   });
   const selectedEvidence = evidence.filter((item) => opportunity.evidenceIds.includes(item.id));
   selectedEvidence.push(...activityEvidence);
-  // Expansion copy may state the observed hosting footprint, so include that
-  // exact evidence even when it was not a product-fit match.
-  if (
-    opportunity.salesMotion === 'expansion' &&
-    !selectedEvidence.some((item) => item.id === 'detect.host.summary')
-  ) {
-    const host = evidence.find((item) => item.id === 'detect.host.summary');
-    if (host) selectedEvidence.push(host);
+
+  if (!(await isProspectRunCurrent(opportunity.domain, opportunity.runId))) {
+    return { opportunityId, score: rescored.score };
   }
 
   await updateOpportunity(opportunityId, {
@@ -299,6 +304,9 @@ export const stepEnrichOpportunity = async (
     salesMotion: opportunity.salesMotion,
     region: researchResult?.region
   });
+  if (!(await isProspectRunCurrent(opportunity.domain, opportunity.runId))) {
+    return { opportunityId, score: rescored.score };
+  }
   await updateOpportunity(opportunityId, { draft });
   return { opportunityId, score: rescored.score };
 };
@@ -310,16 +318,35 @@ export const stepRequestOpportunityApproval = async (
 ) => {
   'use step';
 
-  const opportunity = await updateOpportunity(opportunityId, {
+  const current = await getOpportunity(opportunityId);
+  if (!current) throw new FatalError(`Opportunity ${opportunityId} is missing`);
+  const opportunity = await updateOpportunityForRun(opportunityId, {
     status: 'awaiting_approval',
     approvalToken: token
   });
-  if (!opportunity) throw new FatalError(`Opportunity ${opportunityId} is missing`);
-  await upsertProspect(opportunity.domain, { status: 'awaiting_approval' });
+  if (!opportunity) return;
   if (!process.env.SLACK_BOT_TOKEN || !process.env.SLACK_SIGNING_SECRET) return;
+  if (!(await isProspectRunCurrent(opportunity.domain, opportunity.runId))) return;
   const prospect = await getProspect(opportunity.domain);
   if (!prospect) throw new FatalError(`Prospect ${opportunity.domain} is missing`);
   const slack = await postOpportunityApprovalRequest(prospect, opportunity, token);
   await updateOpportunity(opportunityId, { slack });
   return slack;
 };
+
+/** Mark the account reviewable only after every planned opportunity is ready. */
+export const stepFinishOpportunityPlanning = async (domain: string, runId: string) => {
+  'use step';
+
+  await updateProspectForRun(
+    domain,
+    runId,
+    { status: 'awaiting_approval' },
+    ['qualifying', 'researching', 'drafting']
+  );
+};
+
+async function isProspectRunCurrent(domain: string, runId: string) {
+  const prospect = await getProspect(domain);
+  return prospect?.runId === runId;
+}
