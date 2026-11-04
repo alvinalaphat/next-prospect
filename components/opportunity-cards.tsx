@@ -5,6 +5,7 @@ import { OpportunityGmailButton } from '@/components/opportunity-gmail-button';
 import { Score } from '@/components/badges';
 import { CopyButton } from '@/components/copy-button';
 import { Disclosure } from '@/components/disclosure';
+import { ScoreCategorySwitcher, type ScoreCategoryTab } from '@/components/score-category-switcher';
 import type { OpportunityRow } from '@/lib/db/schema';
 import { presentEvidence, salesLanguage } from '@/lib/evidence-presentation';
 import type { ScoredSignal } from '@/lib/scoring';
@@ -240,31 +241,13 @@ function scoreAssessment(score: number) {
 function ScoreExplanation({ opportunity, ledger }: { opportunity: OpportunityRow; ledger: EvidenceItem[] }) {
   const breakdown = opportunity.scoreBreakdown;
   const assessment = scoreAssessment(opportunity.score);
-  const categories = [
-    { label: 'Product fit', value: breakdown.productFit, cap: 45 },
-    { label: 'Timing', value: breakdown.trigger, cap: 20 },
-    { label: 'Account potential', value: breakdown.accountValue, cap: 20 },
-    { label: 'Buyer confidence', value: breakdown.buyerQuality, cap: 15 }
-  ];
-
-  return (
-    <div className="mt-5">
-      <dl aria-label="Score calculation" className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-        {categories.map((category) => (
-          <div key={category.label} className="rounded-lg border bg-background p-3">
-            <dt className="text-muted-foreground text-xs">{category.label}</dt>
-            <dd className="mt-1 font-mono text-lg tabular-nums">+{category.value}<span className="text-muted-foreground text-xs">/{category.cap}</span></dd>
-          </div>
-        ))}
-        <div className="col-span-2 rounded-lg bg-foreground p-3 text-background sm:col-span-1">
-          <dt className="text-xs opacity-70">Total</dt>
-          <dd className="mt-1 font-mono text-lg tabular-nums">{opportunity.score}<span className="text-xs opacity-70">/100</span></dd>
-        </div>
-      </dl>
-
-      <p className="mt-4 text-sm leading-6">{assessment.takeaway}</p>
-
-      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+  const categories: ScoreCategoryTab[] = [
+    {
+      id: 'product-fit',
+      label: 'Product fit',
+      value: breakdown.productFit,
+      cap: 45,
+      panel: (
         <ScoreCategory
           label="Product fit"
           value={breakdown.productFit}
@@ -273,6 +256,14 @@ function ScoreExplanation({ opportunity, ledger }: { opportunity: OpportunityRow
           signals={opportunity.matchedSignals.filter((signal) => signal.category === 'product_fit')}
           ledger={ledger}
         />
+      )
+    },
+    {
+      id: 'timing',
+      label: 'Timing',
+      value: breakdown.trigger,
+      cap: 20,
+      panel: (
         <ScoreCategory
           label="Timing"
           value={breakdown.trigger}
@@ -281,6 +272,14 @@ function ScoreExplanation({ opportunity, ledger }: { opportunity: OpportunityRow
           signals={opportunity.matchedSignals.filter((signal) => signal.category === 'trigger')}
           ledger={ledger}
         />
+      )
+    },
+    {
+      id: 'account-potential',
+      label: 'Account potential',
+      value: breakdown.accountValue,
+      cap: 20,
+      panel: (
         <ScoreCategory
           label="Account potential"
           value={breakdown.accountValue}
@@ -290,8 +289,28 @@ function ScoreExplanation({ opportunity, ledger }: { opportunity: OpportunityRow
           ledger={ledger}
           expansion={opportunity.salesMotion === 'expansion'}
         />
-        <BuyerScore opportunity={opportunity} />
-      </div>
+      )
+    },
+    {
+      id: 'buyer-confidence',
+      label: 'Buyer confidence',
+      value: breakdown.buyerQuality,
+      cap: 15,
+      panel: <BuyerScore opportunity={opportunity} />
+    },
+    {
+      id: 'total',
+      label: 'Total',
+      value: opportunity.score,
+      cap: 100,
+      total: true,
+      panel: <TotalScore opportunity={opportunity} assessment={assessment} />
+    }
+  ];
+
+  return (
+    <div className="mt-5">
+      <ScoreCategorySwitcher categories={categories} defaultSelectedId="total" />
 
       <p className="text-muted-foreground mt-4 text-xs leading-5">
         The score is calculated in code from the points shown above. Evidence is displayed in sales language; source links open the original public record.
@@ -321,7 +340,7 @@ function ScoreCategory({
   const expansionPoints = expansion ? Math.max(0, value - Math.min(cap, signalPoints)) : 0;
   const rawPoints = signalPoints + (expansion ? 5 : 0);
   return (
-    <section className="rounded-lg border bg-background p-4">
+    <section>
       <div className="flex items-baseline justify-between gap-3">
         <h5 className="text-sm font-semibold">{label}</h5>
         <span className="text-positive font-mono text-sm tabular-nums">+{value}/{cap}</span>
@@ -329,24 +348,26 @@ function ScoreCategory({
       {signals.length === 0 && expansionPoints === 0 ? (
         <p className="text-muted-foreground mt-3 text-sm leading-6">{empty}</p>
       ) : (
-        <ul className="mt-3 space-y-4">
+        <ul className="mt-5 grid gap-x-10 gap-y-6 md:grid-cols-2">
           {signals.map((signal) => (
-            <li key={signal.ruleId}>
+            <li key={signal.ruleId} className="relative pl-5">
+              <span aria-hidden className="absolute top-2 left-0 size-1.5 rounded-full bg-foreground" />
               <div className="flex items-start justify-between gap-3 text-sm">
                 <p className="font-medium leading-5">{salesLanguage(signal.explanation)}</p>
                 <span className="text-positive shrink-0 font-mono text-xs tabular-nums">+{signal.points}</span>
               </div>
               <p className="text-muted-foreground mt-1 text-xs leading-5">{signalContext(signal)}</p>
-              <EvidenceFacts ids={signal.evidenceIds} ledger={ledger} className="mt-2" />
+              <EvidenceFacts ids={signal.evidenceIds} ledger={ledger} className="mt-3" />
             </li>
           ))}
           {expansionPoints > 0 && (
-            <li>
+            <li className="relative pl-5">
+              <span aria-hidden className="absolute top-2 left-0 size-1.5 rounded-full bg-foreground" />
               <div className="flex items-start justify-between gap-3 text-sm">
                 <p className="font-medium leading-5">The inspected site already runs on Vercel, creating expansion context.</p>
                 <span className="text-positive shrink-0 font-mono text-xs tabular-nums">+{expansionPoints}</span>
               </div>
-              <EvidenceFacts ids={vercelEvidenceIds(ledger)} ledger={ledger} className="mt-2" />
+              <EvidenceFacts ids={vercelEvidenceIds(ledger)} ledger={ledger} className="mt-3" />
             </li>
           )}
         </ul>
@@ -364,7 +385,7 @@ function BuyerScore({ opportunity }: { opportunity: OpportunityRow }) {
   const value = opportunity.scoreBreakdown.buyerQuality;
   const contact = opportunity.contact;
   return (
-    <section className="rounded-lg border bg-background p-4">
+    <section>
       <div className="flex items-baseline justify-between gap-3">
         <h5 className="text-sm font-semibold">Buyer confidence</h5>
         <span className="text-positive font-mono text-sm tabular-nums">+{value}/15</span>
@@ -380,6 +401,48 @@ function BuyerScore({ opportunity }: { opportunity: OpportunityRow }) {
           Verify buyer <ArrowUpRight className="size-3" aria-hidden />
         </a>
       )}
+      <p className="text-muted-foreground mt-4 border-t pt-4 text-xs leading-5">
+        A verified named buyer contributes +15. A relevant target role without a verified person contributes +5.
+      </p>
+    </section>
+  );
+}
+
+function TotalScore({
+  opportunity,
+  assessment
+}: {
+  opportunity: OpportunityRow;
+  assessment: ReturnType<typeof scoreAssessment>;
+}) {
+  const breakdown = opportunity.scoreBreakdown;
+  const parts = [
+    { label: 'Product fit', value: breakdown.productFit },
+    { label: 'Timing', value: breakdown.trigger },
+    { label: 'Account potential', value: breakdown.accountValue },
+    { label: 'Buyer confidence', value: breakdown.buyerQuality }
+  ];
+  return (
+    <section>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-baseline sm:justify-between">
+        <div>
+          <h5 className="text-sm font-semibold">Total score</h5>
+          <p className="text-muted-foreground mt-1 text-sm">The four category contributions add up to the opportunity score.</p>
+        </div>
+        <span className="font-mono text-xl tabular-nums">{opportunity.score}/100</span>
+      </div>
+      <dl className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-4">
+        {parts.map((part) => (
+          <div key={part.label}>
+            <dt className="text-muted-foreground text-xs">{part.label}</dt>
+            <dd className="mt-1 font-mono text-base tabular-nums">+{part.value}</dd>
+          </div>
+        ))}
+      </dl>
+      <p className="mt-5 border-t pt-4 text-sm leading-6">{assessment.takeaway}</p>
+      <p className="text-muted-foreground mt-2 text-xs leading-5">
+        Select any other score tile above to see exactly which signals and evidence contributed its points.
+      </p>
     </section>
   );
 }
@@ -389,7 +452,7 @@ function EvidenceFacts({ ids, ledger, className = '' }: { ids: string[]; ledger:
   const evidence = [...new Set(ids)].map((id) => byId.get(id)).filter((item): item is EvidenceItem => Boolean(item));
   if (evidence.length === 0) return null;
   return (
-    <ul className={`${className} space-y-2`}>
+    <ul className={`${className} space-y-3`}>
       {evidence.map((item) => <EvidenceFact key={item.id} evidence={item} />)}
     </ul>
   );
@@ -398,7 +461,8 @@ function EvidenceFacts({ ids, ledger, className = '' }: { ids: string[]; ledger:
 function EvidenceFact({ evidence }: { evidence: EvidenceItem }) {
   const presented = presentEvidence(evidence);
   return (
-    <li className="border-l-2 pl-3 text-xs leading-5">
+    <li className="relative pl-4 text-xs leading-5">
+      <span aria-hidden className="bg-muted-foreground absolute top-2 left-0 size-1 rounded-full" />
       <p className="text-muted-foreground font-medium">{presented.label}</p>
       <p className="mt-0.5">{presented.statement}</p>
       {evidence.url && presented.sourceLabel && (

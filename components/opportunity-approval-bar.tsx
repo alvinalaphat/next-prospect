@@ -51,7 +51,6 @@ export function OpportunityApprovalBar({ opportunityId, draft }: { opportunityId
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-        <p className="text-sm"><span className="font-medium">Ready for review.</span> <span className="text-muted-foreground">Nothing is sent automatically.</span></p>
         <div className="flex w-full flex-col gap-3 sm:ml-auto sm:w-auto">
           {secretField.show && (
             <div data-secret-slot>
