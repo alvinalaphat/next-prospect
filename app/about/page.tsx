@@ -224,7 +224,7 @@ export default function About() {
         <ul className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Guardrail title="Public evidence only">Unsupported facts and citations are removed.</Guardrail>
           <Guardrail title="Catalog-owned claims">Product language does not come from model memory.</Guardrail>
-          <Guardrail title="Separated context">Competitor proof never enters outreach drafting.</Guardrail>
+          <Guardrail title="Grounded drafting">Every company claim must resolve to public evidence.</Guardrail>
           <Guardrail title="Human control">Approval may create a draft. It never sends it.</Guardrail>
         </ul>
       </section>

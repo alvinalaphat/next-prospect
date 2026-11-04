@@ -8,6 +8,9 @@ import { toast } from 'sonner';
 import { AccountActions } from '@/components/account-actions';
 import { Score, StatusBadge } from '@/components/badges';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { Input } from '@/components/ui/input';
 import { authHeaders, secretCheckMessage, useRunSecret } from '@/lib/client-secret';
 import { relativeTime, STATUS } from '@/lib/format';
 import type { ProspectStatus } from '@/lib/types';
@@ -118,6 +121,7 @@ export function ProspectsTable({ items, renderedAt }: { items: ProspectListItem[
   const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'fitScore', dir: 'desc' });
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [bulkBusy, setBulkBusy] = useState<'rerun' | 'delete' | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -161,8 +165,7 @@ export function ProspectsTable({ items, renderedAt }: { items: ProspectListItem[
   }
 
   function toggleVisible() {
-    const selectedVisible = rows.filter((row) => selected.has(row.domain));
-    if (selectedVisible.length > 0) {
+    if (allVisibleSelected) {
       setSelected((current) => {
         const next = new Set(current);
         rows.forEach((row) => next.delete(row.domain));
@@ -172,14 +175,15 @@ export function ProspectsTable({ items, renderedAt }: { items: ProspectListItem[
     }
 
     const available = MAX_BULK_SELECTION - selected.size;
-    if (rows.length > available) {
+    const unselectedRows = rows.filter((row) => !selected.has(row.domain));
+    if (unselectedRows.length > available) {
       toast.error(available > 0
-        ? `Selected the first ${available} shown accounts · ${MAX_BULK_SELECTION} max`
+        ? `Selected ${available} more shown accounts · ${MAX_BULK_SELECTION} max`
         : `Selection is already at the ${MAX_BULK_SELECTION}-account maximum`);
     }
     setSelected((current) => {
       const next = new Set(current);
-      rows.slice(0, available).forEach((row) => next.add(row.domain));
+      unselectedRows.slice(0, available).forEach((row) => next.add(row.domain));
       return next;
     });
   }
@@ -214,8 +218,6 @@ export function ProspectsTable({ items, renderedAt }: { items: ProspectListItem[
   }
 
   async function deleteSelected() {
-    const count = selectedDomains.length;
-    if (!window.confirm(`Delete ${count} selected account${count === 1 ? '' : 's'} and all of their opportunities and drafts?`)) return;
     setBulkBusy('delete');
     const secret = await authorized();
     if (!secret) return setBulkBusy(null);
@@ -229,6 +231,7 @@ export function ProspectsTable({ items, renderedAt }: { items: ProspectListItem[
       if (response.status === 401) secretField.reveal();
       if (!response.ok) throw new Error(json.error ?? `HTTP ${response.status}`);
       toast.success(`Deleted ${json.deleted.length} account${json.deleted.length === 1 ? '' : 's'}`);
+      setDeleteConfirmOpen(false);
       setSelected(new Set());
       router.refresh();
     } catch (error) {
@@ -270,18 +273,18 @@ export function ProspectsTable({ items, renderedAt }: { items: ProspectListItem[
         <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center lg:ml-auto">
           <label className="relative min-w-0 sm:w-64">
             <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
-            <input
+            <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Filter companies…"
-              className="bg-background min-h-11 w-full rounded-lg border py-2 pr-3 pl-9 text-sm"
+              className="min-h-11 pr-3 pl-9"
             />
           </label>
         </div>
       </div>
 
       {selectedDomains.length > 0 && (
-        <div className="flex flex-col gap-3 rounded-lg border bg-hover p-3 sm:flex-row sm:items-center">
+        <div className="bulk-actions-in flex flex-col gap-3 rounded-lg border bg-hover p-3 shadow-geist sm:flex-row sm:items-center">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium">
               {selectedDomains.length} selected
@@ -300,7 +303,7 @@ export function ProspectsTable({ items, renderedAt }: { items: ProspectListItem[
           </div>
           <div className="flex flex-col gap-2 sm:ml-auto sm:flex-row sm:items-center">
             {secretField.show && (
-              <input
+              <Input
                 type="password"
                 value={secretField.secret}
                 onChange={(event) => secretField.update(event.target.value)}
@@ -309,10 +312,7 @@ export function ProspectsTable({ items, renderedAt }: { items: ProspectListItem[
                 autoComplete="off"
                 aria-label="Run secret for bulk actions"
                 aria-invalid={secretField.invalid || undefined}
-                className={cn(
-                  'bg-background h-10 min-w-0 rounded-lg border px-3 text-sm sm:w-40',
-                  secretField.invalid && 'border-error'
-                )}
+                className="min-w-0 sm:w-40"
               />
             )}
             <div className="grid grid-cols-2 gap-2">
@@ -331,7 +331,7 @@ export function ProspectsTable({ items, renderedAt }: { items: ProspectListItem[
                 variant="destructive"
                 size="sm"
                 disabled={bulkBusy !== null}
-                onClick={() => void deleteSelected()}
+                onClick={() => setDeleteConfirmOpen(true)}
               >
                 <Trash2 />
                 Delete
@@ -349,11 +349,11 @@ export function ProspectsTable({ items, renderedAt }: { items: ProspectListItem[
       ) : (
         <>
         <label className="flex min-h-11 items-center gap-3 rounded-lg border px-4 text-sm lg:hidden">
-          <SelectionCheckbox
+          <Checkbox
             checked={allVisibleSelected}
             indeterminate={someVisibleSelected && !allVisibleSelected}
             onChange={toggleVisible}
-            label={rows.length > MAX_BULK_SELECTION ? `Select up to ${MAX_BULK_SELECTION} shown accounts` : 'Select all shown accounts'}
+            aria-label={rows.length > MAX_BULK_SELECTION ? `Select up to ${MAX_BULK_SELECTION} shown accounts` : 'Select all shown accounts'}
           />
           {rows.length > MAX_BULK_SELECTION ? `Select first ${MAX_BULK_SELECTION} shown` : 'Select all shown'}
         </label>
@@ -361,15 +361,18 @@ export function ProspectsTable({ items, renderedAt }: { items: ProspectListItem[
           {rows.map((i) => (
             <li
               key={i.domain}
-              className="cursor-pointer rounded-lg border p-4 hover:bg-accent/50"
+              className={cn(
+                'cursor-pointer rounded-lg border p-4 transition-colors hover:bg-accent/50',
+                selected.has(i.domain) && 'border-foreground/20 bg-hover'
+              )}
               onClick={(event) => openProspect(event, i.domain, router.push)}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex min-w-0 items-start gap-3">
-                  <SelectionCheckbox
+                  <Checkbox
                     checked={selected.has(i.domain)}
                     onChange={() => toggleDomain(i.domain)}
-                    label={`Select ${i.domain}`}
+                    aria-label={`Select ${i.domain}`}
                   />
                   <Link href={`/prospect/${i.domain}`} className="min-w-0 font-medium break-all hover:underline">
                     {i.domain}
@@ -415,17 +418,17 @@ export function ProspectsTable({ items, renderedAt }: { items: ProspectListItem[
           <thead className="text-muted-foreground border-b bg-hover text-left text-xs">
             <tr>
               <th className="px-3 py-3">
-                <SelectionCheckbox
+                <Checkbox
                   checked={allVisibleSelected}
                   indeterminate={someVisibleSelected && !allVisibleSelected}
                   onChange={toggleVisible}
-                  label={rows.length > MAX_BULK_SELECTION ? `Select up to ${MAX_BULK_SELECTION} shown accounts` : 'Select all shown accounts'}
+                  aria-label={rows.length > MAX_BULK_SELECTION ? `Select up to ${MAX_BULK_SELECTION} shown accounts` : 'Select all shown accounts'}
                 />
               </th>
               {header('domain', 'Company')}
               <th className="px-3 py-3 font-medium">Best sales pitch</th>
               {header('fitScore', 'Score', 'text-right')}
-              {header('status', 'Status')}
+              {header('status', 'Status', 'pl-6')}
               {header('updatedAt', 'Updated', 'text-right')}
               <th><span className="sr-only">Actions</span></th>
             </tr>
@@ -434,14 +437,17 @@ export function ProspectsTable({ items, renderedAt }: { items: ProspectListItem[
             {rows.map((i) => (
               <tr
                 key={i.domain}
-                className="group cursor-pointer hover:bg-accent/50"
+                className={cn(
+                  'group cursor-pointer transition-colors hover:bg-accent/50',
+                  selected.has(i.domain) && 'bg-hover'
+                )}
                 onClick={(event) => openProspect(event, i.domain, router.push)}
               >
                 <td className="px-3 py-3">
-                  <SelectionCheckbox
+                  <Checkbox
                     checked={selected.has(i.domain)}
                     onChange={() => toggleDomain(i.domain)}
-                    label={`Select ${i.domain}`}
+                    aria-label={`Select ${i.domain}`}
                   />
                 </td>
                 <td className="overflow-hidden px-3 py-3">
@@ -457,7 +463,7 @@ export function ProspectsTable({ items, renderedAt }: { items: ProspectListItem[
                 <td className="overflow-hidden px-3 py-3 text-right">
                   <Score value={i.fitScore} thresholds={[35, 60]} className="justify-end" />
                 </td>
-                <td className="overflow-hidden px-3 py-3">
+                <td className="overflow-hidden py-3 pr-3 pl-6">
                   <StatusBadge status={i.status} />
                 </td>
                 <td className="text-muted-foreground overflow-hidden px-3 py-3 text-right text-xs whitespace-nowrap">
@@ -474,35 +480,16 @@ export function ProspectsTable({ items, renderedAt }: { items: ProspectListItem[
         </>
       )}
       </div>
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        title={`Delete ${selectedDomains.length} account${selectedDomains.length === 1 ? '' : 's'}?`}
+        description="This permanently removes the selected accounts and all of their opportunities and drafts. This action cannot be undone."
+        confirmLabel="Delete accounts"
+        busy={bulkBusy === 'delete'}
+        onConfirm={() => void deleteSelected()}
+        onOpenChange={setDeleteConfirmOpen}
+      />
     </div>
-  );
-}
-
-function SelectionCheckbox({
-  checked,
-  indeterminate = false,
-  onChange,
-  label
-}: {
-  checked: boolean;
-  indeterminate?: boolean;
-  onChange: () => void;
-  label: string;
-}) {
-  const ref = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    if (ref.current) ref.current.indeterminate = indeterminate;
-  }, [indeterminate]);
-
-  return (
-    <input
-      ref={ref}
-      type="checkbox"
-      checked={checked}
-      onChange={onChange}
-      aria-label={label}
-      className="size-4 shrink-0 cursor-pointer accent-foreground"
-    />
   );
 }
 

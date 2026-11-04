@@ -24,6 +24,7 @@
   --geist-focus: var(--geist-success);
   --geist-selection: var(--geist-cyan);
   --geist-selection-text: #000000;
+  --geist-overlay: rgb(0 0 0 / 0.4);
   --geist-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 8px 24px rgb(0 0 0 / 0.06);
   --geist-radius: 8px;
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
@@ -92,6 +93,7 @@
   --color-warning: var(--geist-warning);
   --color-error: var(--geist-error);
   --color-violet: var(--geist-violet);
+  --color-overlay: var(--geist-overlay);
   --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out-strong: cubic-bezier(0.77, 0, 0.175, 1);
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
@@ -208,9 +210,22 @@ html[data-secret='stored'] [data-secret-slot] {
     transition: opacity 160ms var(--ease-out);
   }
 
+  .bulk-actions-in {
+    opacity: 1;
+    transform: translateY(0);
+    transition:
+      opacity 160ms var(--ease-out),
+      transform 160ms var(--ease-out);
+  }
+
   @starting-style {
     .rows-in {
       opacity: 0;
+    }
+
+    .bulk-actions-in {
+      opacity: 0;
+      transform: translateY(-4px);
     }
   }
 }
@@ -223,9 +238,18 @@ html[data-secret='stored'] [data-secret-slot] {
     transition: none;
   }
 
+  .bulk-actions-in {
+    transition: none;
+  }
+
   @starting-style {
     details[open] > .disclosure-panel,
     .rows-in {
+      opacity: 1;
+      transform: none;
+    }
+
+    .bulk-actions-in {
       opacity: 1;
       transform: none;
     }
