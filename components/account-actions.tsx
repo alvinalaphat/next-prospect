@@ -3,22 +3,19 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { CircleStop, Ellipsis, RefreshCw, Trash2 } from 'lucide-react';
+import { Ellipsis, RefreshCw, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { authHeaders, useRunSecret } from '@/lib/client-secret';
 import { Button } from '@/components/ui/button';
-import { STATUS } from '@/lib/format';
-import type { ProspectStatus } from '@/lib/types';
 
-export function AccountActions({ domain, status }: { domain: string; status: ProspectStatus }) {
+export function AccountActions({ domain }: { domain: string }) {
   const router = useRouter();
   const secretField = useRunSecret();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState({ top: 0, right: 0 });
-  const [busy, setBusy] = useState<'rerun' | 'cancel' | 'delete' | null>(null);
-  const inFlight = STATUS[status].group === 'running';
+  const [busy, setBusy] = useState<'rerun' | 'delete' | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -83,29 +80,6 @@ export function AccountActions({ domain, status }: { domain: string; status: Pro
     }
   }
 
-  async function cancel() {
-    setBusy('cancel');
-    const secret = await authorized();
-    if (!secret) return setBusy(null);
-    try {
-      const response = await fetch(`/api/prospects/${encodeURIComponent(domain)}`, {
-        method: 'PATCH',
-        headers: { 'content-type': 'application/json', ...authHeaders(secret) },
-        body: JSON.stringify({ action: 'cancel' })
-      });
-      const json = await response.json();
-      if (response.status === 401) secretField.reveal();
-      if (!response.ok) throw new Error(json.error ?? `HTTP ${response.status}`);
-      toast.success(`Cancelled ${domain}`);
-      setOpen(false);
-      router.refresh();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to cancel account');
-    } finally {
-      setBusy(null);
-    }
-  }
-
   async function remove() {
     if (!window.confirm(`Delete ${domain} and all of its opportunities and drafts?`)) return;
     setBusy('delete');
@@ -164,29 +138,16 @@ export function AccountActions({ domain, status }: { domain: string; status: Pro
               autoFocus
             />
           )}
-          {inFlight ? (
-            <button
-              type="button"
-              role="menuitem"
-              disabled={busy !== null}
-              onClick={cancel}
-              className="text-error hover:bg-hover flex w-full cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <CircleStop className={`size-4 ${busy === 'cancel' ? 'animate-pulse' : ''}`} />
-              Cancel run
-            </button>
-          ) : (
-            <button
-              type="button"
-              role="menuitem"
-              disabled={busy !== null}
-              onClick={rerun}
-              className="hover:bg-hover flex w-full cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <RefreshCw className={`size-4 ${busy === 'rerun' ? 'animate-spin' : ''}`} />
-              Re-run
-            </button>
-          )}
+          <button
+            type="button"
+            role="menuitem"
+            disabled={busy !== null}
+            onClick={rerun}
+            className="hover:bg-hover flex w-full cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <RefreshCw className={`size-4 ${busy === 'rerun' ? 'animate-spin' : ''}`} />
+            Re-run
+          </button>
           <button
             type="button"
             role="menuitem"

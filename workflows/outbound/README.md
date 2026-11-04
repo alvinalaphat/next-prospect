@@ -33,11 +33,8 @@ decisions after the durable run reaches `awaiting_approval`.
   evidence.
 - Reserve account status `error` and the `error` field for unexpected failure.
   A product candidate being suppressed is normal planner behavior.
-- A user-cancelled in-flight run ends with account status `cancelled`.
-  Cancellation is terminal for that run. Every step write is scoped to the
-  owning `runId`, so a finishing step or superseded run cannot overwrite it.
-  Pending opportunity review tokens for that run are expired, and the account
-  can be re-run explicitly later.
+- Scope every step write to the owning `runId`, so an older or superseded run
+  cannot overwrite the current account state.
 - Keep batch staggering unless quota and concurrency behavior is deliberately
   redesigned and tested.
 

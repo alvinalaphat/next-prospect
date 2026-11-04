@@ -1,7 +1,7 @@
 import { FatalError, getStepMetadata, RetryableError } from 'workflow';
 import { detect, detectionEvidence } from '@/lib/detect';
 import { claimProspectRun, getProspect, updateProspectForRun } from '@/lib/db';
-import { getOpportunity, insertOpportunity, updateOpportunity, updateOpportunityForActiveRun } from '@/lib/db';
+import { getOpportunity, insertOpportunity, updateOpportunity, updateOpportunityForRun } from '@/lib/db';
 import { researchEvidence } from '@/lib/grounding';
 import { findOpportunityContact, planOpportunities, writeOpportunityDraft } from '@/lib/opportunity-services';
 import { contactActivityEvidence, researchContactActivity } from '@/lib/contact-activity';
@@ -28,12 +28,11 @@ export const stepDetect = async (domain: string, runId: string) => {
   // Eligibility is evaluated per product. Being on Vercel or not using
   // Next.js can suppress a hosting motion, but must not eliminate AI,
   // observability, security, or other product opportunities.
+  const status: ProspectStatus | null =
+    detection.outcome === 'unreachable' ? 'unreachable' : null;
+
   const active = await updateProspectForRun(domain, runId, {
-    // Detection may report an unreachable homepage while PSI retries or
-    // research can still produce useful evidence. Keep the account visibly
-    // in flight until that work ends so the dashboard continues to offer
-    // cancellation.
-    status: 'measuring',
+    status: status ?? 'measuring',
     detection,
     evidence,
     host: detection.host.primary,
@@ -156,7 +155,7 @@ export const stepRequestApproval = async (domain: string, runId: string, token: 
   }
   const prospect = await getProspect(domain);
   if (!prospect) throw new FatalError(`Prospect ${domain} missing`);
-  if (!(await isProspectRunActive(domain, runId))) return;
+  if (!(await isProspectRunCurrent(domain, runId))) return;
   const slack = await postApprovalRequest(prospect, token);
   await updateProspectForRun(domain, runId, { slack });
   return slack;
@@ -184,11 +183,11 @@ export const stepPlanOpportunities = async (
   if (!prospect?.detection) throw new FatalError(`Prospect ${domain} is missing detection`);
   const usesVercel = prospect.detection.host.primary === 'vercel';
   const { opportunities } = await planOpportunities(domain, evidence, usesVercel);
-  if (!(await isProspectRunActive(domain, runId))) return [];
+  if (!(await isProspectRunCurrent(domain, runId))) return [];
 
   const rows = [];
   for (const opportunity of opportunities) {
-    if (!(await isProspectRunActive(domain, runId))) break;
+    if (!(await isProspectRunCurrent(domain, runId))) break;
     rows.push(
       await insertOpportunity({
         id: crypto.randomUUID(),
@@ -280,7 +279,7 @@ export const stepEnrichOpportunity = async (
   const selectedEvidence = evidence.filter((item) => opportunity.evidenceIds.includes(item.id));
   selectedEvidence.push(...activityEvidence);
 
-  if (!(await isProspectRunActive(opportunity.domain, opportunity.runId))) {
+  if (!(await isProspectRunCurrent(opportunity.domain, opportunity.runId))) {
     return { opportunityId, score: rescored.score };
   }
 
@@ -305,7 +304,7 @@ export const stepEnrichOpportunity = async (
     salesMotion: opportunity.salesMotion,
     region: researchResult?.region
   });
-  if (!(await isProspectRunActive(opportunity.domain, opportunity.runId))) {
+  if (!(await isProspectRunCurrent(opportunity.domain, opportunity.runId))) {
     return { opportunityId, score: rescored.score };
   }
   await updateOpportunity(opportunityId, { draft });
@@ -321,13 +320,13 @@ export const stepRequestOpportunityApproval = async (
 
   const current = await getOpportunity(opportunityId);
   if (!current) throw new FatalError(`Opportunity ${opportunityId} is missing`);
-  const opportunity = await updateOpportunityForActiveRun(opportunityId, {
+  const opportunity = await updateOpportunityForRun(opportunityId, {
     status: 'awaiting_approval',
     approvalToken: token
   });
   if (!opportunity) return;
   if (!process.env.SLACK_BOT_TOKEN || !process.env.SLACK_SIGNING_SECRET) return;
-  if (!(await isProspectRunActive(opportunity.domain, opportunity.runId))) return;
+  if (!(await isProspectRunCurrent(opportunity.domain, opportunity.runId))) return;
   const prospect = await getProspect(opportunity.domain);
   if (!prospect) throw new FatalError(`Prospect ${opportunity.domain} is missing`);
   const slack = await postOpportunityApprovalRequest(prospect, opportunity, token);
@@ -347,7 +346,7 @@ export const stepFinishOpportunityPlanning = async (domain: string, runId: strin
   );
 };
 
-async function isProspectRunActive(domain: string, runId: string) {
+async function isProspectRunCurrent(domain: string, runId: string) {
   const prospect = await getProspect(domain);
-  return prospect?.runId === runId && prospect.status !== 'cancelled';
+  return prospect?.runId === runId;
 }

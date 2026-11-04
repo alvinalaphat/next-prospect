@@ -19,10 +19,8 @@ await migrationClient.close();
 
 const { approvalToken } = await import('@/lib/approval-token');
 const {
-  cancelProspectRun,
   claimProspectRun,
   completeMaintenanceRun,
-  expireOpportunities,
   getLatestMaintenanceRun,
   insertOpportunity,
   getOpportunity,
@@ -30,7 +28,7 @@ const {
   listActiveProofRecords,
   startMaintenanceRun,
   updateOpportunity,
-  updateOpportunityForActiveRun,
+  updateOpportunityForRun,
   updateProspectForRun,
   upsertProofRecords,
   upsertProspect
@@ -45,34 +43,27 @@ const runId = 'fixture-run';
 const id = crypto.randomUUID();
 await upsertProspect(domain, { status: 'awaiting_approval', runId, host: 'vercel' });
 
-const cancelledDomain = 'cancelled.example';
-await upsertProspect(cancelledDomain, { status: 'queued', runId: null });
-assert.equal(await claimProspectRun(cancelledDomain, 'cancelled-run', { status: 'detecting' }), true);
-assert.equal(await cancelProspectRun(cancelledDomain, 'cancelled-run'), true);
+const supersededDomain = 'superseded.example';
+await upsertProspect(supersededDomain, { status: 'queued', runId: null });
+assert.equal(await claimProspectRun(supersededDomain, 'original-run', { status: 'detecting' }), true);
+await upsertProspect(supersededDomain, { status: 'queued', runId: null });
+assert.equal(await claimProspectRun(supersededDomain, 'replacement-run', { status: 'detecting' }), true);
 assert.equal(
-  await updateProspectForRun(cancelledDomain, 'cancelled-run', { status: 'researching' }),
+  await updateProspectForRun(supersededDomain, 'original-run', { status: 'researching' }),
   false
 );
-assert.equal((await getProspect(cancelledDomain))?.status, 'cancelled');
-
-await upsertProspect(cancelledDomain, { status: 'queued', runId: null });
-assert.equal(await claimProspectRun(cancelledDomain, 'replacement-run', { status: 'detecting' }), true);
-assert.equal(
-  await updateProspectForRun(cancelledDomain, 'cancelled-run', { status: 'researching' }),
-  false
-);
-assert.equal((await getProspect(cancelledDomain))?.runId, 'replacement-run');
-await upsertProspect(cancelledDomain, { status: 'approved' });
+assert.equal((await getProspect(supersededDomain))?.runId, 'replacement-run');
+await upsertProspect(supersededDomain, { status: 'approved' });
 assert.equal(
   await updateProspectForRun(
-    cancelledDomain,
+    supersededDomain,
     'replacement-run',
     { status: 'awaiting_approval' },
     ['qualifying', 'researching', 'drafting']
   ),
   false
 );
-assert.equal((await getProspect(cancelledDomain))?.status, 'approved');
+assert.equal((await getProspect(supersededDomain))?.status, 'approved');
 
 const product = getProduct('ai-gateway')!;
 const scored = scoreOpportunity({
@@ -120,45 +111,26 @@ await insertOpportunity({
   approvalToken: token
 });
 
-const reviewCancellationRun = 'review-cancellation-run';
-const reviewCancellationId = crypto.randomUUID();
-const reviewCancellationToken = approvalToken(reviewCancellationId, reviewCancellationRun, 'opportunity');
+const supersededOpportunityId = crypto.randomUUID();
 const reviewableOpportunity = await getOpportunity(id);
 assert.ok(reviewableOpportunity);
-await upsertProspect(cancelledDomain, { status: 'cancelled', runId: reviewCancellationRun });
 await insertOpportunity({
   ...reviewableOpportunity,
-  id: reviewCancellationId,
-  domain: cancelledDomain,
-  runId: reviewCancellationRun,
-  status: 'awaiting_approval',
+  id: supersededOpportunityId,
+  domain: supersededDomain,
+  runId: 'original-run',
+  status: 'drafting',
   decision: null,
-  approvalToken: reviewCancellationToken
+  approvalToken: null
 });
-await updateOpportunity(reviewCancellationId, { status: 'drafting', approvalToken: null });
 assert.equal(
-  await updateOpportunityForActiveRun(reviewCancellationId, {
+  await updateOpportunityForRun(supersededOpportunityId, {
     status: 'awaiting_approval',
-    approvalToken: reviewCancellationToken
+    approvalToken: approvalToken(supersededOpportunityId, 'original-run', 'opportunity')
   }),
   null
 );
-assert.equal((await getOpportunity(reviewCancellationId))?.status, 'drafting');
-await updateOpportunity(reviewCancellationId, {
-  status: 'awaiting_approval',
-  approvalToken: reviewCancellationToken
-});
-await expireOpportunities(cancelledDomain, reviewCancellationRun);
-assert.equal((await getOpportunity(reviewCancellationId))?.status, 'expired');
-assert.equal(
-  (await applyOpportunityDecision(reviewCancellationToken, {
-    decision: 'approved',
-    by: 'e2e-test',
-    via: 'dashboard'
-  })).applied,
-  false
-);
-assert.equal((await getProspect(cancelledDomain))?.status, 'cancelled');
+assert.equal((await getOpportunity(supersededOpportunityId))?.status, 'drafting');
 
 const result = await applyOpportunityDecision(token, {
   decision: 'approved',
@@ -233,7 +205,7 @@ await completeMaintenanceRun('fixture-proof-refresh', {
 assert.equal((await getLatestMaintenanceRun('proof'))?.status, 'complete');
   console.log('✓ e2e: account → scored expansion opportunity → grounded draft → approval → parent status');
   console.log('✓ maintenance: proof upsert → durable refresh status');
-  console.log('✓ cancellation: terminal decisions, cancelled runs, and superseded runs keep their state');
+  console.log('✓ run ownership: superseded runs cannot overwrite current account or opportunity state');
 }
 
 main().then(() => process.exit(0)).catch((error) => {

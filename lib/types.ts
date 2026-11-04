@@ -310,7 +310,6 @@ export const prospectStatuses = [
   'approved',
   'rejected',
   'expired',
-  'cancelled',
   // terminal "skip" states
   'vercel_customer',
   'not_nextjs',

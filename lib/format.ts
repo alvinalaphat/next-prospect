@@ -13,7 +13,6 @@ export const STATUS: Record<ProspectStatus, { label: string; tone: Tone; group: 
   approved: { label: 'Approved', tone: 'green', group: 'done' },
   rejected: { label: 'Rejected', tone: 'red', group: 'done' },
   expired: { label: 'Expired', tone: 'neutral', group: 'done' },
-  cancelled: { label: 'Cancelled', tone: 'neutral', group: 'skipped' },
   vercel_customer: { label: 'On Vercel', tone: 'violet', group: 'skipped' },
   not_nextjs: { label: 'Not Next.js', tone: 'neutral', group: 'skipped' },
   robots_disallowed: { label: 'robots.txt', tone: 'neutral', group: 'skipped' },
