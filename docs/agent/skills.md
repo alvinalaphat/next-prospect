@@ -10,6 +10,14 @@ The repository includes these packages under `.agents/skills/`:
 
 | Skill | Use when |
 | --- | --- |
+| `react-best-practices` | Reviewing React and Next.js performance, including waterfalls, bundle size, rendering, and re-renders |
+| `ai-sdk` | Changing AI SDK generation, structured output, tools, agents, or model integration |
+| `ai-gateway` | Configuring or diagnosing Vercel AI Gateway models, routing, credentials, or observability |
+| `workflow` | Changing Vercel Workflow orchestration, durable steps, retries, hooks, or cancellation |
+| `deployments-cicd` | Changing Vercel deployment behavior, Git integration, CI/CD, promotion, or rollback |
+| `env-vars` | Managing Vercel environment variables and environment-specific configuration |
+| `vercel-functions` | Changing Route Handler runtime behavior, function limits, regions, or performance |
+| `verification` | Verifying a complete browser-to-API-to-data user flow |
 | `neon` | Managing or diagnosing the Neon project, branches, auth, logs, or SDK behavior |
 | `neon-postgres` | Designing PostgreSQL schemas, indexes, queries, search, or Drizzle integration |
 

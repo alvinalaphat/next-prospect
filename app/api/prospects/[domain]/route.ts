@@ -1,7 +1,48 @@
 import { eq } from 'drizzle-orm';
+import { getRun } from 'workflow/api';
 import { isAuthorized, unauthorized } from '@/lib/auth';
-import { db, getOpportunities, getProspect, schema } from '@/lib/db';
+import { db, getOpportunities, getProspect, schema, upsertProspect } from '@/lib/db';
 import { markSuperseded } from '@/lib/slack';
+import type { ProspectStatus } from '@/lib/types';
+
+const IN_FLIGHT: ProspectStatus[] = [
+  'queued',
+  'detecting',
+  'measuring',
+  'researching',
+  'qualifying',
+  'drafting'
+];
+
+/** Cancel the durable run for an account that is still in flight. */
+export async function PATCH(request: Request, ctx: { params: Promise<{ domain: string }> }) {
+  if (!isAuthorized(request)) return unauthorized();
+
+  const body = await request.json().catch(() => null);
+  if (body?.action !== 'cancel') {
+    return Response.json({ error: 'Unsupported action' }, { status: 400 });
+  }
+
+  const { domain } = await ctx.params;
+  const prospect = await getProspect(domain);
+  if (!prospect) return Response.json({ error: 'Account not found' }, { status: 404 });
+  if (!IN_FLIGHT.includes(prospect.status)) {
+    return Response.json({ error: 'This account is no longer running' }, { status: 409 });
+  }
+  if (!prospect.runId) {
+    return Response.json({ error: 'This account does not have a workflow run to cancel' }, { status: 409 });
+  }
+
+  const run = getRun(prospect.runId);
+  const runStatus = await run.status;
+  if (runStatus === 'pending' || runStatus === 'running') await run.cancel();
+  else if (runStatus !== 'cancelled') {
+    return Response.json({ error: 'This workflow run has already finished' }, { status: 409 });
+  }
+
+  await upsertProspect(domain, { status: 'cancelled', error: null });
+  return Response.json({ ok: true });
+}
 
 /** Delete an account and its opportunities. The foreign key cascades safely. */
 export async function DELETE(request: Request, ctx: { params: Promise<{ domain: string }> }) {

@@ -268,15 +268,6 @@ export const stepEnrichOpportunity = async (
   });
   const selectedEvidence = evidence.filter((item) => opportunity.evidenceIds.includes(item.id));
   selectedEvidence.push(...activityEvidence);
-  // Expansion copy may state the observed hosting footprint, so include that
-  // exact evidence even when it was not a product-fit match.
-  if (
-    opportunity.salesMotion === 'expansion' &&
-    !selectedEvidence.some((item) => item.id === 'detect.host.summary')
-  ) {
-    const host = evidence.find((item) => item.id === 'detect.host.summary');
-    if (host) selectedEvidence.push(host);
-  }
 
   await updateOpportunity(opportunityId, {
     status: 'drafting',

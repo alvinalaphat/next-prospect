@@ -4,7 +4,8 @@ import { getProduct, productIndexForPrompt } from '@/lib/catalog/products';
 import { exa } from '@/lib/exa';
 import { findPublishedEmail, formatLedger, normalizeId, unknownCitations, unverifiedNumbers } from '@/lib/grounding';
 import { stripEmDashes } from '@/lib/email-text';
-import { formatEmailBody, fillPlaceholders, MODEL, stripCitationLeaks } from '@/lib/services';
+import { DRAFT_INSTRUCTIONS } from '@/lib/prompts';
+import { configuredRepName, enforceEmailIdentity, MODEL, stripCitationLeaks } from '@/lib/services';
 import { scoreOpportunity, type SignalMatch } from '@/lib/scoring';
 import {
   draftSchema,
@@ -212,29 +213,6 @@ export async function findOpportunityContact({
   };
 }
 
-const OPPORTUNITY_DRAFT_INSTRUCTIONS = `
-Draft a concise first-touch outbound email for a Vercel rep.
-
-Structure:
-1. The public triggering event or evidence that prompted the message.
-2. Why the selected Vercel product is relevant to this person's work.
-3. Ask for a short meeting.
-
-Rules:
-- 60–120 words, 3–5 short paragraphs, plain text, no bullets.
-- Greet with exactly "Hi {{first_name}}," and sign "{{rep_name}}".
-- Never use em dashes, hype, fake familiarity, or unsupported promises.
-- Use only supplied evidence and approved product claims.
-- Every external factual claim must have an id in emailCitations.
-- Never expose internal or sensitive information.
-- When this is an expansion motion, you may say the inspected website runs on
-  Vercel and suggest building on that footprint. Do not claim a contract,
-  company-wide standardization, plan, spend, or private product usage.
-- For EMEA, use a direct why-you, why-now structure. Mention privacy or
-  governance only when explicitly supported.
-- Return exactly three talking points for the rep.
-`.trim();
-
 export async function writeOpportunityDraft({
   domain,
   productId,
@@ -258,16 +236,21 @@ export async function writeOpportunityDraft({
 }): Promise<Draft> {
   const product = getProduct(productId);
   if (!product) throw new Error(`Unknown product ${productId}`);
+  const firstName = contact.name?.split(/\s+/)[0] ?? null;
+  const repName = configuredRepName();
+  const greeting = `Hi ${firstName ?? 'there'},`;
   const prompt = [
     `Account: ${domain}`,
-    `Product: ${product.name} — ${product.summary}`,
+    `Product: ${product.name}: ${product.summary}`,
     `Angle: ${angle}`,
     `Why now: ${whyNow}`,
     `Why Vercel: ${whyVercel}`,
-    `Target: ${contact.name ?? 'unverified person'}, ${contact.title ?? 'role unknown'}`,
+    `Buyer: ${contact.name ?? 'No verified name'}, ${contact.title ?? 'role unknown'}`,
+    `Buyer rationale: ${contact.rationale}`,
+    `Greeting: ${greeting}`,
+    `Sign off: ${repName}`,
     `Sales motion: ${salesMotion}`,
     `Region: ${region?.group ?? 'unknown'}${region?.label ? ` (${region.label})` : ''}`,
-    salesMotion === 'expansion' ? 'Expansion context: the inspected website is already hosted on Vercel. Use this only when it makes the transition natural.' : '',
     '',
     `Approved product claims:\n${product.approvedClaims.map((claim) => `- ${claim}`).join('\n') || '- No extra uncited product claims. Use only the product summary.'}`,
     `Prohibited claims:\n${product.prohibitedClaims.map((claim) => `- ${claim}`).join('\n')}`,
@@ -280,7 +263,7 @@ export async function writeOpportunityDraft({
   const generate = async (repair?: string) => (await generateText({
     model: MODEL,
     providerOptions: FAST,
-    system: OPPORTUNITY_DRAFT_INSTRUCTIONS,
+    system: DRAFT_INSTRUCTIONS,
     prompt: repair ? `${prompt}\n\nREPAIR THESE ISSUES:\n${repair}` : prompt,
     output: Output.object({ schema: draftSchema })
   })).output;
@@ -296,10 +279,15 @@ export async function writeOpportunityDraft({
   };
   let bad = unknownCitations([...output.emailCitations, ...output.talkingPoints.flatMap((point) => point.citations)], evidence);
   let numbers = unverifiedNumbers(`${output.subjectOptions.join('\n')}\n${output.subject}\n${output.body}`, evidence);
-  if (bad.length || numbers.length) {
+  let identity = [
+    !output.body.trimStart().startsWith(greeting) ? `Email must begin with exactly: ${greeting}` : '',
+    !output.body.trimEnd().endsWith(repName) ? `Email must end with exactly: ${repName}` : ''
+  ].filter(Boolean);
+  if (bad.length || numbers.length || identity.length) {
     output = await generate([
       bad.length ? `Unknown evidence ids: ${bad.join(', ')}` : '',
-      numbers.length ? `Numbers not present in evidence: ${numbers.join(', ')}` : ''
+      numbers.length ? `Numbers not present in evidence: ${numbers.join(', ')}` : '',
+      ...identity
     ].filter(Boolean).join('\n'));
     output = {
       ...output,
@@ -311,21 +299,25 @@ export async function writeOpportunityDraft({
     };
     bad = unknownCitations([...output.emailCitations, ...output.talkingPoints.flatMap((point) => point.citations)], evidence);
     numbers = unverifiedNumbers(`${output.subjectOptions.join('\n')}\n${output.subject}\n${output.body}`, evidence);
+    identity = [
+      !output.body.trimStart().startsWith(greeting) ? `Email must begin with exactly: ${greeting}` : '',
+      !output.body.trimEnd().endsWith(repName) ? `Email must end with exactly: ${repName}` : ''
+    ].filter(Boolean);
   }
 
-  const firstName = contact.name?.split(/\s+/)[0] ?? null;
   const warnings: string[] = [];
-  if (!firstName) warnings.push('No verified stakeholder — fill in {{first_name}} before sending');
+  if (!firstName) warnings.push('No verified stakeholder — used "Hi there," for the greeting');
   if (bad.length) warnings.push(`Unknown citations: ${bad.join(', ')}`);
   if (numbers.length) warnings.push(`Numbers not found in evidence: ${numbers.join(', ')}`);
-  const body = stripEmDashes(formatEmailBody(fillPlaceholders(stripCitationLeaks(output.body), firstName)));
+  if (identity.length) warnings.push(...identity);
+  const body = stripEmDashes(enforceEmailIdentity(stripCitationLeaks(output.body), greeting, repName));
   const words = body.split(/\s+/).filter(Boolean).length;
-  if (words > 120) warnings.push(`Email is ${words} words (target 60–120)`);
+  if (words < 70 || words > 110) warnings.push(`Email is ${words} words (target 70–110)`);
 
   return {
     ...output,
-    subject: stripEmDashes(fillPlaceholders(output.subject, firstName)),
-    subjectOptions: output.subjectOptions.map((subject) => stripEmDashes(fillPlaceholders(subject, firstName))),
+    subject: stripEmDashes(output.subject),
+    subjectOptions: output.subjectOptions.map(stripEmDashes),
     body,
     to: contact.name ? { name: contact.name, title: contact.title, email: contact.email, linkedinUrl: contact.linkedinUrl } : null,
     emailCitations: output.emailCitations.filter((id) => !bad.includes(id)),

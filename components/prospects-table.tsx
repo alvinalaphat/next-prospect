@@ -177,7 +177,7 @@ export function ProspectsTable({ items, renderedAt }: { items: ProspectListItem[
                 <Link href={`/prospect/${i.domain}`} className="min-w-0 font-medium break-all hover:underline">
                   {i.domain}
                 </Link>
-                <AccountActions domain={i.domain} />
+                <AccountActions domain={i.domain} status={i.status} />
               </div>
               <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
                 <div>
@@ -216,7 +216,7 @@ export function ProspectsTable({ items, renderedAt }: { items: ProspectListItem[
           <thead className="text-muted-foreground border-b bg-hover text-left text-xs">
             <tr>
               {header('domain', 'Company')}
-              <th className="px-3 py-3 font-medium">Best product opportunity</th>
+              <th className="px-3 py-3 font-medium">Best sales pitch</th>
               {header('fitScore', 'Score', 'text-right')}
               {header('status', 'Status')}
               {header('updatedAt', 'Updated', 'text-right')}
@@ -246,7 +246,7 @@ export function ProspectsTable({ items, renderedAt }: { items: ProspectListItem[
                   {relativeTime(i.updatedAt, renderedAt)}
                 </td>
                 <td className="overflow-hidden px-3 py-3">
-                  <AccountActions domain={i.domain} />
+                  <AccountActions domain={i.domain} status={i.status} />
                 </td>
               </tr>
             ))}
