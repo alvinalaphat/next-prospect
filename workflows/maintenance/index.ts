@@ -1,17 +1,5 @@
 import { getWorkflowMetadata } from 'workflow';
-import { stepFailMaintenance, stepRefreshCatalog, stepRefreshProofs } from './steps';
-
-export async function workflowRefreshCatalog() {
-  'use workflow';
-
-  const { workflowRunId } = getWorkflowMetadata();
-  try {
-    return await stepRefreshCatalog(workflowRunId);
-  } catch (error) {
-    await stepFailMaintenance(workflowRunId, 'catalog', error instanceof Error ? error.message : String(error));
-    throw error;
-  }
-}
+import { stepFailMaintenance, stepRefreshProofs } from './steps';
 
 export async function workflowRefreshProofs() {
   'use workflow';

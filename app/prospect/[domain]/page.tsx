@@ -18,7 +18,9 @@ export default async function ProspectPage({ params }: { params: Promise<{ domai
   const { domain } = await params;
   const prospect = await getProspect(decodeURIComponent(domain));
   if (!prospect) notFound();
-  const opportunities = await getOpportunities(prospect.domain, prospect.runId);
+  const opportunities = prospect.runId
+    ? await getOpportunities(prospect.domain, prospect.runId)
+    : [];
   const proofIds = [...new Set(opportunities.flatMap((opportunity) => [
     ...(opportunity.proofIds ?? []),
     ...(opportunity.competitiveContextIds ?? [])

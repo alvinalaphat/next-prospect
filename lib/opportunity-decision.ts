@@ -14,7 +14,7 @@ export async function applyOpportunityDecision(
   decision: Approval
 ): Promise<OpportunityDecisionResult> {
   const parsed = parseApprovalToken(token);
-  if (!parsed || parsed.kind !== 'opportunity') return { applied: false, reason: 'invalid_token' };
+  if (!parsed) return { applied: false, reason: 'invalid_token' };
   const current = await getOpportunity(parsed.opportunityId);
   if (!current?.draft) return { applied: false, reason: 'not_awaiting' };
   const draft =

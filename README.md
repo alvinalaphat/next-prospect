@@ -5,11 +5,6 @@ company, evaluates the evidence against Vercel's full product catalog, ranks up 
 product-specific conversations, finds the right buyer for each, and drafts personalized,
 fully cited outreach for **human approval**.
 
-It's [vercel-labs/lead-agent](https://github.com/vercel-labs/lead-agent) pointed at outbound.
-It uses the same stack and patterns (Workflow DevKit, AI SDK + AI Gateway, the Agent
-class, Exa, Slack Bolt on Vercel) and the git history starts from an unmodified import
-of lead-agent, so every change is reviewable as a diff.
-
 > Nothing is ever sent. "Approve" only marks a draft approved.
 
 > **Working with an AI agent?** Start with [AGENTS.md](./AGENTS.md). It is the
@@ -33,8 +28,9 @@ For each domain in a CSV, one durable workflow:
 4. **Route and score**: the model matches grounded evidence to known catalog signal rules;
    code applies deterministic confidence, freshness, category caps, and one evidence-backed
    account-potential tier.
-5. **Choose a buyer**: each selected product opportunity gets its own verified contact or
-   an explicit target role when no person can be grounded.
+5. **Choose buyers**: one people search assigns a verified contact to each selected product
+   opportunity. Public activity is researched once per unique buyer and tailored to each
+   opportunity; an explicit target role remains when no person can be grounded.
 6. **Draft**: each opportunity receives a 60–120 word email and rep brief using only its
    selected evidence and approved product claims. Expansion drafts may build on an observed
    Vercel hosting footprint without claiming private account knowledge.
@@ -45,8 +41,8 @@ For each domain in a CSV, one durable workflow:
    and only calls `drafts.create`, so the rep still reviews it and clicks Send.
 
 If a durable run exhausts its automatic retries, the account error banner offers a
-protected **Retry** action. It starts a replacement run and continues from the last
-persisted application checkpoint instead of repeating completed stages.
+protected **Try again** action. It clears the failed account state and starts the same
+workflow again from the beginning.
 
 ## Architecture
 
@@ -60,7 +56,8 @@ flowchart TD
         P --> R["stepResearch<br/>ToolLoopAgent + Exa search/fetch"]
         R --> Q["stepPlanOpportunities<br/>full catalog routing + deterministic score"]
         Q -->|no supported product fit| STOP2([stop])
-        Q --> B["stepEnrichOpportunity × up to 3<br/>buyer + rescore + draft"]
+        Q --> BR["stepResearchOpportunityBuyers<br/>one people search + activity per unique buyer"]
+        BR --> B["stepEnrichOpportunity × up to 3<br/>rescore + draft"]
         B --> H["stepRequestOpportunityApproval<br/>one Slack card per opportunity"]
         H --> DONE([Needs review])
     end
@@ -88,23 +85,11 @@ Every observation becomes an `EvidenceItem` with a stable id:
 ```
 
 - `lib/grounding.ts` **drops research items** whose `sourceUrl` wasn't returned by a tool call.
-- Qualification and draft claims must cite ledger ids. Unknown ids trigger **one repair
+- Opportunity and draft claims must cite ledger ids. Unknown ids trigger **one repair
   pass**, then the claims are pruned.
 - Numbers in the email that don't appear in the ledger are retried once, then shown to the
   reviewer as warnings.
 - The UI renders every citation as a chip that jumps to the ledger row.
-
-### Differences from lead-agent
-
-| lead-agent | Next Prospect |
-|---|---|
-| Form → `start(workflowInbound)` | CSV / dashboard → `start(workflowOutbound)` per domain |
-| Research agent returns free text | Same agent + Exa tools, **structured output**, grounded URLs |
-| `techStackAnalysis` tool is a stub | Real detector + eval |
-| `generateObject` category | `Output.object`: fit score, angle, cited claims |
-| Slack post, then the workflow ends; buttons don't reach the run | Workflow ends at Needs review; Slack and the dashboard record the decision |
-| No storage | Neon Postgres (Marketplace) / PGlite locally |
-| `workflow@4.0.1-beta`, `ai@5` | `workflow@4.8`, `ai@7` (`ToolLoopAgent`, `Output.object`) |
 
 ## Project structure
 
@@ -116,30 +101,29 @@ app/
   api/run/route.ts              POST CSV/list → one workflow per domain
   api/secret/route.ts           check RUN_SECRET without starting a run
   api/slack/route.ts            Approve / Edit (modal) / Reject
-  api/prospects/[domain]/decision/route.ts   dashboard approvals
+  api/opportunities/[id]/decision/route.ts  dashboard opportunity approvals
 workflows/outbound/
   index.ts                      the durable workflow
   steps.ts                      'use step' functions (persist each stage)
 lib/
   catalog/                      full product/capability catalog and signal rules
-  refresh/                      catalog audit and case-study refresh services
+  refresh/                      customer-proof refresh service
   scoring.ts                    deterministic signal scoring and caps
   opportunity-services.ts      routing, buyer selection, product-specific drafting
   opportunity-decision.ts      independent opportunity approval + Gmail handoff
   detect/                       fetch (robots, caps), nextjs + host rules, DNS
   psi.ts                        PageSpeed Insights + cache + CWV thresholds
-  services.ts                   research agent, qualify, draft
-  prompts.ts                    the rep playbook — tune behaviour here
+  services.ts                   company research agent and draft formatting
+  prompts.ts                    research and drafting instructions
   grounding.ts                  evidence ledger enforcement
   slack.ts                      Block Kit card + edit modal
-  decision.ts                   record a decision and create the Gmail draft
   approval-token.ts             ties a Slack or dashboard click to one run
-  db/                           Drizzle schema (prospects, psi_cache)
-workflows/maintenance/          weekly catalog and proof refresh workflows
-eval/                           15 labelled domains + precision/recall script
-  run.ts                        catalog and deterministic scoring checks
+  db/                           Drizzle schema and persistence helpers
+workflows/maintenance/          weekly customer-proof refresh workflow
+tests/                          deterministic and isolated behavior tests
+  assertions.ts                 catalog and scoring assertions
   e2e.ts                        isolated account → opportunity → approval test
-  detect.ts                     detector precision/recall checks
+  detect.ts                     optional live detector fixture check
 ```
 
 ## Run it
@@ -162,11 +146,10 @@ pnpm run:csv data/seed.csv
 Other scripts:
 
 ```bash
-pnpm verify                       # typecheck + catalog eval + isolated E2E + build
-pnpm detect nike.com linear.app   # detector only, no keys needed
-pnpm eval                         # catalog and deterministic scoring
-pnpm eval:detect                  # detection precision/recall
-pnpm test:e2e                     # isolated account → opportunity → approval
+pnpm check                        # types + unused imports/variables/parameters
+pnpm test                         # deterministic assertions + isolated E2E
+pnpm detect                       # live labelled detector fixture
+pnpm detect:domain nike.com       # ad-hoc detector check
 npx workflow web                  # inspect workflow runs locally
 ```
 
@@ -174,16 +157,16 @@ npx workflow web                  # inspect workflow runs locally
 
 | Var | Needed for | Notes |
 |---|---|---|
-| `AI_GATEWAY_API_KEY` | qualify, draft, research | Optional on Vercel / after `vercel env pull` (OIDC). The team needs a card on file to unlock AI Gateway's free credits. |
-| `AI_MODEL` | — | Any Gateway model id; default `openai/gpt-5` (lead-agent's). |
-| `EXA_API_KEY` | research | If unset, research is skipped and qualification uses detection + perf only. |
+| `AI_GATEWAY_API_KEY` | planning, drafting, research | Optional on Vercel / after `vercel env pull` (OIDC). The team needs a card on file to unlock AI Gateway's free credits. |
+| `AI_MODEL` | — | Any Gateway model id; default `openai/gpt-5`. |
+| `EXA_API_KEY` | research | If unset, public-web research and contact enrichment are skipped; planning can still use detection and performance evidence. |
 | `PSI_API_KEY` | performance | Keyless quota is effectively zero. After retries the run continues without perf. |
 | `DATABASE_URL` | storage | Added by the Neon Marketplace integration. Falls back to PGlite in dev. |
 | `SLACK_BOT_TOKEN`, `SLACK_SIGNING_SECRET`, `SLACK_CHANNEL_ID` | Slack approvals | Optional; the dashboard can approve too. |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN` | Gmail drafts | Optional; see Gmail drafts below. |
 | `REP_NAME` | drafts | Required sender name written directly into every draft sign-off. |
 | `RUN_SECRET` | prod | Required to start runs and approve from the dashboard. |
-| `CRON_SECRET` | prod | Set by Vercel Cron and required by the weekly catalog/proof refresh routes. |
+| `CRON_SECRET` | prod | Set by Vercel Cron and required by the weekly proof refresh route. |
 | `APP_URL` | Slack links | Defaults to the Vercel production URL. |
 
 ### Slack
@@ -206,7 +189,7 @@ npx workflow web                  # inspect workflow runs locally
 
 While the OAuth app is in *Testing* mode, Google expires refresh tokens after 7 days. When
 that happens, briefs show "re-run `pnpm gmail:auth`". Drafts have no recipient unless the
-stakeholder's email was published on a retrieved page.
+buyer's email was published on a retrieved page.
 
 ### Deploy
 
@@ -229,6 +212,12 @@ Normal release:
 pnpm verify
 git push origin main              # CI runs; Vercel builds and deploys
 ```
+
+## Future Improvements
+
+- Add a reviewed catalog-audit workflow and review surface that compares official Vercel
+  product changes with the code-owned catalog. It must never change scoring rules,
+  approved claims, or product eligibility automatically.
 
 ## License
 

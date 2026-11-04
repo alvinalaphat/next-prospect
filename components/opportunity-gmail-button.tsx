@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { authHeaders, useRunSecret } from '@/lib/client-secret';
+import { authHeaders, secretCheckMessage, useRunSecret } from '@/lib/client-secret';
 
 export function OpportunityGmailButton({ opportunityId }: { opportunityId: string }) {
   const router = useRouter();
@@ -14,7 +14,7 @@ export function OpportunityGmailButton({ opportunityId }: { opportunityId: strin
     setBusy(true);
     const { value, status } = await secretField.commit();
     if (status !== 'valid') {
-      if (status === 'empty') toast.error('Enter the run secret.');
+      toast.error(secretCheckMessage(status));
       setBusy(false);
       return;
     }

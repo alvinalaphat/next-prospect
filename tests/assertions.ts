@@ -1,11 +1,17 @@
 import assert from 'node:assert/strict';
 import { OPPORTUNITY_PRODUCTS, PRODUCTS, getProduct } from '@/lib/catalog/products';
-import { isCronAuthorized } from '@/lib/cron-auth';
+import { approvalToken, parseApprovalToken } from '@/lib/approval-token';
+import { isCronAuthorized } from '@/lib/auth';
 import { contactActivityEvidence, contactActivityId, containsFullName } from '@/lib/contact-activity';
 import { relativeTime } from '@/lib/format';
 import { freshnessMultiplier, scoreOpportunity } from '@/lib/scoring';
 
 const ids = PRODUCTS.map((product) => product.id);
+assert.deepEqual(parseApprovalToken(approvalToken('opportunity-id', 'run-id')), {
+  opportunityId: 'opportunity-id',
+  runId: 'run-id'
+});
+assert.equal(parseApprovalToken('approval:example.com:old-run'), null, 'account-level tokens are retired');
 assert.equal(new Set(ids).size, ids.length, 'catalog product ids must be unique');
 assert.ok(PRODUCTS.length >= 25, 'catalog should cover the broad Vercel product surface');
 for (const product of OPPORTUNITY_PRODUCTS) {

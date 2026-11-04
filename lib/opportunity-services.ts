@@ -154,63 +154,101 @@ export async function planOpportunities(
   };
 }
 
-const contactPickSchema = opportunityContactSchema.omit({ email: true }).extend({
-  sourceUrl: z.string().nullable()
+const contactAssignmentsSchema = z.object({
+  assignments: z.array(opportunityContactSchema.omit({ email: true }).extend({
+    opportunityId: z.string(),
+    sourceUrl: z.string().nullable()
+  })).max(3)
 });
 
-/** Find one grounded person after the product and angle are known. */
-export async function findOpportunityContact({
-  domain,
-  companyName,
-  productId,
-  angle,
-  targetRole
-}: {
-  domain: string;
-  companyName: string;
+export type BuyerResearchOpportunity = {
+  id: string;
   productId: string;
   angle: string;
   targetRole: string;
-}): Promise<OpportunityContact> {
-  const product = getProduct(productId);
-  const roles = [...new Set([targetRole, ...(product?.targetRoles ?? [])])].slice(0, 4);
-  const results = await Promise.all(
-    roles.map((role) =>
-      exa().search(`${role} at ${companyName}`, {
-        numResults: 5,
-        type: 'auto',
-        category: 'people',
-        contents: { highlights: true }
-      })
-    )
+};
+
+/** Search once and assign the best grounded buyer to each planned opportunity. */
+export async function findOpportunityContacts({
+  domain,
+  companyName,
+  opportunities
+}: {
+  domain: string;
+  companyName: string;
+  opportunities: BuyerResearchOpportunity[];
+}): Promise<Map<string, OpportunityContact>> {
+  const roles = [...new Set(opportunities.flatMap((opportunity) => [
+    opportunity.targetRole,
+    ...(getProduct(opportunity.productId)?.targetRoles ?? [])
+  ]))].slice(0, 12);
+  const result = await exa().search(
+    `${roles.map((role) => `"${role}"`).join(' OR ')} at "${companyName}"`,
+    {
+      numResults: 15,
+      type: 'auto',
+      category: 'people',
+      contents: { highlights: true }
+    }
   );
   const retrieved = new Map<string, string>();
-  const people = results.flatMap((result) => result.results).map((result) => {
-    const text = [result.title, result.author, ...(result.highlights ?? [])].filter(Boolean).join('\n');
-    retrieved.set(result.url, text);
-    return { name: result.author ?? null, title: result.title, url: result.url, highlights: result.highlights ?? [] };
+  const people = result.results.map((person) => {
+    const text = [person.title, person.author, ...(person.highlights ?? [])].filter(Boolean).join('\n');
+    retrieved.set(person.url, text);
+    return { name: person.author ?? null, title: person.title, url: person.url, highlights: person.highlights ?? [] };
   });
 
   const { output } = await generateText({
     model: MODEL,
     providerOptions: FAST,
-    system: 'Choose the single best current person for this opportunity. Only choose a named person from the supplied results. Prefer direct functional ownership over general seniority. Return null fields when nobody is sufficiently supported.',
-    prompt: `Company: ${companyName} (${domain})\nProduct: ${product?.name ?? productId}\nAngle: ${angle}\nTarget role: ${targetRole}\n\nPEOPLE RESULTS:\n${JSON.stringify(people)}`,
-    output: Output.object({ schema: contactPickSchema })
+    system: [
+      'Assign the single best current person to each opportunity.',
+      'Only choose named people from the supplied results.',
+      'Prefer direct functional ownership over general seniority.',
+      'A person may own multiple opportunities. Return null person fields when nobody is sufficiently supported.'
+    ].join(' '),
+    prompt: [
+      `Company: ${companyName} (${domain})`,
+      `OPPORTUNITIES:\n${JSON.stringify(opportunities.map((opportunity) => ({
+        ...opportunity,
+        productName: getProduct(opportunity.productId)?.name ?? opportunity.productId
+      })))}`,
+      `PEOPLE RESULTS:\n${JSON.stringify(people)}`
+    ].join('\n\n'),
+    output: Output.object({ schema: contactAssignmentsSchema })
   });
 
-  const pageText = output.sourceUrl ? retrieved.get(output.sourceUrl) : null;
-  const grounded = !!output.name && !!pageText && output.name.toLowerCase().split(/\s+/).filter((p) => p.length > 2).every((part) => pageText.toLowerCase().includes(part));
-  if (!grounded) {
-    return { name: null, title: null, linkedinUrl: null, email: null, sourceUrl: null, rationale: `No named person was verified. Target ${targetRole}.` };
+  const requested = new Map(opportunities.map((opportunity) => [opportunity.id, opportunity]));
+  const contacts = new Map<string, OpportunityContact>();
+  for (const assignment of output.assignments) {
+    const opportunity = requested.get(assignment.opportunityId);
+    if (!opportunity || contacts.has(assignment.opportunityId)) continue;
+    const pageText = assignment.sourceUrl ? retrieved.get(assignment.sourceUrl) : null;
+    const grounded = !!assignment.name && !!pageText
+      && assignment.name.toLowerCase().split(/\s+/).filter((part) => part.length > 2)
+        .every((part) => pageText.toLowerCase().includes(part));
+    if (!grounded) continue;
+    const published = findPublishedEmail(assignment.name!, domain, retrieved);
+    const { opportunityId: _opportunityId, ...contact } = assignment;
+    contacts.set(assignment.opportunityId, {
+      ...contact,
+      email: published?.address ?? null,
+      linkedinUrl: assignment.linkedinUrl && /linkedin\.com\/in\//i.test(assignment.linkedinUrl)
+        ? assignment.linkedinUrl
+        : null
+    });
   }
-  const published = findPublishedEmail(output.name!, domain, retrieved);
-  return {
-    ...output,
-    name: output.name,
-    email: published?.address ?? null,
-    linkedinUrl: output.linkedinUrl && /linkedin\.com\/in\//i.test(output.linkedinUrl) ? output.linkedinUrl : null
-  };
+  for (const opportunity of opportunities) {
+    if (!contacts.has(opportunity.id)) contacts.set(opportunity.id, {
+      name: null,
+      title: null,
+      linkedinUrl: null,
+      email: null,
+      sourceUrl: null,
+      rationale: `No named person was verified. Target ${opportunity.targetRole}.`
+    });
+  }
+  return contacts;
 }
 
 export async function writeOpportunityDraft({
@@ -306,7 +344,7 @@ export async function writeOpportunityDraft({
   }
 
   const warnings: string[] = [];
-  if (!firstName) warnings.push('No verified stakeholder — used "Hi there," for the greeting');
+  if (!firstName) warnings.push('No verified buyer — used "Hi there," for the greeting');
   if (bad.length) warnings.push(`Unknown citations: ${bad.join(', ')}`);
   if (numbers.length) warnings.push(`Numbers not found in evidence: ${numbers.join(', ')}`);
   if (identity.length) warnings.push(...identity);

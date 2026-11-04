@@ -4,8 +4,8 @@ import Link from 'next/link';
 import { ThemeProvider } from 'next-themes';
 import { Toaster } from 'sonner';
 import { NavLink } from '@/components/nav-link';
-import { SecretPresence } from '@/components/secret-presence';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { RunSecretProvider } from '@/lib/client-secret';
 import { RUN_SECRET_STORAGE_KEY } from '@/lib/run-secret-key';
 import './globals.css';
 
@@ -38,7 +38,6 @@ export default function RootLayout({
             __html: `try{if(localStorage.getItem(${JSON.stringify(RUN_SECRET_STORAGE_KEY)}))document.documentElement.dataset.secret='stored'}catch(e){}`
           }}
         />
-        <SecretPresence />
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <a
             href="#main"
@@ -68,7 +67,7 @@ export default function RootLayout({
             id="main"
             className="mx-auto w-full min-w-0 max-w-7xl px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-8 [@media(max-height:700px)]:py-4"
           >
-            {children}
+            <RunSecretProvider>{children}</RunSecretProvider>
           </main>
           <Toaster />
         </ThemeProvider>

@@ -10,7 +10,7 @@ type Label = { domain: string; is_nextjs: string; host: string; on_vercel: strin
  * host accuracy.
  */
 async function main() {
-  const labels = Papa.parse<Label>(readFileSync('eval/labels.csv', 'utf8'), {
+  const labels = Papa.parse<Label>(readFileSync('tests/labels.csv', 'utf8'), {
     header: true,
     skipEmptyLines: true
   }).data;

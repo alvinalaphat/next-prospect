@@ -43,6 +43,20 @@
       "when": 1793759225902,
       "tag": "0005_round_grey_gargoyle",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793762463393,
+      "tag": "0006_cleanup_legacy_statuses",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793764745313,
+      "tag": "0007_shallow_captain_flint",
+      "breakpoints": true
     }
   ]
 }

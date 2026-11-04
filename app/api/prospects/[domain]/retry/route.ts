@@ -1,14 +1,13 @@
 import { start } from 'workflow/api';
 import { isAuthorized, unauthorized } from '@/lib/auth';
 import {
-  claimProspectRun,
   getProspect,
-  reserveProspectRetry,
+  resetFailedProspectForRetry,
   restoreProspectRetry
 } from '@/lib/db';
-import { workflowRetryOutbound } from '@/workflows/outbound';
+import { workflowOutbound } from '@/workflows/outbound';
 
-/** Retry a failed account from its latest persisted application checkpoint. */
+/** Start a failed account again from the beginning. */
 export async function POST(
   request: Request,
   ctx: { params: Promise<{ domain: string }> }
@@ -25,22 +24,16 @@ export async function POST(
 
   const failedRunId = prospect.runId;
   const failedError = prospect.error;
-  if (!(await reserveProspectRetry(domain, failedRunId))) {
+  const batch = `retry-${Date.now()}`;
+  if (!(await resetFailedProspectForRetry(domain, failedRunId, batch))) {
     return Response.json({ error: 'This workflow is already being retried' }, { status: 409 });
   }
 
   try {
-    const run = await start(workflowRetryOutbound, [domain, failedRunId], {
+    const run = await start(workflowOutbound, [domain, 0], {
       deploymentId: 'latest'
     });
-    // The workflow may already have advanced or failed by the time start()
-    // returns. Confirm ownership without rewinding its persisted state.
-    if (!(await claimProspectRun(domain, run.runId, {}))) {
-      await run.cancel().catch(() => {});
-      await restoreProspectRetry(domain, failedRunId, failedError);
-      return Response.json({ error: 'The account changed before the retry could start' }, { status: 409 });
-    }
-    return Response.json({ domain, runId: run.runId, resumedFrom: failedRunId });
+    return Response.json({ domain, runId: run.runId, restartedFrom: failedRunId });
   } catch (error) {
     await restoreProspectRetry(domain, failedRunId, failedError);
     return Response.json(

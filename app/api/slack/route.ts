@@ -1,9 +1,8 @@
 import { createHandler } from '@vercel/slack-bolt';
 import { parseApprovalToken } from '@/lib/approval-token';
-import { applyDecision } from '@/lib/decision';
-import { getOpportunity, getProspect } from '@/lib/db';
+import { getOpportunity } from '@/lib/db';
 import { applyOpportunityDecision } from '@/lib/opportunity-decision';
-import { ACTIONS, editModal, markSuperseded, opportunityEditModal, receiver, slackApp } from '@/lib/slack';
+import { ACTIONS, markSuperseded, opportunityEditModal, receiver, slackApp } from '@/lib/slack';
 import type { Approval } from '@/lib/types';
 
 type CardBody = {
@@ -23,13 +22,13 @@ if (slackApp && receiver) {
   slackApp.action(ACTIONS.approve, async ({ ack, body, action, logger }) => {
     await ack();
     if (action.type !== 'button' || !action.value) return;
-    await decide(action.value, { decision: 'approved', by: body.user.name ?? body.user.id, via: 'slack' }, body, logger);
+    await decide(action.value, { decision: 'approved', by: body.user.name ?? body.user.id, via: 'slack' }, logger);
   });
 
   slackApp.action(ACTIONS.reject, async ({ ack, body, action, logger }) => {
     await ack();
     if (action.type !== 'button' || !action.value) return;
-    await decide(action.value, { decision: 'rejected', by: body.user.name ?? body.user.id, via: 'slack' }, body, logger);
+    await decide(action.value, { decision: 'rejected', by: body.user.name ?? body.user.id, via: 'slack' }, logger);
   });
 
   slackApp.action(ACTIONS.edit, async ({ ack, body, action, client }) => {
@@ -37,21 +36,15 @@ if (slackApp && receiver) {
     if (action.type !== 'button' || !action.value || body.type !== 'block_actions') return;
     const parsed = parseApprovalToken(action.value);
     if (!parsed) return;
-    if (parsed.kind === 'opportunity') {
-      const opportunity = await getOpportunity(parsed.opportunityId);
-      if (!opportunity || opportunity.approvalToken !== action.value) return;
-      await client.views.open({ trigger_id: body.trigger_id, view: opportunityEditModal(opportunity, action.value) });
-      return;
-    }
-    const prospect = await getProspect(parsed.domain);
-    if (!prospect || prospect.approvalToken !== action.value) {
+    const opportunity = await getOpportunity(parsed.opportunityId);
+    if (!opportunity || opportunity.approvalToken !== action.value) {
       const card = clickedCard(body);
       if (card) {
-        await markSuperseded(card, parsed.domain).catch((err) => console.warn('supersede failed', err));
+        await markSuperseded(card, opportunity?.domain ?? 'Opportunity').catch((err) => console.warn('supersede failed', err));
       }
       return;
     }
-    await client.views.open({ trigger_id: body.trigger_id, view: editModal(prospect, action.value) });
+    await client.views.open({ trigger_id: body.trigger_id, view: opportunityEditModal(opportunity, action.value) });
   });
 
   slackApp.view(ACTIONS.editModal, async ({ ack, body, view, logger }) => {
@@ -68,7 +61,6 @@ if (slackApp && receiver) {
           body: values.body.value.value ?? ''
         }
       },
-      {},
       logger
     );
   });
@@ -77,14 +69,9 @@ if (slackApp && receiver) {
 async function decide(
   token: string,
   approval: Approval,
-  body: CardBody,
   logger: { warn: (message: string) => void }
 ) {
-  const parsed = parseApprovalToken(token);
-  const action = parsed?.kind === 'opportunity'
-    ? applyOpportunityDecision(token, approval)
-    : applyDecision(token, approval, clickedCard(body));
-  const result = await action.catch((err: unknown) => {
+  const result = await applyOpportunityDecision(token, approval).catch((err: unknown) => {
     logger.warn(`decision failed: ${err instanceof Error ? err.message : String(err)}`);
     return null;
   });

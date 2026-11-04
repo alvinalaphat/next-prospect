@@ -20,7 +20,7 @@ export type ProspectListItem = {
 
 type SortKey = 'domain' | 'fitScore' | 'status' | 'updatedAt';
 
-const ACTION_STATUSES = new Set<ProspectStatus>(['awaiting_approval', 'error', 'expired']);
+const ACTION_STATUSES = new Set<ProspectStatus>(['awaiting_approval', 'error']);
 const REVIEWED_STATUSES = new Set<ProspectStatus>(['approved', 'rejected']);
 
 const VIEWS = {
@@ -32,7 +32,7 @@ const VIEWS = {
   reviewed: { label: 'Reviewed', test: (i: ProspectListItem) => REVIEWED_STATUSES.has(i.status) },
   noPitch: {
     label: 'No pitch',
-    test: (i: ProspectListItem) => STATUS[i.status].group === 'skipped' && i.status !== 'error'
+    test: (i: ProspectListItem) => STATUS[i.status].group === 'no_pitch'
   },
   all: { label: 'All', test: () => true }
 } as const;

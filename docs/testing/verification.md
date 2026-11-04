@@ -3,7 +3,7 @@
 `pnpm verify` is the complete non-browser verification contract. GitHub Actions
 runs the same gates on every pull request and push to `main`. Vercel still owns
 preview and production deployments through its Git integration; a successful
-Vercel build does not replace behavior evaluation or browser testing.
+Vercel build does not replace behavior or browser testing.
 
 ## Automated CI
 
@@ -11,10 +11,9 @@ Vercel build does not replace behavior evaluation or browser testing.
 Node 22.17, with the pnpm version pinned in `package.json`. It performs a
 frozen-lockfile install, then runs:
 
-1. `pnpm typecheck`
-2. `pnpm eval`
-3. `pnpm test:e2e`
-4. `pnpm build`
+1. `pnpm check`
+2. `pnpm test`
+3. `pnpm build`
 
 Concurrent runs for the same branch cancel older in-progress runs. CI has no
 application, Vercel, database, Gmail, Slack, or AI credentials. The end-to-
@@ -25,10 +24,10 @@ end test creates a temporary isolated PGlite database and does not need them.
 | Change | Required checks |
 | --- | --- |
 | Markdown only | Link/path review and `git diff --check` |
-| TypeScript or React | `pnpm typecheck` |
+| TypeScript or React | `pnpm check` |
 | Production-facing code | `pnpm build` |
-| Scoring, catalog, decisions, or persistence | `pnpm eval` and `pnpm test:e2e` |
-| Detection | `pnpm eval:detect` and targeted `pnpm detect <domain>` when network access is available |
+| Scoring, catalog, decisions, or persistence | `pnpm test` |
+| Detection | `pnpm detect` and targeted `pnpm detect:domain <domain>` when network access is available |
 | UI or interaction | Core checks plus Chrome desktop/mobile interaction and console review |
 | Schema or migration | `pnpm db:migrate` against an isolated/local database, then the relevant tests |
 
@@ -41,10 +40,14 @@ pnpm verify
 
 ## What the commands prove
 
-### `pnpm typecheck`
+### `pnpm check`
 
-Runs `tsc --noEmit`. It catches type and server/client import errors, but it
-does not prove that Next.js can bundle the app or that a workflow behaves.
+Runs TypeScript without emitting files and enables unused-local and
+unused-parameter checks. This is the repository's lightweight typecheck and
+lint gate; it does not add a separate style linter. It catches type errors,
+server/client import errors, unused imports, unused variables, and unused
+parameters, but it does not prove that Next.js can bundle the app or that a
+workflow behaves.
 
 ### `pnpm build`
 
@@ -60,23 +63,20 @@ pnpm exec next build --webpack
 The fallback is for verification constraints; do not silently change the
 project's build script to work around an agent sandbox.
 
-### `pnpm eval`
+### `pnpm test`
 
-Exercises catalog and deterministic scoring expectations. Use it when product
-rules, shared account rules, confidence, caps, or suppression behavior changes.
+Runs deterministic catalog, scoring, auth, formatting, and buyer-activity
+assertions, then creates an isolated temporary PGlite database and proves the
+account to scored opportunity to grounded draft fixture to approval path. It
+deliberately removes Gmail credentials. A Slack-not-configured warning is
+expected when Slack env vars are absent.
 
-### `pnpm test:e2e`
+### `pnpm detect`
 
-Creates an isolated temporary PGlite database and proves the account to scored
-opportunity to grounded draft fixture to approval path. It deliberately removes
-Gmail credentials. A Slack-not-configured warning is expected when Slack env
-vars are absent.
-
-### `pnpm eval:detect`
-
-Runs the labelled detector evaluation in `eval/labels.csv`. The dataset is a
-sanity check, not an unbiased benchmark; read `eval/README.md` before quoting
-its metrics.
+Runs the labelled detector fixture in `tests/labels.csv`. The dataset is a
+small regression check, not an unbiased benchmark; read `tests/README.md`
+before quoting its metrics. It makes live network requests, so it is excluded
+from the isolated default gate.
 
 ## Browser QA
 

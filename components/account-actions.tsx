@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Ellipsis, RefreshCw, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { authHeaders, useRunSecret } from '@/lib/client-secret';
+import { authHeaders, secretCheckMessage, useRunSecret } from '@/lib/client-secret';
 import { Button } from '@/components/ui/button';
 
 export function AccountActions({ domain }: { domain: string }) {
@@ -52,8 +52,7 @@ export function AccountActions({ domain }: { domain: string }) {
 
   async function authorized() {
     const result = await secretField.commit();
-    if (result.status === 'empty') toast.error('Enter the run secret.');
-    else if (result.status !== 'valid') toast.error('The run secret is invalid.');
+    if (result.status !== 'valid') toast.error(secretCheckMessage(result.status));
     return result.status === 'valid' ? result.value : null;
   }
 

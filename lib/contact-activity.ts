@@ -5,13 +5,18 @@ import { exa } from '@/lib/exa';
 import { MODEL } from '@/lib/services';
 import type { ContactActivity, EvidenceItem, OpportunityContact } from '@/lib/types';
 
-const activitySchema = z.object({
-  items: z.array(z.object({
+const activityItemSchema = z.object({
     text: z.string(),
     sourceUrl: z.string(),
     sourceType: z.enum(['linkedin-post', 'blog', 'talk', 'podcast', 'github', 'other']),
     relevance: z.string()
-  })).max(5)
+});
+
+const activitySelectionsSchema = z.object({
+  selections: z.array(z.object({
+    opportunityId: z.string(),
+    items: z.array(activityItemSchema).max(5)
+  })).max(3)
 });
 
 export function contactActivityId({
@@ -39,23 +44,21 @@ export function containsFullName(text: string, name: string): boolean {
   return ` ${normalizedText} `.includes(` ${normalizedName} `);
 }
 
-export async function researchContactActivity({
+export async function researchContactActivities({
   contact,
   companyName,
   domain,
-  productName,
-  angle
+  opportunities
 }: {
   contact: OpportunityContact;
   companyName: string;
   domain: string;
-  productName: string;
-  angle: string;
-}): Promise<ContactActivity[]> {
-  if (!contact.name) return [];
+  opportunities: { opportunityId: string; productName: string; angle: string }[];
+}): Promise<Map<string, ContactActivity[]>> {
+  if (!contact.name) return new Map();
   const since = new Date(Date.now() - 365 * 24 * 60 * 60 * 1_000).toISOString();
   const queries = [
-    `"${contact.name}" "${companyName}" ${productName}`,
+    `"${contact.name}" "${companyName}"`,
     `site:linkedin.com/posts "${contact.name}" "${companyName}"`,
     `"${contact.name}" ${domain} engineering blog OR podcast OR conference`
   ];
@@ -84,7 +87,7 @@ export async function researchContactActivity({
     const text = [result.title, result.author, ...result.highlights].filter(Boolean).join(' ');
     return containsFullName(text, contact.name!);
   });
-  if (!attributable.length) return [];
+  if (!attributable.length) return new Map();
 
   const { output } = await generateText({
     model: MODEL,
@@ -92,27 +95,33 @@ export async function researchContactActivity({
     system: [
       'Select public activity authored by or directly featuring the named person.',
       'Use only supplied URLs and text. Do not infer company plans from personal opinions.',
-      'Prefer activity relevant to the product angle. Do not call an item recent without a supplied publication date.'
+      'Choose separately for each supplied opportunity and prefer activity relevant to that product angle.',
+      'Do not call an item recent without a supplied publication date.'
     ].join(' '),
     prompt: [
       `Person: ${contact.name}`,
       `Company: ${companyName} (${domain})`,
-      `Product: ${productName}`,
-      `Angle: ${angle}`,
+      `OPPORTUNITIES: ${JSON.stringify(opportunities)}`,
       'ATTRIBUTABLE RESULTS:',
       JSON.stringify(attributable.map(([url, result]) => ({ url, ...result })))
     ].join('\n'),
-    output: Output.object({ schema: activitySchema })
+    output: Output.object({ schema: activitySelectionsSchema })
   });
   const allowedSources = new Map(attributable);
-  return output.items
-    .filter((item) => allowedSources.has(item.sourceUrl))
-    .map((item) => ({
-      id: contactActivityId(item),
-      personName: contact.name!,
-      ...item,
-      publishedAt: allowedSources.get(item.sourceUrl)?.publishedDate ?? null
-    }));
+  const requested = new Set(opportunities.map((opportunity) => opportunity.opportunityId));
+  const selections = new Map<string, ContactActivity[]>();
+  for (const selection of output.selections) {
+    if (!requested.has(selection.opportunityId) || selections.has(selection.opportunityId)) continue;
+    selections.set(selection.opportunityId, selection.items
+      .filter((item) => allowedSources.has(item.sourceUrl))
+      .map((item) => ({
+        id: contactActivityId(item),
+        personName: contact.name!,
+        ...item,
+        publishedAt: allowedSources.get(item.sourceUrl)?.publishedDate ?? null
+      })));
+  }
+  return selections;
 }
 
 export function contactActivityEvidence(activity: ContactActivity[]): EvidenceItem[] {

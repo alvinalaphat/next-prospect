@@ -1,8 +1,8 @@
 name: CI
 
 # Vercel's Git integration owns preview and production deployments. This
-# workflow supplies the checks Vercel does not: types, deterministic product
-# scoring, the isolated approval path, and a production bundle.
+# workflow supplies the checks Vercel does not: static checks, deterministic
+# behavior tests, the isolated approval path, and a production bundle.
 on:
   pull_request:
   push:
@@ -41,14 +41,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Typecheck
-        run: pnpm run typecheck
+      - name: Check types and unused code
+        run: pnpm run check
 
-      - name: Evaluate catalog and scoring
-        run: pnpm run eval
-
-      - name: Test isolated approval path
-        run: pnpm run test:e2e
+      - name: Test behavior and isolated approval path
+        run: pnpm test
 
       - name: Build production bundle
         run: pnpm run build

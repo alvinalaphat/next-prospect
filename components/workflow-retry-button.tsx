@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { authHeaders, useRunSecret } from '@/lib/client-secret';
+import { authHeaders, secretCheckMessage, useRunSecret } from '@/lib/client-secret';
 
 export function WorkflowRetryButton({ domain }: { domain: string }) {
   const router = useRouter();
@@ -18,13 +18,7 @@ export function WorkflowRetryButton({ domain }: { domain: string }) {
     const result = await secretField.commit();
     if (result.status !== 'valid') {
       setPromptForSecret(true);
-      toast.error(
-        result.status === 'empty'
-          ? 'Enter the run secret to retry this workflow.'
-          : result.status === 'invalid'
-            ? 'The run secret is invalid.'
-            : 'The run secret could not be verified.'
-      );
+      toast.error(secretCheckMessage(result.status));
       setBusy(false);
       return;
     }
@@ -40,10 +34,10 @@ export function WorkflowRetryButton({ domain }: { domain: string }) {
         setPromptForSecret(true);
       }
       if (!response.ok) throw new Error(json.error ?? `HTTP ${response.status}`);
-      toast.success(`Retrying ${domain} from its last completed stage`);
+      toast.success(`Starting ${domain} again from the beginning`);
       router.refresh();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to retry workflow');
+      toast.error(error instanceof Error ? error.message : 'Failed to start the workflow again');
     } finally {
       setBusy(false);
     }
@@ -73,7 +67,7 @@ export function WorkflowRetryButton({ domain }: { domain: string }) {
         onClick={retry}
       >
         <RefreshCw className={busy ? 'animate-spin' : ''} />
-        {busy ? 'Retrying…' : 'Retry'}
+        {busy ? 'Starting again…' : 'Try again'}
       </Button>
     </div>
   );

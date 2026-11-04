@@ -29,8 +29,6 @@ export type ScoreBreakdown = {
   trigger: number;
   accountValue: number;
   buyerQuality: number;
-  /** Present only on opportunities persisted under the pre-sales-fit scoring model. */
-  risk?: number;
   total: number;
 };
 

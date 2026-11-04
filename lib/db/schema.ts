@@ -2,7 +2,7 @@ import { boolean, index, integer, jsonb, pgTable, primaryKey, text, timestamp, u
 import type { GmailDraft } from '@/lib/gmail';
 import type { ProductCategory } from '@/lib/catalog/types';
 import type { ScoreBreakdown, ScoredSignal } from '@/lib/scoring';
-import type { CatalogAuditResult, MaintenanceKind, MaintenanceStatus, ProofRefreshResult, ProofUsage, ProofVendor } from '@/lib/refresh/types';
+import type { MaintenanceKind, MaintenanceStatus, ProofRefreshResult, ProofUsage, ProofVendor } from '@/lib/refresh/types';
 import type {
   Approval,
   ContactActivity,
@@ -14,7 +14,6 @@ import type {
   Perf,
   PerfResult,
   ProspectStatus,
-  Qualification,
   Research,
   SalesMotion
 } from '@/lib/types';
@@ -41,15 +40,7 @@ export const prospects = pgTable(
     detection: jsonb('detection').$type<Detection>(),
     perf: jsonb('perf').$type<Perf>(),
     research: jsonb('research').$type<Research>(),
-    qualification: jsonb('qualification').$type<Qualification>(),
-    draft: jsonb('draft').$type<Draft>(),
     evidence: jsonb('evidence').$type<EvidenceItem[]>(),
-
-    approvalToken: text('approval_token'),
-    approval: jsonb('approval').$type<Approval>(),
-    slack: jsonb('slack').$type<{ channel: string; ts: string }>(),
-    gmailDraft: jsonb('gmail_draft').$type<GmailDraft>(),
-    gmailError: text('gmail_error'),
 
     error: text('error'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -117,14 +108,14 @@ export const opportunities = pgTable(
   ]
 );
 
-/** Durable audit history for weekly catalog and proof refresh workflows. */
+/** Durable history for the weekly customer-proof refresh workflow. */
 export const maintenanceRuns = pgTable(
   'maintenance_runs',
   {
     id: text('id').primaryKey(),
     kind: text('kind').$type<MaintenanceKind>().notNull(),
     status: text('status').$type<MaintenanceStatus>().notNull().default('running'),
-    result: jsonb('result').$type<CatalogAuditResult | ProofRefreshResult>(),
+    result: jsonb('result').$type<ProofRefreshResult>(),
     error: text('error'),
     startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
     finishedAt: timestamp('finished_at', { withTimezone: true }),
