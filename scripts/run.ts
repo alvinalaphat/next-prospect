@@ -31,7 +31,7 @@ async function main() {
     process.exit(1);
   }
   console.log(`Started ${json.started.length} workflows (batch ${json.batch})`);
-  if (json.skippedInFlight.length) console.log(`Skipped (in flight): ${json.skippedInFlight.join(', ')}`);
+  if (json.alreadyRunning.length) console.log(`Already running: ${json.alreadyRunning.join(', ')}`);
   if (json.invalid.length) console.log(`Invalid: ${json.invalid.join(', ')}`);
   console.log(`Dashboard: ${base}/`);
 }

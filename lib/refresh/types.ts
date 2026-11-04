@@ -1,24 +1,5 @@
-export type MaintenanceKind = 'catalog' | 'proof';
+export type MaintenanceKind = 'proof';
 export type MaintenanceStatus = 'running' | 'complete' | 'failed';
-
-export type CatalogSnapshotItem = {
-  name: string;
-  summary: string;
-  sourceUrl: string;
-  lifecycle: 'ga' | 'beta' | 'deprecated' | 'unknown';
-  announcedAt: string | null;
-  catalogProductId: string | null;
-  status: 'matched' | 'new' | 'possible-change';
-  notes: string;
-};
-export type CatalogAuditResult = {
-  checkedAt: string;
-  items: CatalogSnapshotItem[];
-  matchedProductIds: string[];
-  notObservedCatalogProductIds: string[];
-  candidateAdditions: CatalogSnapshotItem[];
-  possibleChanges: CatalogSnapshotItem[];
-};
 
 export type ProofVendor = 'vercel' | 'cloudflare' | 'railway';
 export type ProofUsage = 'customer-proof' | 'competitive-context';

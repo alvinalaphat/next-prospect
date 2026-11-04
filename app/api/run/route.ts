@@ -4,7 +4,6 @@ import { isAuthorized, unauthorized } from '@/lib/auth';
 import { db, expireOpportunities, resetProspectForNewRun, schema, upsertProspect } from '@/lib/db';
 import { parseDomains } from '@/lib/domains';
 import type { ProspectStatus } from '@/lib/types';
-import { markSuperseded } from '@/lib/slack';
 import { workflowOutbound } from '@/workflows/outbound';
 
 const IN_FLIGHT: ProspectStatus[] = [
@@ -47,8 +46,7 @@ export async function POST(request: Request) {
   const existing = await db()
     .select({
       domain: schema.prospects.domain,
-      status: schema.prospects.status,
-      slack: schema.prospects.slack
+      status: schema.prospects.status
     })
     .from(schema.prospects)
     .where(inArray(schema.prospects.domain, domains));
@@ -61,16 +59,6 @@ export async function POST(request: Request) {
   let i = 0;
   for (const domain of domains) {
     if (busy.has(domain)) continue;
-    // A pending Slack card from the previous run would otherwise keep live buttons.
-    const prev = existing.find((p) => p.domain === domain);
-    if (
-      prev?.slack &&
-      prev.status === 'awaiting_approval' &&
-      process.env.SLACK_BOT_TOKEN &&
-      process.env.SLACK_SIGNING_SECRET
-    ) {
-      await markSuperseded(prev.slack, domain).catch((err) => console.warn('supersede failed', err));
-    }
     await expireOpportunities(domain);
     await resetProspectForNewRun(domain, batch);
     const run = await start(workflowOutbound, [domain, i * STAGGER_SECONDS]);
@@ -79,5 +67,5 @@ export async function POST(request: Request) {
     i++;
   }
 
-  return Response.json({ batch, started, skippedInFlight: [...busy], invalid });
+  return Response.json({ batch, started, alreadyRunning: [...busy], invalid });
 }

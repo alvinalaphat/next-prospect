@@ -2,7 +2,7 @@ import type { HostId, ProspectStatus } from '@/lib/types';
 
 type Tone = 'neutral' | 'blue' | 'green' | 'amber' | 'red' | 'violet';
 
-export const STATUS: Record<ProspectStatus, { label: string; tone: Tone; group: 'running' | 'review' | 'done' | 'skipped' }> = {
+export const STATUS: Record<ProspectStatus, { label: string; tone: Tone; group: 'running' | 'review' | 'done' | 'no_pitch' | 'error' }> = {
   queued: { label: 'Queued', tone: 'neutral', group: 'running' },
   detecting: { label: 'Detecting', tone: 'blue', group: 'running' },
   measuring: { label: 'Measuring', tone: 'blue', group: 'running' },
@@ -12,14 +12,8 @@ export const STATUS: Record<ProspectStatus, { label: string; tone: Tone; group: 
   awaiting_approval: { label: 'Needs review', tone: 'amber', group: 'review' },
   approved: { label: 'Approved', tone: 'green', group: 'done' },
   rejected: { label: 'Rejected', tone: 'red', group: 'done' },
-  expired: { label: 'Expired', tone: 'neutral', group: 'done' },
-  vercel_customer: { label: 'On Vercel', tone: 'violet', group: 'skipped' },
-  not_nextjs: { label: 'Not Next.js', tone: 'neutral', group: 'skipped' },
-  robots_disallowed: { label: 'robots.txt', tone: 'neutral', group: 'skipped' },
-  unreachable: { label: 'Unreachable', tone: 'neutral', group: 'skipped' },
-  blocked: { label: 'Bot-blocked', tone: 'neutral', group: 'skipped' },
-  disqualified: { label: 'Disqualified', tone: 'neutral', group: 'skipped' },
-  error: { label: 'Error', tone: 'red', group: 'skipped' }
+  disqualified: { label: 'No supported pitch', tone: 'neutral', group: 'no_pitch' },
+  error: { label: 'Error', tone: 'red', group: 'error' }
 };
 
 export const HOST_LABEL: Record<HostId, string> = {

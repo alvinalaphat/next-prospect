@@ -8,8 +8,21 @@ import { timingSafeEqual } from 'node:crypto';
 export function isAuthorized(request: Request): boolean {
   const secret = cleanSecret(process.env.RUN_SECRET ?? '');
   if (!secret) return process.env.NODE_ENV === 'development';
+  return hasBearerToken(request, secret, cleanSecret);
+}
+
+export function isCronAuthorized(request: Request): boolean {
+  const secret = process.env.CRON_SECRET ?? '';
+  return Boolean(secret) && hasBearerToken(request, secret);
+}
+
+function hasBearerToken(
+  request: Request,
+  secret: string,
+  normalize: (value: string) => string = (value) => value
+): boolean {
   const header = request.headers.get('authorization') ?? '';
-  const given = cleanSecret(header.replace(/^Bearer\s+/i, ''));
+  const given = normalize(header.replace(/^Bearer\s+/i, ''));
   const a = Buffer.from(given);
   const b = Buffer.from(secret);
   return a.length === b.length && timingSafeEqual(a, b);
@@ -29,3 +42,6 @@ export const unauthorized = () =>
     { error: 'Wrong or missing RUN_SECRET. Paste the value from .env.local (without "RUN_SECRET=").' },
     { status: 401 }
   );
+
+export const cronUnauthorized = () =>
+  Response.json({ error: 'Unauthorized' }, { status: 401 });

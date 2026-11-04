@@ -14,7 +14,8 @@ flowchart TD
   DETECT --> PERF[PageSpeed mobile and desktop]
   PERF --> RESEARCH[Public company research]
   RESEARCH --> PLAN[Catalog routing and deterministic scoring]
-  PLAN --> ENRICH[Buyer activity, proof selection, rescore, product-specific draft]
+  PLAN --> BUYERS[Shared buyer search and per-buyer activity]
+  BUYERS --> ENRICH[Proof selection, rescore, product-specific draft]
   ENRICH --> REVIEW[Dashboard and optional Slack review]
   REVIEW -->|approve| GMAIL[Optional Gmail draft]
   DETECT & PERF & RESEARCH --> LEDGER[(Evidence ledger)]
@@ -36,15 +37,16 @@ opportunities so stale approval actions cannot remain live.
 | Persisted workflow stages | `workflows/outbound/steps.ts` |
 | Product catalog and claims | `lib/catalog/` |
 | Signal weighting and score caps | `lib/scoring.ts` |
-| Opportunity routing, buyer, drafting | `lib/opportunity-services.ts` |
+| Opportunity routing, buyer assignment, drafting | `lib/opportunity-services.ts` |
+| Buyer activity research | `lib/contact-activity.ts` |
 | Evidence validation and citation repair | `lib/grounding.ts` |
 | Website and host detection | `lib/detect/` |
 | PageSpeed and CrUX | `lib/psi.ts` |
 | Decisions and Gmail handoff | `lib/opportunity-decision.ts`, `lib/gmail.ts` |
 | Slack cards and interactions | `lib/slack.ts`, `app/api/slack/route.ts` |
 | Persistence | `lib/db/`, `drizzle/` |
-| Weekly catalog/proof maintenance | `workflows/maintenance/`, `lib/refresh/` |
-| Evaluation fixtures and scripts | `eval/` |
+| Weekly customer-proof maintenance | `workflows/maintenance/`, `lib/refresh/` |
+| Test fixtures and scripts | `tests/` |
 
 ## Server and client boundaries
 
@@ -90,7 +92,6 @@ its own decision lifecycle and is the authoritative unit of review.
 - Unexpected stage failures call `stepFail`, storing a bounded account error
   before the workflow rethrows.
 - Failed accounts can be retried from the account error banner. The protected
-  retry route starts a replacement durable run and resumes from persisted
-  application checkpoints instead of repeating completed research.
+  retry route clears the failed account state and starts a fresh durable run.
 - Planner suppression is expected behavior and must not be rendered as an
   account-level fatal error.

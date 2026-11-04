@@ -19,7 +19,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 turns public company evidence into ranked, product-specific opportunities, a
 recommended buyer, and grounded draft outreach for human review. Read
 [the product strategy](./docs/product/strategy.md) before making product, copy,
-qualification, or workflow decisions.
+scoring, or workflow decisions.
 
 `CLAUDE.md` delegates to this file. Edit `AGENTS.md`, not both.
 
@@ -71,7 +71,7 @@ relevant guide under `node_modules/next/dist/docs/` first.
 - **Starting runs and recording decisions are privileged writes.** Preserve
   `RUN_SECRET` checks and approval-token validation. Reads are public only for
   the current demo form factor; this is not a multi-tenant authorization model.
-- **Verify in proportion to risk.** Run `pnpm typecheck` for code changes and
+- **Verify in proportion to risk.** Run `pnpm check` for code changes and
   the scoped checks in [the verification guide](./docs/testing/verification.md).
   UI changes require actually opening the page in Chrome at desktop and mobile
   widths, clicking the affected interactions, and checking console errors.
@@ -87,7 +87,7 @@ relevant guide under `node_modules/next/dist/docs/` first.
   product boundaries, sales principles, regional behavior, and non-goals.
 - [docs/architecture/grounding-and-scoring.md](./docs/architecture/grounding-and-scoring.md)
   — evidence ledger, LLM boundaries, deterministic scoring, citations, and
-  safe drafting. Read before changing prompts, qualification, scoring, or copy.
+  safe drafting. Read before changing prompts, opportunity planning, scoring, or copy.
 
 ### Architecture and code ownership
 
@@ -103,11 +103,11 @@ relevant guide under `node_modules/next/dist/docs/` first.
 ### Testing and shipping
 
 - [docs/testing/verification.md](./docs/testing/verification.md) — command
-  matrix, browser QA, eval scope, and what each check proves.
+  matrix, browser QA, test scope, and what each check proves.
 - [docs/shipping/deployment.md](./docs/shipping/deployment.md) — current Git to
   Vercel path, environment variables, migrations, release verification, and
   rollback cautions.
-- [eval/README.md](./eval/README.md) — detector labels, evaluation methodology,
+- [tests/README.md](./tests/README.md) — detector labels, fixture methodology,
   and limitations.
 
 ### Agent capabilities

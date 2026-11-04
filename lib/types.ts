@@ -128,31 +128,6 @@ export const researchSchema = z.object({
       })
     )
     .describe('Recent (last ~12 months) news, launches, hires, funding'),
-  likelyBuyer: z.object({
-    role: z
-      .string()
-      .describe('The ideal buyer role, e.g. "VP Engineering", "Head of Web Platform"'),
-    name: z
-      .string()
-      .nullable()
-      .describe('Full name, only if a retrieved page names this person in this role'),
-    title: z.string().nullable().describe('Their current title as shown on the source'),
-    linkedinUrl: z
-      .string()
-      .nullable()
-      .describe('linkedin.com/in/… profile URL returned by a people search'),
-    sourceUrl: z.string().nullable().describe('Page that ties this person to this role'),
-    rationale: z.string().describe('Why this is the best person to contact'),
-    alternates: z
-      .array(
-        z.object({
-          name: z.string(),
-          title: z.string().nullable(),
-          linkedinUrl: z.string().nullable()
-        })
-      )
-      .describe('Up to 2 other plausible contacts, same sourcing rules')
-  }),
   whyNow: z.array(sourced).describe('Time-sensitive reasons to reach out now')
   ,
   region: z
@@ -165,17 +140,14 @@ export const researchSchema = z.object({
   productSignals: z
     .array(
       sourced.extend({
-        kind: z.enum(['technology', 'launch', 'hire', 'job_posting', 'person_post', 'company', 'other']),
+        kind: z.enum(['technology', 'launch', 'hire', 'job_posting', 'company', 'other']),
         date: z.string().nullable()
       })
     )
     .describe('Public signals that may support any Vercel product opportunity')
 });
 
-export type Research = z.infer<typeof researchSchema> & {
-  /** Filled in code, never by the model: an address seen verbatim on a retrieved page. */
-  buyerEmail?: { address: string; sourceUrl: string } | null;
-};
+export type Research = z.infer<typeof researchSchema>;
 
 export type ContactActivity = {
   id: string;
@@ -187,12 +159,6 @@ export type ContactActivity = {
   relevance: string;
 };
 
-/**
- * ------------------------------------------------------------
- * Qualification (step 5)
- * ------------------------------------------------------------
- */
-
 const cited = z.object({
   text: z.string(),
   citations: z
@@ -200,25 +166,9 @@ const cited = z.object({
     .describe('Evidence ids from the ledger that support this claim')
 });
 
-export const qualificationSchema = z.object({
-  fitScore: z.number().int().min(0).max(100),
-  verdict: z.enum(['qualified', 'nurture', 'disqualified']),
-  reasoning: z.string().describe('Two to four sentences'),
-  strongestAngle: z.object({
-    label: z
-      .string()
-      .describe('Short tag, e.g. "Slow TTFB on AWS", "Self-hosted Next.js ISR"'),
-    explanation: z.string(),
-    citations: z.array(z.string())
-  }),
-  claims: z.array(cited).describe('Every factual claim used in the reasoning')
-});
-
-export type Qualification = z.infer<typeof qualificationSchema>;
-
 /**
  * ------------------------------------------------------------
- * Draft (step 6)
+ * Draft
  * ------------------------------------------------------------
  */
 
@@ -284,7 +234,6 @@ export const opportunityStatusSchema = z.enum([
   'awaiting_approval',
   'approved',
   'rejected',
-  'suppressed',
   'expired',
   'error'
 ]);
@@ -309,13 +258,6 @@ export const prospectStatuses = [
   'awaiting_approval',
   'approved',
   'rejected',
-  'expired',
-  // terminal "skip" states
-  'vercel_customer',
-  'not_nextjs',
-  'robots_disallowed',
-  'unreachable',
-  'blocked',
   'disqualified',
   'error'
 ] as const;

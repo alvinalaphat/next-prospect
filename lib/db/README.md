@@ -14,24 +14,24 @@ storage.
 ## Tables
 
 - `prospects`: latest account-level workflow state, shared research, detection,
-  performance, evidence, and legacy account-level draft fields.
+  performance, evidence, and summary score.
 - `opportunities`: product-specific angle, score, evidence IDs, buyer and
   attributable public activity, selected proof/context IDs, draft, approval
   state, and Slack/Gmail metadata.
 - `psi_cache`: cached PageSpeed responses to reduce quota use.
-- `maintenance_runs`: durable status and results for weekly catalog/proof jobs.
+- `maintenance_runs`: durable status and results for the weekly proof job.
 - `proof_records`: refreshed Vercel customer proof and competitor context;
   these records never contribute scoring points.
 
 The opportunity is the unit of review. The prospect status is a dashboard-level
 summary and must remain consistent with child decisions.
 
-A brand-new run clears account-level detection, performance, research,
-evidence, scoring, and legacy draft fields before it starts. A retry replacement
-is different: it deliberately adopts only the failed run's persisted state and
-transfers that run's opportunities to the replacement run ID in the same atomic
-claim. `planning_complete` distinguishes a fully persisted product set from
-partial planner writes; incomplete sets are cleared before the planner retries.
+A new run, including **Try again**, clears account-level detection, performance,
+research, evidence, and scoring before it starts. Previous
+reviewable opportunities expire and are never transferred to the new run.
+`planning_complete` distinguishes a fully persisted product set from partial
+planner writes within one run; incomplete sets are cleared before the planner
+step retries automatically.
 
 ## Schema changes
 
@@ -67,7 +67,7 @@ the schema and migration history. It is destructive and follows the same
 running it.
 
 For automated tests, prefer a temporary `PGLITE_PATH` and delete
-`DATABASE_URL` in the test process, as `eval/e2e.ts` does.
+`DATABASE_URL` in the test process, as `tests/e2e.ts` does.
 
 ## Query boundaries
 

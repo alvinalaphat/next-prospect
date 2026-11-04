@@ -13,7 +13,7 @@ export async function DELETE(request: Request, ctx: { params: Promise<{ domain: 
   if (process.env.SLACK_BOT_TOKEN && process.env.SLACK_SIGNING_SECRET) {
     const opportunities = await getOpportunities(domain);
     await Promise.all(
-      [prospect.slack, ...opportunities.map((opportunity) => opportunity.slack)]
+      opportunities.map((opportunity) => opportunity.slack)
         .filter((slack): slack is { channel: string; ts: string } => !!slack)
         .map((slack) =>
           markSuperseded(slack, domain, 'This account was deleted from NextProspect.').catch(() => {})

@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { authHeaders, useRunSecret } from '@/lib/client-secret';
+import { authHeaders, secretCheckMessage, useRunSecret } from '@/lib/client-secret';
 import type { Draft } from '@/lib/types';
 
 export function OpportunityApprovalBar({ opportunityId, draft }: { opportunityId: string; draft: Draft }) {
@@ -18,12 +18,8 @@ export function OpportunityApprovalBar({ opportunityId, draft }: { opportunityId
   async function decide(decision: 'approved' | 'rejected') {
     setBusy(true);
     const { value, status } = await secretField.commit();
-    if (status === 'empty') {
-      toast.error('Enter the run secret.');
-      setBusy(false);
-      return;
-    }
-    if (status === 'invalid') {
+    if (status !== 'valid') {
+      toast.error(secretCheckMessage(status));
       setBusy(false);
       return;
     }

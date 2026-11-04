@@ -1,4 +1,4 @@
-import type { OpportunityRow, ProspectRow } from '@/lib/db/schema';
+import type { OpportunityRow } from '@/lib/db/schema';
 import { stripEmDashes } from '@/lib/email-text';
 
 /**
@@ -166,41 +166,7 @@ export function buildMime({
   return `${headers.join('\r\n')}\r\n\r\n${parts.join('\r\n')}`;
 }
 
-/** Published buyer address only — never a guessed pattern. */
-function recipient(p: ProspectRow): string | null {
-  const email = p.draft?.to?.email ?? p.research?.buyerEmail?.address ?? null;
-  if (!email) return null;
-  return formatMailbox(p.draft?.to?.name ?? p.research?.likelyBuyer?.name, email);
-}
-
-export async function createGmailDraft(p: ProspectRow): Promise<GmailDraft> {
-  if (!p.draft) throw new Error(`${p.domain} has no draft`);
-  const d = p.draft;
-  const to = recipient(p);
-  const token = await accessToken();
-  const from = formatMailbox(process.env.REP_NAME, await accountEmail(token));
-  const raw = Buffer.from(
-    buildMime({ from, to, subject: stripEmDashes(d.subject), body: stripEmDashes(d.body) })
-  ).toString('base64url');
-
-  const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/drafts', {
-    method: 'POST',
-    headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
-    body: JSON.stringify({ message: { raw } })
-  });
-  const json = await res.json();
-  if (!res.ok) throw new Error(`Gmail drafts.create failed: ${json.error?.message ?? res.status}`);
-
-  return {
-    id: json.id,
-    messageId: json.message.id,
-    url: `https://mail.google.com/mail/#drafts?compose=${json.message.id}`,
-    to,
-    createdAt: new Date().toISOString()
-  };
-}
-
-/** Opportunity-level twin used by v2's independent product drafts. */
+/** Create a human-reviewed Gmail draft for one approved opportunity. */
 export async function createOpportunityGmailDraft(opportunity: OpportunityRow): Promise<GmailDraft> {
   if (!opportunity.draft) throw new Error(`${opportunity.productName} opportunity has no draft`);
   const d = opportunity.draft;

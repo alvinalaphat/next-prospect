@@ -6,7 +6,6 @@ import {
   FileCheck2,
   Globe2,
   Layers3,
-  Search,
   ShieldCheck,
   Sparkles,
   UserRoundCheck,
@@ -208,16 +207,12 @@ export default function About() {
       </section>
 
       <section aria-labelledby="maintenance-title">
-        <SectionIntro eyebrow="Weekly maintenance" title="The reference material stays current" id="maintenance-title">
-          Vercel Cron starts two authenticated, durable refreshes every Monday. Public findings are stored for review, not
-          allowed to rewrite scoring or approved claims on their own.
+        <SectionIntro eyebrow="Weekly maintenance" title="Customer proof stays current" id="maintenance-title">
+          Vercel Cron starts one authenticated, durable refresh every Monday. Public findings are stored for review, not
+          allowed to change scoring or approved claims on their own.
         </SectionIntro>
 
-        <div className="mt-8 grid gap-4 md:grid-cols-2">
-          <MaintenanceCard icon={Search} time="Monday · 14:00 UTC" title="Vercel catalog audit">
-            Checks official docs, changelog, and announcements for new products or possible changes. Updating the active
-            catalog still requires a reviewed code change.
-          </MaintenanceCard>
+        <div className="mt-8 max-w-2xl">
           <MaintenanceCard icon={Workflow} time="Monday · 15:00 UTC" title="Customer-proof refresh">
             Refreshes Vercel, Cloudflare, and Railway case studies. Vercel proof supports review; competitor stories remain
             internal-only. Neither contributes scoring points.
@@ -299,7 +294,7 @@ function MaintenanceCard({
   title,
   children
 }: {
-  icon: typeof Search;
+  icon: typeof Workflow;
   time: string;
   title: string;
   children: React.ReactNode;

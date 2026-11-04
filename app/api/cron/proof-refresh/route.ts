@@ -1,5 +1,5 @@
 import { start } from 'workflow/api';
-import { cronUnauthorized, isCronAuthorized } from '@/lib/cron-auth';
+import { cronUnauthorized, isCronAuthorized } from '@/lib/auth';
 import { workflowRefreshProofs } from '@/workflows/maintenance';
 
 export async function GET(request: Request) {

@@ -67,11 +67,8 @@ Each rule ID scores at most once. If the planner repeats a rule, scoring keeps
 the strongest supported match and combines its evidence receipts. When more
 than one account tier is proposed, only the highest supported tier remains.
 
-Scores are stored with each opportunity rather than recalculated on read.
-Historical opportunities may therefore retain the previous model's `risk`
-field and deduction. Review surfaces label those breakdowns as legacy and show
-their original stored score; new opportunities use only the positive sales-fit
-account tiers above.
+Scores are stored with each opportunity rather than recalculated on read. New
+runs use only the positive sales-fit account tiers above.
 
 The planner keeps grounded product-fit candidates even when their total is
 weak. `productFit === 0` is the hard suppression boundary.
@@ -107,16 +104,18 @@ opportunities. It must not imply:
 
 ## Buyer grounding
 
-Buyer discovery happens after a product and angle are selected. Search results
-are scoped to the product's target roles. A named contact is accepted only when
+Buyer discovery happens after all product angles are selected. One combined
+people search covers the union of their target roles, and the model assigns a
+buyer to each opportunity. A named contact is accepted only when
 the selected name is present in retrieved content. Published emails are used
 only when found in retrieved public text; addresses are never constructed.
 
 When no person is sufficiently supported, store null contact fields and retain
 the explicit target role. That is a valid, honest result.
 
-After a named buyer is grounded, a separate search may find public posts,
-blogs, talks, podcasts, or GitHub activity from the prior year. The complete
+After buyers are grounded, public activity is searched once per unique person,
+even when they own several opportunities. The model selects the relevant posts,
+blogs, talks, podcasts, or GitHub activity separately for each opportunity. The complete
 buyer name must appear as one boundary-aware phrase in the retrieved title,
 author, or highlights before the result reaches the model. The retrieved
 source owns the publication date; undated material is never described as

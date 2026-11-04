@@ -23,9 +23,9 @@ await migrationClient.close();
 const { approvalToken } = await import('@/lib/approval-token');
 const {
   claimProspectRun,
-  claimRetryRunWithOpportunities,
   clearIncompleteOpportunityPlanning,
   completeMaintenanceRun,
+  claimFreshProspectRun,
   getLatestMaintenanceRun,
   insertOpportunity,
   getOpportunity,
@@ -33,7 +33,7 @@ const {
   getProspect,
   listActiveProofRecords,
   resetProspectForNewRun,
-  reserveProspectRetry,
+  resetFailedProspectForRetry,
   restoreProspectRetry,
   startMaintenanceRun,
   updateOpportunity,
@@ -85,15 +85,6 @@ await upsertProspect(resetDomain, {
     summary: { text: 'Stale summary', sourceUrl: 'https://old.example/source' },
     sizeSignals: [],
     news: [],
-    likelyBuyer: {
-      role: 'VP Engineering',
-      name: null,
-      title: null,
-      linkedinUrl: null,
-      sourceUrl: null,
-      rationale: 'Stale buyer',
-      alternates: []
-    },
     whyNow: [],
     region: { group: 'unknown', label: 'Unknown', sourceUrl: null },
     productSignals: []
@@ -122,7 +113,7 @@ const scored = scoreOpportunity({
     { ruleId: 'account.growth-scale', evidenceIds: ['research.size.0'], confidence: 'high', explanation: 'Growth-stage account' }
   ]
 });
-const token = approvalToken(id, runId, 'opportunity');
+const token = approvalToken(id, runId);
 await insertOpportunity({
   id,
   domain,
@@ -172,7 +163,7 @@ await insertOpportunity({
 assert.equal(
   await updateOpportunityForRun(supersededOpportunityId, {
     status: 'awaiting_approval',
-    approvalToken: approvalToken(supersededOpportunityId, 'original-run', 'opportunity')
+    approvalToken: approvalToken(supersededOpportunityId, 'original-run')
   }),
   null
 );
@@ -185,6 +176,8 @@ const retryOpportunityId = crypto.randomUUID();
 await upsertProspect(retryDomain, {
   status: 'error',
   runId: failedRunId,
+  fitScore: 81,
+  evidence: [{ id: 'research.retry', source: 'research', label: 'Old evidence', value: 'Clear me' }],
   error: 'Temporary provider credit error'
 });
 await insertOpportunity({
@@ -192,31 +185,37 @@ await insertOpportunity({
   id: retryOpportunityId,
   domain: retryDomain,
   runId: failedRunId,
-  status: 'drafting',
+  status: 'awaiting_approval',
   decision: null,
   approvalToken: null
 });
-assert.equal(await reserveProspectRetry(retryDomain, failedRunId), true);
-assert.equal(await reserveProspectRetry(retryDomain, failedRunId), false);
-assert.equal((await getProspect(retryDomain))?.status, 'queued');
+assert.equal(await resetFailedProspectForRetry(retryDomain, failedRunId, 'retry-batch'), true);
+assert.equal(await resetFailedProspectForRetry(retryDomain, failedRunId, 'duplicate-batch'), false);
+const resetRetryProspect = await getProspect(retryDomain);
+assert.equal(resetRetryProspect?.status, 'queued');
+assert.equal(resetRetryProspect?.runId, null);
+assert.equal(resetRetryProspect?.fitScore, 81);
+assert.equal(resetRetryProspect?.evidence?.[0]?.id, 'research.retry');
+assert.equal((await getOpportunity(retryOpportunityId))?.status, 'awaiting_approval');
+assert.equal((await getOpportunity(retryOpportunityId))?.runId, failedRunId);
 assert.equal(
   await restoreProspectRetry(retryDomain, failedRunId, 'Temporary provider credit error'),
   true
 );
 assert.equal((await getProspect(retryDomain))?.status, 'error');
-assert.equal(await reserveProspectRetry(retryDomain, failedRunId), true);
-assert.equal(await claimRetryRunWithOpportunities(retryDomain, failedRunId, retryRunId), true);
+assert.equal((await getProspect(retryDomain))?.fitScore, 81);
+assert.equal((await getProspect(retryDomain))?.evidence?.[0]?.id, 'research.retry');
+assert.equal((await getOpportunity(retryOpportunityId))?.status, 'awaiting_approval');
+assert.equal(await resetFailedProspectForRetry(retryDomain, failedRunId, 'retry-batch-2'), true);
+assert.equal(await claimFreshProspectRun(retryDomain, retryRunId), true);
+assert.equal((await getProspect(retryDomain))?.fitScore, null);
+assert.equal((await getProspect(retryDomain))?.evidence, null);
+assert.equal((await getOpportunity(retryOpportunityId))?.status, 'expired');
 await updateProspectForRun(retryDomain, retryRunId, { status: 'error', error: 'Fast retry failure' });
 assert.equal(await claimProspectRun(retryDomain, retryRunId, {}), true);
 assert.equal((await getProspect(retryDomain))?.status, 'error');
 assert.equal((await getProspect(retryDomain))?.error, 'Fast retry failure');
-assert.equal((await getOpportunity(retryOpportunityId))?.runId, retryRunId);
-assert.equal(await reserveProspectRetry(retryDomain, retryRunId), true);
-assert.equal(await claimRetryRunWithOpportunities(retryDomain, retryRunId, 'second-retry-run'), true);
-assert.equal((await getProspect(retryDomain))?.runId, 'second-retry-run');
-assert.equal((await getOpportunity(retryOpportunityId))?.runId, 'second-retry-run');
-await updateProspectForRun(retryDomain, 'second-retry-run', { status: 'queued' });
-assert.equal(await reserveProspectRetry(retryDomain, retryRunId), false);
+assert.equal((await getOpportunity(retryOpportunityId))?.runId, failedRunId);
 
 const partialPlanningDomain = 'partial-planning.example';
 const partialPlanningRunId = 'partial-planning-run';
@@ -259,23 +258,35 @@ await insertOpportunity({
 assert.equal(await clearIncompleteOpportunityPlanning(partialPlanningDomain, partialPlanningRunId), false);
 assert.equal((await getOpportunities(partialPlanningDomain, partialPlanningRunId)).length, 1);
 
-const activeRetryRunId = 'second-retry-run';
+const completionDomain = 'completion.example';
+const completionRunId = 'completion-run';
+const completionOpportunityId = crypto.randomUUID();
+await upsertProspect(completionDomain, { status: 'researching', runId: completionRunId });
+await insertOpportunity({
+  ...reviewableOpportunity,
+  id: completionOpportunityId,
+  domain: completionDomain,
+  runId: completionRunId,
+  status: 'drafting',
+  decision: null,
+  approvalToken: null
+});
 assert.equal(
-  await updateOpportunityForRun(retryOpportunityId, { status: 'awaiting_approval' }) !== null,
+  await updateOpportunityForRun(completionOpportunityId, { status: 'awaiting_approval' }) !== null,
   true
 );
-const retryApprovalToken = approvalToken(retryOpportunityId, activeRetryRunId, 'opportunity');
-await stepRequestOpportunityApproval(retryOpportunityId, retryApprovalToken);
-assert.equal((await getOpportunity(retryOpportunityId))?.status, 'awaiting_approval');
-assert.equal((await getOpportunity(retryOpportunityId))?.approvalToken, retryApprovalToken);
-await updateOpportunity(retryOpportunityId, { status: 'rejected' });
-await updateProspectForRun(retryDomain, activeRetryRunId, { status: 'researching', error: null });
-assert.equal(await stepFinishOpportunityPlanning(retryDomain, activeRetryRunId), 'rejected');
-assert.equal((await getProspect(retryDomain))?.status, 'rejected');
-await updateOpportunity(retryOpportunityId, { status: 'approved' });
-await updateProspectForRun(retryDomain, activeRetryRunId, { status: 'researching', error: null });
-assert.equal(await stepFinishOpportunityPlanning(retryDomain, activeRetryRunId), 'approved');
-assert.equal((await getProspect(retryDomain))?.status, 'approved');
+const completionToken = approvalToken(completionOpportunityId, completionRunId);
+await stepRequestOpportunityApproval(completionOpportunityId, completionToken);
+assert.equal((await getOpportunity(completionOpportunityId))?.status, 'awaiting_approval');
+assert.equal((await getOpportunity(completionOpportunityId))?.approvalToken, completionToken);
+await updateOpportunity(completionOpportunityId, { status: 'rejected' });
+await updateProspectForRun(completionDomain, completionRunId, { status: 'researching', error: null });
+assert.equal(await stepFinishOpportunityPlanning(completionDomain, completionRunId), 'rejected');
+assert.equal((await getProspect(completionDomain))?.status, 'rejected');
+await updateOpportunity(completionOpportunityId, { status: 'approved' });
+await updateProspectForRun(completionDomain, completionRunId, { status: 'researching', error: null });
+assert.equal(await stepFinishOpportunityPlanning(completionDomain, completionRunId), 'approved');
+assert.equal((await getProspect(completionDomain))?.status, 'approved');
 
 const result = await applyOpportunityDecision(token, {
   decision: 'approved',
@@ -351,8 +362,8 @@ assert.equal((await getLatestMaintenanceRun('proof'))?.status, 'complete');
   console.log('✓ e2e: account → scored expansion opportunity → grounded draft → approval → parent status');
   console.log('✓ maintenance: proof upsert → durable refresh status');
   console.log('✓ run ownership: superseded runs cannot overwrite current account or opportunity state');
-  console.log('✓ retry checkpoints: fresh runs clear stale data and replacement runs preserve advanced state');
-  console.log('✓ retry completion: missing review publication resumes and final decisions restore parent state');
+  console.log('✓ clean retries: failed state is cleared and old opportunities are not transplanted');
+  console.log('✓ opportunity completion: review publication and final decisions update parent state');
 }
 
 main().then(() => process.exit(0)).catch((error) => {

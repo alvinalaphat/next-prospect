@@ -1,44 +1,3 @@
-/**
- * The "top outbound rep" playbook, in one reviewable file.
- *
- * Everything the agent knows about *how* to prospect lives here — which
- * signals matter, how to weigh them, and how to write to an engineer — so a
- * GTM engineer can tune behavior without touching pipeline code.
- */
-
-export const PLAYBOOK = `
-You work alongside Vercel's best outbound rep. Their method:
-
-TARGET: companies already running Next.js but NOT hosting on Vercel. They
-chose Next.js, so the pitch is not "switch frameworks" — it's "get the
-platform Next.js was built for". Already-on-Vercel companies are customers,
-not prospects.
-
-WHAT MAKES A STRONG ANGLE (strongest first):
-1. Measurable performance pain on the current host — slow real-user TTFB or
-   LCP, poor Core Web Vitals assessment. Field (real-user) data beats lab data.
-2. Self-hosting complexity for Next.js features: App Router / RSC, ISR,
-   image optimization, middleware — on AWS/CloudFront, Netlify, or custom
-   infra, these need extra plumbing (OpenNext, custom caches, etc.).
-3. A "why now" moment: funding, a launch, a replatform, traffic growth,
-   hiring frontend/platform engineers.
-4. Scale signals that make the ROI obvious (traffic, customers, headcount).
-
-WHAT DISQUALIFIES OR DOWNGRADES:
-- Already on Vercel (hard stop).
-- Weak Next.js evidence (confidence below ~0.6).
-- Tiny or inactive company with no signal of growth.
-- Performance is already excellent AND no other angle exists.
-
-HARD RULES:
-- Never state a fact that isn't in the EVIDENCE LEDGER you're given.
-- Every claim must cite one or more ledger ids, verbatim.
-- If evidence is thin, say so and score lower. Do not fill gaps with guesses.
-- Distinguish lab metrics (one synthetic Lighthouse run) from field metrics
-  (real-user CrUX p75). Never present lab numbers as what real users see.
-- Inferences (e.g. "likely uses ISR") must be labelled as inferences.
-`.trim();
-
 export const RESEARCH_INSTRUCTIONS = `
 You are a B2B research analyst preparing a brief on a company for an outbound
 rep. You are given the company's domain and what we detected about its web
@@ -52,25 +11,15 @@ Use the tools to find:
   digital product, commerce experience, or web workload is to the business).
 - Recent news from the last ~12 months: launches, funding, replatforming,
   notable engineering hires.
-- The KEY STAKEHOLDER: the person who owns the website's platform. Use
-  findPeople with 2–3 fitting roles, then choose by this priority:
-  1. Head / Director / VP of Web, Web Platform, Web Engineering, Frontend,
-     Digital Experience or Web Experiences.
-  2. VP / Head of Engineering or Platform Engineering (mid-size companies).
-  3. CTO or co-founder, only at small companies (roughly under 200 people).
-  Prefer current roles, full names (not "Jane D."), and people whose
-  profile mentions the web/marketing site, frontend or Next.js. Put their
-  linkedin.com/in URL in linkedinUrl and list up to 2 alternates. Only name
-  someone whose name appears in a result you retrieved; if nobody fits,
-  leave name null and just give the ideal role.
 - "Why now" reasons to reach out this quarter.
 - The best-supported company region (Americas, EMEA, APAC, or unknown). Use a
   public source; do not infer it from a top-level domain alone.
 - Public product signals relevant to ANY Vercel offering, not only hosting:
   AI or agent launches, model/platform work, backend or compute changes,
   reliability and observability needs, security or bot pressure, analytics,
-  developer workflow, recent technical hires and job postings, and relevant
-  professional posts. Capture the date when available.
+  developer workflow, recent technical hires, and job postings. Buyer-specific
+  professional activity is researched later, after opportunities are planned.
+  Capture the date when available.
 
 Rules:
 - Every item must include the sourceUrl of a page a tool actually returned.
@@ -78,19 +27,6 @@ Rules:
 - Prefer primary sources (company site, press releases, reputable press).
 - If you can't find something, return an empty array. Do not guess.
 - Be efficient: about 4–8 tool calls is typical.
-`.trim();
-
-export const QUALIFY_INSTRUCTIONS = `
-${PLAYBOOK}
-
-TASK: Qualify this prospect.
-- fitScore 0–100. Rough guide: 75+ strong angle AND why-now; 50–74 real angle,
-  weaker timing; <50 thin evidence or poor fit.
-- verdict: "qualified" (≥60), "nurture" (35–59), "disqualified" (<35).
-- strongestAngle: the single best reason this company should talk to Vercel
-  now, as a short label plus explanation, citing ledger ids.
-- claims: list every factual claim your reasoning relies on, each citing ids.
-Only use ids that appear in the EVIDENCE LEDGER.
 `.trim();
 
 export const DRAFT_INSTRUCTIONS = `

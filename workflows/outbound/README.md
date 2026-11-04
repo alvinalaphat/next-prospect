@@ -12,26 +12,22 @@ optional batch delay
   → research public account signals
   → assemble the shared evidence ledger
   → plan and score up to three product opportunities
-  → for each opportunity: find buyer, research public buyer activity, attach
-    customer proof and competitive context, rescore, draft, request review
+  → search people once and assign a buyer to each opportunity
+  → research public activity once per unique buyer and tailor it per opportunity
+  → for each opportunity: attach customer proof and competitive context,
+    rescore, draft, request review
   → stop at awaiting approval
 ```
 
 The workflow does not wait for a decision. Dashboard and Slack routes record
 decisions after the durable run reaches `awaiting_approval`.
 
-An account-level failure exposes a protected Retry action. Retry starts a new
-durable run on the latest deployment, transfers the failed run's persisted
-opportunity checkpoints to it, and continues from the first incomplete stage.
-Completed detection, performance, research, planning, drafts, and reviewable
-opportunities are reused rather than repeated. A missing Slack receipt is
-republished without regenerating its draft, while already-decided opportunities
-stay final and determine the restored account status. This is application-level
-checkpoint recovery: Workflow SDK terminal runs themselves are not reopened.
-The account claim and opportunity transfer happen in one database statement,
-so a failed handoff cannot split checkpoint ownership across runs. Planning has
-an explicit completion marker; partial planner writes are cleared and replanned
-before enrichment instead of being mistaken for a completed product set.
+An account-level failure exposes a protected **Try again** action. It expires any
+still-reviewable opportunities, clears the failed account state, and starts the
+same durable workflow from the beginning on the latest deployment. Within that
+new run, Workflow SDK retries failed steps automatically. Planning retains an
+explicit completion marker so a repeated planner step clears partial writes
+instead of treating them as a complete product set.
 
 ## Durable execution rules
 
@@ -40,17 +36,14 @@ before enrichment instead of being mistaken for a completed product set.
 - Step inputs and outputs must be serializable.
 - Make each step retry-safe. A retry must converge on the same prospect or
   opportunity state rather than duplicate externally visible work.
-- A replacement retry run must claim the account before it can publish, and
-  unfinished opportunities must move to that run atomically before enrichment
-  resumes.
-- Starting a brand-new run clears every prior account-stage checkpoint; only a
-  replacement retry run may adopt the failed run's persisted checkpoints.
+- Every new run clears prior account-stage data and owns newly created
+  opportunities. Never transfer opportunities between run IDs.
 - Persist a status before or with meaningful work so the dashboard explains
   where a run is.
 - Treat missing optional integrations as degradation, not permission to invent
   evidence.
 - Reserve account status `error` and the `error` field for unexpected failure.
-  A product candidate being suppressed is normal planner behavior.
+  A product candidate being ineligible is normal planner behavior.
 - Scope every step write to the owning `runId`, so an older or superseded run
   cannot overwrite the current account state.
 - Keep batch staggering unless quota and concurrency behavior is deliberately
@@ -86,10 +79,13 @@ sorts by score, and keeps up to three.
 
 ### Enrich opportunity
 
-Buyer discovery runs after the product angle is known. The presence of a named,
-grounded buyer affects buyer-confidence points. A second grounded search may
-add the selected buyer's recent public posts, blogs, talks, podcasts, or GitHub
-activity to drafting context, but it does not change product ranking or scoring.
+Buyer discovery runs after every product angle is known. One combined people
+search supplies candidates for all opportunities, then the model assigns the
+best grounded buyer to each. The presence of a named buyer affects
+buyer-confidence points. Public activity is searched once per unique selected
+buyer and selected separately for each of that buyer's opportunities. It may
+add recent posts, blogs, talks, podcasts, or GitHub activity to drafting
+context, but it does not change product ranking or scoring.
 Relevant Vercel customer proof and competitor case studies are selected from
 the refreshed proof library and stored on the opportunity. Competitive context
 is never passed to drafting. Drafting receives only prospect/buyer evidence,
@@ -107,7 +103,7 @@ the dashboard remains a valid review surface. Nothing sends automatically.
 ## When changing the workflow
 
 1. Update this file if stage order, retry behavior, or a status invariant changes.
-2. Run `pnpm typecheck` and `pnpm build`.
-3. Run `pnpm eval` for planning or scoring changes.
-4. Run `pnpm test:e2e` for opportunity, persistence, token, or decision changes.
+2. Run `pnpm check` and `pnpm build`.
+3. Run `pnpm test` for planning, scoring, opportunity, persistence, token,
+   or decision changes.
 5. Exercise a real local run when changing an external stage or its degradation path.

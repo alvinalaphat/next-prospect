@@ -1,8 +1,7 @@
 import { FatalError, getStepMetadata, RetryableError } from 'workflow';
 import { detect, detectionEvidence } from '@/lib/detect';
 import {
-  claimProspectRun,
-  claimRetryRunWithOpportunities,
+  claimFreshProspectRun,
   clearIncompleteOpportunityPlanning,
   getOpportunities,
   getOpportunity,
@@ -12,15 +11,15 @@ import {
   updateProspectForRun
 } from '@/lib/db';
 import { researchEvidence } from '@/lib/grounding';
-import { findOpportunityContact, planOpportunities, writeOpportunityDraft } from '@/lib/opportunity-services';
-import { contactActivityEvidence, researchContactActivity } from '@/lib/contact-activity';
+import { findOpportunityContacts, planOpportunities, writeOpportunityDraft } from '@/lib/opportunity-services';
+import { contactActivityEvidence, researchContactActivities } from '@/lib/contact-activity';
 import { selectOpportunityProof } from '@/lib/proof-selection';
 import { emptyPerfResult, perfEvidence, PsiRateLimitError, runPsi } from '@/lib/psi';
 import { scoreOpportunity } from '@/lib/scoring';
 import { getProduct } from '@/lib/catalog/products';
-import { qualify, research, ResearchAuthError, writeDraft } from '@/lib/services';
-import { postApprovalRequest, postOpportunityApprovalRequest } from '@/lib/slack';
-import type { Detection, EvidenceItem, Perf, ProspectStatus, Qualification, Research } from '@/lib/types';
+import { research, ResearchAuthError } from '@/lib/services';
+import { postOpportunityApprovalRequest } from '@/lib/slack';
+import type { ContactActivity, Detection, EvidenceItem, OpportunityContact, Perf, Research } from '@/lib/types';
 
 /**
  * step: detect Next.js + hosting from one polite homepage fetch
@@ -28,7 +27,7 @@ import type { Detection, EvidenceItem, Perf, ProspectStatus, Qualification, Rese
 export const stepDetect = async (domain: string, runId: string) => {
   'use step';
 
-  if (!(await claimProspectRun(domain, runId, { status: 'detecting', error: null }))) {
+  if (!(await claimFreshProspectRun(domain, runId))) {
     return { detection: null, evidence: [] as EvidenceItem[], stop: true as const };
   }
   const detection = await detect(domain);
@@ -37,11 +36,8 @@ export const stepDetect = async (domain: string, runId: string) => {
   // Eligibility is evaluated per product. Being on Vercel or not using
   // Next.js can suppress a hosting motion, but must not eliminate AI,
   // observability, security, or other product opportunities.
-  const status: ProspectStatus | null =
-    detection.outcome === 'unreachable' ? 'unreachable' : null;
-
   const active = await updateProspectForRun(domain, runId, {
-    status: status ?? 'measuring',
+    status: 'measuring',
     detection,
     evidence,
     host: detection.host.primary,
@@ -114,111 +110,12 @@ export const stepResearch = async (domain: string, runId: string, detection: Det
 };
 
 /**
- * step: qualify against the evidence ledger
- */
-export const stepQualify = async (domain: string, runId: string, evidence: EvidenceItem[]) => {
-  'use step';
-
-  const { qualification, warnings } = await qualify(domain, evidence);
-  const status: ProspectStatus = qualification.verdict === 'disqualified' ? 'disqualified' : 'drafting';
-  await updateProspectForRun(domain, runId, {
-    status,
-    qualification,
-    evidence,
-    fitScore: qualification.fitScore,
-    angle: qualification.strongestAngle.label
-  });
-  return { qualification, warnings };
-};
-
-/**
- * step: draft the email + rep brief
- */
-export const stepDraft = async (
-  domain: string,
-  runId: string,
-  evidence: EvidenceItem[],
-  qualification: Qualification,
-  research: Research | null,
-  extraWarnings: string[]
-) => {
-  'use step';
-
-  const draft = await writeDraft(domain, evidence, qualification, research);
-  draft.warnings = [...extraWarnings, ...draft.warnings];
-  await updateProspectForRun(domain, runId, { draft });
-  return draft;
-};
-
-/**
- * step: ask a human — Slack card with Approve / Edit / Reject
- */
-export const stepRequestApproval = async (domain: string, runId: string, token: string) => {
-  'use step';
-
-  if (!(await updateProspectForRun(domain, runId, { status: 'awaiting_approval', approvalToken: token }))) return;
-
-  if (!process.env.SLACK_BOT_TOKEN || !process.env.SLACK_SIGNING_SECRET) {
-    console.warn('⚠️  Slack not configured — approve from the dashboard instead');
-    return;
-  }
-  const prospect = await getProspect(domain);
-  if (!prospect) throw new FatalError(`Prospect ${domain} missing`);
-  if (!(await isProspectRunCurrent(domain, runId))) return;
-  const slack = await postApprovalRequest(prospect, token);
-  await updateProspectForRun(domain, runId, { slack });
-  return slack;
-};
-
-/**
  * step: mark a run as failed so it shows up on the dashboard
  */
 export const stepFail = async (domain: string, runId: string, message: string) => {
   'use step';
 
   await updateProspectForRun(domain, runId, { status: 'error', error: message.slice(0, 500) });
-};
-
-/** Adopt the persisted checkpoints from a failed run under its replacement run. */
-export const stepResumeOutbound = async (
-  domain: string,
-  failedRunId: string,
-  retryRunId: string
-) => {
-  'use step';
-
-  if (!(await claimRetryRunWithOpportunities(domain, failedRunId, retryRunId))) {
-    return { stop: true as const };
-  }
-  const prospect = await getProspect(domain);
-  if (!prospect || prospect.runId !== retryRunId) return { stop: true as const };
-  const opportunities = await getOpportunities(domain, retryRunId);
-  const url = prospect.detection?.finalUrl ?? `https://${domain}/`;
-  const evidence = [
-    ...(prospect.detection ? detectionEvidence(prospect.detection) : []),
-    ...(prospect.perf ? perfEvidence(prospect.perf, url) : []),
-    ...(prospect.research ? researchEvidence(prospect.research) : [])
-  ];
-  await updateProspectForRun(domain, retryRunId, {
-    status: prospect.planningComplete
-      ? opportunities.length ? 'researching' : 'disqualified'
-      : prospect.detection ? 'qualifying' : 'detecting',
-    error: null
-  });
-  return {
-    stop: false as const,
-    detection: prospect.detection,
-    perf: prospect.perf,
-    research: prospect.research,
-    planningComplete: prospect.planningComplete,
-    evidence,
-    opportunities: opportunities.map((opportunity) => ({
-      id: opportunity.id,
-      status: opportunity.status,
-      hasDraft: Boolean(opportunity.draft),
-      hasSlack: Boolean(opportunity.slack)
-    }))
-  };
 };
 
 /** Plan and persist up to three product-specific opportunities. */
@@ -280,11 +177,86 @@ export const stepPlanOpportunities = async (
   return rows.map((row) => row.id);
 };
 
-/** Find the opportunity's buyer, finalize its score, and draft outreach. */
+export type OpportunityBuyerResearch = {
+  opportunityId: string;
+  contact: OpportunityContact;
+  activity: ContactActivity[];
+};
+
+/** Search people once, then research activity once per unique selected buyer. */
+export const stepResearchOpportunityBuyers = async (
+  domain: string,
+  runId: string,
+  opportunityIds: string[],
+  researchResult: Research | null
+): Promise<OpportunityBuyerResearch[]> => {
+  'use step';
+
+  if (!(await isProspectRunCurrent(domain, runId))) return [];
+  const rows = (await Promise.all(opportunityIds.map((id) => getOpportunity(id))))
+    .filter((row) => row?.runId === runId);
+  const fallback = (targetRole: string): OpportunityContact => ({
+    name: null,
+    title: null,
+    linkedinUrl: null,
+    email: null,
+    sourceUrl: null,
+    rationale: `No named person was verified. Target ${targetRole}.`
+  });
+  if (!process.env.EXA_API_KEY) {
+    return rows.map((row) => ({
+      opportunityId: row.id,
+      contact: fallback(row.targetRole),
+      activity: []
+    }));
+  }
+
+  const contacts = await findOpportunityContacts({
+    domain,
+    companyName: researchResult?.companyName ?? domain,
+    opportunities: rows.map((row) => ({
+      id: row.id,
+      productId: row.productId,
+      angle: row.angle,
+      targetRole: row.targetRole
+    }))
+  });
+  const activityByOpportunity = new Map<string, ContactActivity[]>();
+  const groups = new Map<string, typeof rows>();
+  for (const row of rows) {
+    const contact = contacts.get(row.id) ?? fallback(row.targetRole);
+    if (!contact.name) continue;
+    const key = contact.name.normalize('NFKC').toLocaleLowerCase('en').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+    groups.set(key, [...(groups.get(key) ?? []), row]);
+  }
+  await Promise.all([...groups.values()].map(async (group) => {
+    const contact = contacts.get(group[0].id)!;
+    const activities = await researchContactActivities({
+      contact,
+      companyName: researchResult?.companyName ?? domain,
+      domain,
+      opportunities: group.map((row) => ({
+        opportunityId: row.id,
+        productName: row.productName,
+        angle: row.angle
+      }))
+    });
+    for (const row of group) activityByOpportunity.set(row.id, activities.get(row.id) ?? []);
+  }));
+
+  return rows.map((row) => ({
+    opportunityId: row.id,
+    contact: contacts.get(row.id) ?? fallback(row.targetRole),
+    activity: activityByOpportunity.get(row.id) ?? []
+  }));
+};
+
+/** Persist buyer research, finalize the score, and draft outreach. */
 export const stepEnrichOpportunity = async (
   opportunityId: string,
   evidence: EvidenceItem[],
-  researchResult: Research | null
+  researchResult: Research | null,
+  buyerResearch: OpportunityBuyerResearch
 ) => {
   'use step';
 
@@ -297,36 +269,11 @@ export const stepEnrichOpportunity = async (
     return { opportunityId, score: opportunity.score };
   }
 
-  let contact = null;
-  if (process.env.EXA_API_KEY) {
-    contact = await findOpportunityContact({
-      domain: opportunity.domain,
-      companyName: researchResult?.companyName ?? opportunity.domain,
-      productId: opportunity.productId,
-      angle: opportunity.angle,
-      targetRole: opportunity.targetRole
-    });
-  }
-  contact ??= {
-    name: null,
-    title: null,
-    linkedinUrl: null,
-    email: null,
-    sourceUrl: null,
-    rationale: `No named person was verified. Target ${opportunity.targetRole}.`
-  };
+  const contact = buyerResearch.contact;
 
   const product = getProduct(opportunity.productId);
   if (!product) throw new FatalError(`Unknown product ${opportunity.productId}`);
-  const activity = contact.name && process.env.EXA_API_KEY
-    ? await researchContactActivity({
-        contact,
-        companyName: researchResult?.companyName ?? opportunity.domain,
-        domain: opportunity.domain,
-        productName: product.name,
-        angle: opportunity.angle
-      })
-    : [];
+  const activity = buyerResearch.activity;
   const activityEvidence = contactActivityEvidence(activity);
   const proof = await selectOpportunityProof(product.id);
   const rescored = scoreOpportunity({

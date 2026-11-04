@@ -16,7 +16,6 @@ const statusLabel: Record<OpportunityRow['status'], string> = {
   awaiting_approval: 'Ready for review',
   approved: 'Approved',
   rejected: 'Rejected',
-  suppressed: 'Suppressed',
   expired: 'Expired',
   error: 'Error'
 };
@@ -36,7 +35,7 @@ export function OpportunityCards({
     <section aria-labelledby="recommended-opportunities-title" className="max-w-5xl space-y-5">
       <div>
         <h2 id="recommended-opportunities-title" className="text-xl font-semibold tracking-tight">Recommended product pitches</h2>
-        <p className="text-muted-foreground mt-1 text-sm">Ranked by fit. Each pitch has its own buyer, rationale, and draft.</p>
+        <p className="text-muted-foreground mt-1 text-sm">Ranked by fit. Each pitch has its own buyer assignment, rationale, and draft.</p>
       </div>
       <div className="space-y-5">
         {opportunities.map((opportunity, index) => (
@@ -299,7 +298,6 @@ function scoreDriverSummary(opportunity: OpportunityRow) {
 
 function ScoreExplanation({ opportunity, ledger }: { opportunity: OpportunityRow; ledger: EvidenceItem[] }) {
   const breakdown = opportunity.scoreBreakdown;
-  const isLegacyScore = typeof breakdown.risk === 'number';
   const assessment = scoreAssessment(opportunity.score);
   const positive = [
     { label: 'Product fit', value: breakdown.productFit, description: 'Public evidence connects this Vercel product to a specific need.' },
@@ -309,7 +307,7 @@ function ScoreExplanation({ opportunity, ledger }: { opportunity: OpportunityRow
   ].filter((item) => item.value > 0);
   const missing = [
     breakdown.trigger === 0 && 'a timely trigger',
-    breakdown.accountValue === 0 && (isLegacyScore ? 'account-value evidence' : 'a qualifying account profile'),
+    breakdown.accountValue === 0 && 'a qualifying account profile',
     breakdown.buyerQuality === 0 && 'a verified buyer'
   ].filter(Boolean) as string[];
 
@@ -338,19 +336,15 @@ function ScoreExplanation({ opportunity, ledger }: { opportunity: OpportunityRow
         <div>
           <p className="font-medium">Still unproven</p>
           <p className="text-muted-foreground mt-1 leading-6">
-            {missing.length > 0 ? `No points yet for ${joinList(missing)}.` : 'The major qualification areas all contributed to the score.'}
+            {missing.length > 0 ? `No points yet for ${joinList(missing)}.` : 'The major scoring areas all contributed to the score.'}
           </p>
         </div>
         <div>
-          <p className="font-medium">{isLegacyScore ? 'Legacy score' : 'Account profile'}</p>
+          <p className="font-medium">Account profile</p>
           <p className="text-muted-foreground mt-1 leading-6">
-            {isLegacyScore
-              ? breakdown.risk! < 0
-                ? `This saved opportunity uses the previous scoring model, which removed ${Math.abs(breakdown.risk!)} points for its account-priority signal. Its stored score is shown as originally calculated.`
-                : 'This saved opportunity uses the previous account-potential model. Its stored score is shown as originally calculated.'
-              : breakdown.accountValue > 0
-                ? 'Account-potential points reflect the highest supported sales-fit tier and any observed Vercel expansion context.'
-                : 'No target-account tier was supported; traditional SMB and professional-services profiles do not receive account-potential points by default.'}
+            {breakdown.accountValue > 0
+              ? 'Account-potential points reflect the highest supported sales-fit tier and any observed Vercel expansion context.'
+              : 'No target-account tier was supported; traditional SMB and professional-services profiles do not receive account-potential points by default.'}
           </p>
         </div>
       </div>

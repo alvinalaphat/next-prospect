@@ -5,7 +5,7 @@ import { useMemo, useRef, useState, type DragEvent } from 'react';
 import { FileUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { authHeaders, useRunSecret } from '@/lib/client-secret';
+import { authHeaders, secretCheckMessage, useRunSecret } from '@/lib/client-secret';
 import { parseDomains } from '@/lib/domains';
 import { cn } from '@/lib/utils';
 
@@ -46,12 +46,8 @@ export function RunPanel() {
   async function run() {
     setBusy(true);
     const { value, status } = await secretField.commit();
-    if (status === 'empty') {
-      toast.error('Enter the run secret.');
-      setBusy(false);
-      return;
-    }
-    if (status === 'invalid') {
+    if (status !== 'valid') {
+      toast.error(secretCheckMessage(status));
       setBusy(false);
       return;
     }
@@ -66,7 +62,7 @@ export function RunPanel() {
       if (!res.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
       toast.success(
         `Started ${json.started.length} workflow${json.started.length === 1 ? '' : 's'}` +
-          (json.skippedInFlight.length ? ` · ${json.skippedInFlight.length} already running` : '') +
+          (json.alreadyRunning.length ? ` · ${json.alreadyRunning.length} already running` : '') +
           (json.invalid.length ? ` · ${json.invalid.length} invalid` : '')
       );
       setDomains('');
@@ -154,7 +150,7 @@ export function RunPanel() {
               {parsed.invalid.length > 0 && (
                 <span title={parsed.invalid.slice(0, 20).join(', ')}>
                   {' '}
-                  · {parsed.invalid.length} skipped
+                  · {parsed.invalid.length} invalid
                 </span>
               )}
               {tooMany && ` · max ${MAX_DOMAINS} per batch`}
