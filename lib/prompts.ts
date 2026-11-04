@@ -53,7 +53,9 @@ EMAIL STRUCTURE:
    as facts unless the evidence supports them. Do not broaden an approved claim
    or pitch a different product.
 3. Close: ask one low-pressure question about a short meeting or demo focused
-   on the selected product and the problem above.
+   on the selected product and the problem above. End every question with a
+   question mark, including conversational forms such as "Open to...?" or
+   "Would it be useful...?" Never end a question with a period.
 4. EMEA closing note: when Region is EMEA because the company is headquartered
    there or the selected buyer has a verified EMEA work location, include the
    supplied Required EMEA trust note exactly as written after the meeting

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { EMEA_TRUST_NOTE, OPPORTUNITY_PRODUCTS, PRODUCTS, getProduct } from '@/lib/catalog/products';
 import { approvalToken, parseApprovalToken } from '@/lib/approval-token';
 import { contactActivityEvidence, contactActivityId, containsFullName } from '@/lib/contact-activity';
-import { placeClosingNoteBeforeSignoff } from '@/lib/email-text';
+import { ensureQuestionPunctuation, placeClosingNoteBeforeSignoff } from '@/lib/email-text';
 import { presentEvidence, salesLanguage } from '@/lib/evidence-presentation';
 import { relativeTime } from '@/lib/format';
 import { latestEvidenceDate, researchEvidence } from '@/lib/grounding';
@@ -77,6 +77,31 @@ const draftWithTrust = placeClosingNoteBeforeSignoff(draftWithoutTrust, EMEA_TRU
 assert.ok(draftWithTrust.includes(`Open to a short conversation?\n\n${EMEA_TRUST_NOTE}\n\nFixture Rep`));
 const misplacedTrust = `Hi Taylor,\n\n${EMEA_TRUST_NOTE}\n\nA relevant product point.\n\nOpen to a short conversation?\n\nFixture Rep`;
 assert.equal(placeClosingNoteBeforeSignoff(misplacedTrust, EMEA_TRUST_NOTE), draftWithTrust, 'EMEA trust copy must move after the ask without duplicating');
+const draftWithClosingSalutation = 'Hi Taylor,\n\nA relevant product point.\n\nOpen to a short conversation?\n\nBest,\n\nFixture Rep';
+assert.ok(
+  placeClosingNoteBeforeSignoff(draftWithClosingSalutation, EMEA_TRUST_NOTE).endsWith(
+    `Open to a short conversation?\n\n${EMEA_TRUST_NOTE}\n\nBest,\n\nFixture Rep`
+  ),
+  'EMEA trust copy must stay before the complete sign-off'
+);
+
+assert.equal(ensureQuestionPunctuation('Open to a short walkthrough.'), 'Open to a short walkthrough?');
+assert.equal(
+  ensureQuestionPunctuation('Given the Next.js migration, would it be useful to compare options. It could reduce platform sprawl.'),
+  'Given the Next.js migration, would it be useful to compare options? It could reduce platform sprawl.'
+);
+assert.equal(ensureQuestionPunctuation('Could we compare options? We could help.'), 'Could we compare options? We could help.');
+assert.equal(ensureQuestionPunctuation('Have you considered this approach.'), 'Have you considered this approach?');
+assert.equal(
+  ensureQuestionPunctuation('Your new storefront caught my eye. Would you be open to a short demo.'),
+  'Your new storefront caught my eye. Would you be open to a short demo?',
+  'a question after a statement in the same paragraph must be repaired'
+);
+assert.equal(
+  ensureQuestionPunctuation('Have a great week. Worth noting, Vercel supports this workflow.'),
+  'Have a great week. Worth noting, Vercel supports this workflow.',
+  'declarative sentences must keep their periods'
+);
 
 const emeaHeadquarters = { group: 'emea' as const, label: 'London, United Kingdom', sourceUrl: 'https://example.com/about' };
 const americasHeadquarters = { group: 'americas' as const, label: 'San Francisco, United States', sourceUrl: 'https://example.com/about' };

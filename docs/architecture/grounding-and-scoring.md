@@ -139,7 +139,8 @@ A first-touch email should contain:
 
 1. a public trigger or observation that explains why the timing is relevant;
 2. why the selected Vercel product is relevant to the recipient's work;
-3. a short meeting or demo request about that product; and
+3. a short meeting or demo request about that product, phrased as a question
+   and ending with a question mark; and
 4. when the company headquarters or verified buyer work location is in EMEA,
    the approved Vercel platform trust note beginning "By the way," and covering
    GDPR, independently audited security controls, and the Data Processing

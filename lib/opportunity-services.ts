@@ -4,7 +4,7 @@ import { EMEA_TRUST_NOTE, getProduct, productIndexForPrompt } from '@/lib/catalo
 import { containsFullName } from '@/lib/contact-activity';
 import { exa } from '@/lib/exa';
 import { findPublishedEmail, formatLedger, latestEvidenceDate, normalizeId, unknownCitations, unverifiedNumbers } from '@/lib/grounding';
-import { placeClosingNoteBeforeSignoff, stripEmDashes } from '@/lib/email-text';
+import { ensureQuestionPunctuation, placeClosingNoteBeforeSignoff, stripEmDashes } from '@/lib/email-text';
 import { DRAFT_INSTRUCTIONS } from '@/lib/prompts';
 import { configuredRepName, enforceEmailIdentity, MODEL, stripCitationLeaks } from '@/lib/services';
 import { scoreOpportunity, type SignalMatch } from '@/lib/scoring';
@@ -365,7 +365,9 @@ export async function writeOpportunityDraft({
   if (bad.length) warnings.push(`Unknown citations: ${bad.join(', ')}`);
   if (numbers.length) warnings.push(`Numbers not found in evidence: ${numbers.join(', ')}`);
   if (identity.length) warnings.push(...identity);
-  let body = stripEmDashes(enforceEmailIdentity(stripCitationLeaks(output.body), greeting, repName));
+  let body = ensureQuestionPunctuation(
+    stripEmDashes(enforceEmailIdentity(stripCitationLeaks(output.body), greeting, repName))
+  );
   if (requiredEmeaNote) body = placeClosingNoteBeforeSignoff(body, requiredEmeaNote);
   const words = body.split(/\s+/).filter(Boolean).length;
   if (words < 70 || words > 110) warnings.push(`Email is ${words} words (target 70–110)`);
