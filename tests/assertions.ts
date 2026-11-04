@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
-import { EMEA_TRUST_SENTENCE, OPPORTUNITY_PRODUCTS, PRODUCTS, getProduct } from '@/lib/catalog/products';
+import { EMEA_TRUST_NOTE, OPPORTUNITY_PRODUCTS, PRODUCTS, getProduct } from '@/lib/catalog/products';
 import { approvalToken, parseApprovalToken } from '@/lib/approval-token';
 import { contactActivityEvidence, contactActivityId, containsFullName } from '@/lib/contact-activity';
-import { ensureSentenceBeforeClose } from '@/lib/email-text';
+import { placeClosingNoteBeforeSignoff } from '@/lib/email-text';
 import { presentEvidence, salesLanguage } from '@/lib/evidence-presentation';
 import { relativeTime } from '@/lib/format';
 import { latestEvidenceDate, researchEvidence } from '@/lib/grounding';
@@ -73,9 +73,10 @@ assert.equal(latestEvidenceDate(['research.news.0', 'research.signal.0'], datedR
 assert.equal(latestEvidenceDate(['research.region'], datedResearchEvidence), null);
 
 const draftWithoutTrust = 'Hi Taylor,\n\nA relevant product point.\n\nOpen to a short conversation?\n\nFixture Rep';
-const draftWithTrust = ensureSentenceBeforeClose(draftWithoutTrust, EMEA_TRUST_SENTENCE);
-assert.ok(draftWithTrust.includes(`A relevant product point.\n\n${EMEA_TRUST_SENTENCE}\n\nOpen to a short conversation?`));
-assert.equal(ensureSentenceBeforeClose(draftWithTrust, EMEA_TRUST_SENTENCE), draftWithTrust, 'EMEA trust copy must not duplicate');
+const draftWithTrust = placeClosingNoteBeforeSignoff(draftWithoutTrust, EMEA_TRUST_NOTE);
+assert.ok(draftWithTrust.includes(`Open to a short conversation?\n\n${EMEA_TRUST_NOTE}\n\nFixture Rep`));
+const misplacedTrust = `Hi Taylor,\n\n${EMEA_TRUST_NOTE}\n\nA relevant product point.\n\nOpen to a short conversation?\n\nFixture Rep`;
+assert.equal(placeClosingNoteBeforeSignoff(misplacedTrust, EMEA_TRUST_NOTE), draftWithTrust, 'EMEA trust copy must move after the ask without duplicating');
 
 const emeaHeadquarters = { group: 'emea' as const, label: 'London, United Kingdom', sourceUrl: 'https://example.com/about' };
 const americasHeadquarters = { group: 'americas' as const, label: 'San Francisco, United States', sourceUrl: 'https://example.com/about' };

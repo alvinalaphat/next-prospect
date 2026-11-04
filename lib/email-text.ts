@@ -12,11 +12,14 @@ export function stripEmDashes(text: string): string {
   });
 }
 
-/** Insert an approved sentence before the meeting ask and sign-off when omitted. */
-export function ensureSentenceBeforeClose(body: string, sentence: string): string {
-  if (body.includes(sentence)) return body;
-  const paragraphs = body.trim().split(/\n\s*\n/);
-  const insertAt = Math.max(1, paragraphs.length - 2);
-  paragraphs.splice(insertAt, 0, sentence);
+/** Place an approved closing note after the ask and immediately before the sign-off. */
+export function placeClosingNoteBeforeSignoff(body: string, note: string): string {
+  const paragraphs = body
+    .trim()
+    .split(/\n\s*\n/)
+    .map((paragraph) => paragraph.replaceAll(note, '').trim())
+    .filter(Boolean);
+  const insertAt = Math.max(1, paragraphs.length - 1);
+  paragraphs.splice(insertAt, 0, note);
   return paragraphs.join('\n\n');
 }

@@ -36,11 +36,12 @@ For each domain in a CSV, one durable workflow:
    buyer work location can qualify the opportunity as EMEA; an EMEA headquarters qualifies
    it regardless of the buyer's location.
 6. **Draft**: each opportunity receives a 70–110 word email and rep brief using only its
-   selected evidence and approved catalog claims. Every EMEA-qualified email includes the
-   approved, concise Vercel statement covering GDPR support, privacy and security
+   selected evidence and approved catalog claims. Every EMEA-qualified email closes with
+   an approved, concise "By the way," note covering GDPR support, privacy and security
    commitments backed by independently audited controls, and the Data Processing Addendum.
-   Expansion drafts may build on an observed Vercel hosting footprint without claiming
-   private account knowledge.
+   The note appears after the meeting ask and before the rep's sign-off. Expansion drafts
+   may build on an observed Vercel hosting footprint without claiming private account
+   knowledge.
 7. **Approve**: each opportunity independently ends at Needs review. Slack or the dashboard
    records Approve / Edit / Reject. Nothing is automatically sent.
 8. **Gmail draft**: on approval, the final (possibly edited) email becomes a **draft in
