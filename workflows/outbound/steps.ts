@@ -13,7 +13,6 @@ import {
 import { researchEvidence } from '@/lib/grounding';
 import { findOpportunityContacts, planOpportunities, writeOpportunityDraft } from '@/lib/opportunity-services';
 import { contactActivityEvidence, researchContactActivities } from '@/lib/contact-activity';
-import { selectOpportunityProof } from '@/lib/proof-selection';
 import { emptyPerfResult, perfEvidence, PsiRateLimitError, runPsi } from '@/lib/psi';
 import { scoreOpportunity } from '@/lib/scoring';
 import { getProduct } from '@/lib/catalog/products';
@@ -275,7 +274,6 @@ export const stepEnrichOpportunity = async (
   if (!product) throw new FatalError(`Unknown product ${opportunity.productId}`);
   const activity = buyerResearch.activity;
   const activityEvidence = contactActivityEvidence(activity);
-  const proof = await selectOpportunityProof(product.id);
   const rescored = scoreOpportunity({
     product,
     matches: opportunity.matchedSignals,
@@ -293,8 +291,6 @@ export const stepEnrichOpportunity = async (
     status: 'drafting',
     contact,
     contactActivity: activity,
-    proofIds: proof.proofIds,
-    competitiveContextIds: proof.competitiveContextIds,
     score: rescored.score,
     scoreBreakdown: rescored.breakdown,
     matchedSignals: rescored.signals

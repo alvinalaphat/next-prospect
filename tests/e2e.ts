@@ -24,28 +24,22 @@ const { approvalToken } = await import('@/lib/approval-token');
 const {
   claimProspectRun,
   clearIncompleteOpportunityPlanning,
-  completeMaintenanceRun,
   claimFreshProspectRun,
-  getLatestMaintenanceRun,
   insertOpportunity,
   getOpportunity,
   getOpportunities,
   getProspect,
-  listActiveProofRecords,
   resetProspectForNewRun,
   resetFailedProspectForRetry,
   restoreProspectRetry,
-  startMaintenanceRun,
   updateOpportunity,
   updateOpportunityForRun,
   updateProspectForRun,
-  upsertProofRecords,
   upsertProspect
 } = await import('@/lib/db');
 const { applyOpportunityDecision } = await import('@/lib/opportunity-decision');
 const { getProduct } = await import('@/lib/catalog/products');
 const { scoreOpportunity } = await import('@/lib/scoring');
-const { selectOpportunityProof } = await import('@/lib/proof-selection');
 const { stepFinishOpportunityPlanning, stepRequestOpportunityApproval } = await import('@/workflows/outbound/steps');
 
 const domain = 'fixture.example';
@@ -297,44 +291,6 @@ assert.equal(result.applied, true);
 assert.equal((await getOpportunity(id))?.status, 'approved');
 assert.equal((await getProspect(domain))?.status, 'approved');
 
-await startMaintenanceRun('fixture-proof-refresh', 'proof');
-const savedProofs = await upsertProofRecords([
-  {
-    id: 'vercel-fixture',
-    vendor: 'vercel',
-    usage: 'customer-proof',
-    company: 'Fixture Customer',
-    title: 'Fixture customer story',
-    sourceUrl: 'https://vercel.com/customers/fixture',
-    summary: 'A grounded fixture used to verify proof persistence.',
-    productIds: ['ai-gateway'],
-    industries: ['software'],
-    workloads: ['customer-facing AI'],
-    candidateClaims: ['Fixture Customer used AI Gateway.'],
-    publishedAt: '2026-10-01',
-    lastSeenAt: new Date().toISOString()
-  },
-  {
-    id: 'cloudflare-fixture',
-    vendor: 'cloudflare',
-    usage: 'competitive-context',
-    company: 'Competitor Fixture',
-    title: 'Competitor customer story',
-    sourceUrl: 'https://cloudflare.com/case-studies/fixture',
-    summary: 'Internal competitive context only.',
-    productIds: ['ai-gateway'],
-    industries: ['software'],
-    workloads: ['AI platform'],
-    candidateClaims: [],
-    publishedAt: null,
-    lastSeenAt: new Date().toISOString()
-  }
-]);
-assert.equal(savedProofs, 2);
-assert.equal((await listActiveProofRecords()).length, 2);
-const selectedProof = await selectOpportunityProof('ai-gateway');
-assert.deepEqual(selectedProof.proofIds, ['vercel-fixture']);
-assert.deepEqual(selectedProof.competitiveContextIds, ['cloudflare-fixture']);
 await updateOpportunity(id, {
   contactActivity: [{
     id: 'research.buyer-activity.fixture',
@@ -344,26 +300,30 @@ await updateOpportunity(id, {
     sourceType: 'blog',
     publishedAt: null,
     relevance: 'Relevant to durable agents'
-  }],
-  proofIds: selectedProof.proofIds,
-  competitiveContextIds: selectedProof.competitiveContextIds
+  }]
 });
 const enrichedOpportunity = await getOpportunity(id);
 assert.equal(enrichedOpportunity?.contactActivity?.length, 1);
-assert.deepEqual(enrichedOpportunity?.proofIds, ['vercel-fixture']);
-assert.deepEqual(enrichedOpportunity?.competitiveContextIds, ['cloudflare-fixture']);
-await completeMaintenanceRun('fixture-proof-refresh', {
-  refreshedAt: new Date().toISOString(),
-  discovered: 2,
-  saved: 2,
-  byVendor: { vercel: 1, cloudflare: 1, railway: 0 }
-});
-assert.equal((await getLatestMaintenanceRun('proof'))?.status, 'complete');
-  console.log('✓ e2e: account → scored expansion opportunity → grounded draft → approval → parent status');
-  console.log('✓ maintenance: proof upsert → durable refresh status');
-  console.log('✓ run ownership: superseded runs cannot overwrite current account or opportunity state');
-  console.log('✓ clean retries: failed state is cleared and old opportunities are not transplanted');
-  console.log('✓ opportunity completion: review publication and final decisions update parent state');
+process.env.RUN_SECRET = 'bulk-action-secret';
+const { DELETE: deleteProspects } = await import('@/app/api/prospects/route');
+const deleteResponse = await deleteProspects(new Request('https://example.com/api/prospects', {
+  method: 'DELETE',
+  headers: {
+    authorization: 'Bearer bulk-action-secret',
+    'content-type': 'application/json'
+  },
+  body: JSON.stringify({ domains: [domain, completionDomain] })
+}));
+assert.equal(deleteResponse.status, 200);
+assert.deepEqual((await deleteResponse.json()).deleted.toSorted(), [completionDomain, domain].toSorted());
+assert.equal(await getProspect(domain), null);
+assert.equal(await getOpportunity(id), null, 'bulk account deletion should cascade to opportunities');
+delete process.env.RUN_SECRET;
+console.log('✓ e2e: account → scored expansion opportunity → grounded draft → approval → parent status');
+console.log('✓ bulk actions: authenticated multi-account deletion cascades to opportunities');
+console.log('✓ run ownership: superseded runs cannot overwrite current account or opportunity state');
+console.log('✓ clean retries: failed state is cleared and old opportunities are not transplanted');
+console.log('✓ opportunity completion: review publication and final decisions update parent state');
 }
 
 main().then(() => process.exit(0)).catch((error) => {

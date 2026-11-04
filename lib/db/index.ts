@@ -3,7 +3,6 @@ import { drizzle as drizzleNeon, type NeonHttpDatabase } from 'drizzle-orm/neon-
 import { and, desc, eq, exists, inArray, isNull, or, sql } from 'drizzle-orm';
 import * as schema from './schema';
 import type { OpportunityRow, ProspectRow } from './schema';
-import type { MaintenanceKind, ProofRecord, ProofRefreshResult } from '@/lib/refresh/types';
 import type { ProspectStatus } from '@/lib/types';
 
 type DB = NeonHttpDatabase<typeof schema>;
@@ -252,86 +251,4 @@ export async function expireOpportunities(domain: string) {
       eq(schema.opportunities.domain, domain),
       eq(schema.opportunities.status, 'awaiting_approval')
     ));
-}
-
-export async function startMaintenanceRun(id: string, kind: MaintenanceKind) {
-  await db()
-    .insert(schema.maintenanceRuns)
-    .values({ id, kind, status: 'running', result: null, error: null, finishedAt: null })
-    .onConflictDoUpdate({
-      target: schema.maintenanceRuns.id,
-      set: { status: 'running', result: null, error: null, finishedAt: null }
-    });
-}
-
-export async function completeMaintenanceRun(id: string, result: ProofRefreshResult) {
-  await db()
-    .update(schema.maintenanceRuns)
-    .set({ status: 'complete', result, error: null, finishedAt: sql`now()` })
-    .where(eq(schema.maintenanceRuns.id, id));
-}
-
-export async function failMaintenanceRun(id: string, error: string) {
-  await db()
-    .update(schema.maintenanceRuns)
-    .set({ status: 'failed', error: error.slice(0, 2_000), finishedAt: sql`now()` })
-    .where(eq(schema.maintenanceRuns.id, id));
-}
-
-export async function getLatestMaintenanceRun(kind: MaintenanceKind) {
-  const rows = await db()
-    .select()
-    .from(schema.maintenanceRuns)
-    .where(eq(schema.maintenanceRuns.kind, kind))
-    .orderBy(desc(schema.maintenanceRuns.createdAt))
-    .limit(1);
-  return rows[0] ?? null;
-}
-
-export async function upsertProofRecords(records: ProofRecord[]) {
-  if (!records.length) return 0;
-  for (const record of records) {
-    await db()
-      .insert(schema.proofRecords)
-      .values({
-        ...record,
-        lastSeenAt: new Date(record.lastSeenAt),
-        active: true
-      })
-      .onConflictDoUpdate({
-        target: schema.proofRecords.sourceUrl,
-        set: {
-          vendor: record.vendor,
-          usage: record.usage,
-          company: record.company,
-          title: record.title,
-          summary: record.summary,
-          productIds: record.productIds,
-          industries: record.industries,
-          workloads: record.workloads,
-          candidateClaims: record.candidateClaims,
-          publishedAt: record.publishedAt,
-          lastSeenAt: new Date(record.lastSeenAt),
-          active: true,
-          updatedAt: sql`now()`
-        }
-      });
-  }
-  return records.length;
-}
-
-export async function listActiveProofRecords() {
-  return db()
-    .select()
-    .from(schema.proofRecords)
-    .where(eq(schema.proofRecords.active, true))
-    .orderBy(desc(schema.proofRecords.lastSeenAt));
-}
-
-export async function getProofRecords(ids: string[]) {
-  if (!ids.length) return [];
-  return db()
-    .select()
-    .from(schema.proofRecords)
-    .where(and(eq(schema.proofRecords.active, true), inArray(schema.proofRecords.id, ids)));
 }

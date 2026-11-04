@@ -7,7 +7,7 @@ import { Disclosure } from '@/components/disclosure';
 import { OpportunityCards } from '@/components/opportunity-cards';
 import { WorkflowRetryButton } from '@/components/workflow-retry-button';
 import { contactActivityEvidence } from '@/lib/contact-activity';
-import { getOpportunities, getProofRecords, getProspect } from '@/lib/db';
+import { getOpportunities, getProspect } from '@/lib/db';
 import { HOST_LABEL, ms, RATING_TONE, relativeTime, STATUS } from '@/lib/format';
 import { rate } from '@/lib/psi';
 import type { Detection, EvidenceItem, PerfResult, Research } from '@/lib/types';
@@ -21,12 +21,6 @@ export default async function ProspectPage({ params }: { params: Promise<{ domai
   const opportunities = prospect.runId
     ? await getOpportunities(prospect.domain, prospect.runId)
     : [];
-  const proofIds = [...new Set(opportunities.flatMap((opportunity) => [
-    ...(opportunity.proofIds ?? []),
-    ...(opportunity.competitiveContextIds ?? [])
-  ]))];
-  const proofRecords = await getProofRecords(proofIds);
-
   const detection = prospect.detection;
   const research = prospect.research;
   const ledger = [
@@ -87,7 +81,7 @@ export default async function ProspectPage({ params }: { params: Promise<{ domai
 
       {research && hasCompanyContext(research) && <CompanyBackground research={research} />}
 
-      <OpportunityCards opportunities={opportunities} ledger={ledger} proofRecords={proofRecords} />
+      <OpportunityCards opportunities={opportunities} ledger={ledger} />
 
       {(prospect.perf || detection || ledger.length > 0) && (
         <section aria-labelledby="supporting-evidence-title" className="max-w-5xl">

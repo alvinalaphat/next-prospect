@@ -107,7 +107,6 @@ workflows/outbound/
   steps.ts                      'use step' functions (persist each stage)
 lib/
   catalog/                      full product/capability catalog and signal rules
-  refresh/                      customer-proof refresh service
   scoring.ts                    deterministic signal scoring and caps
   opportunity-services.ts      routing, buyer selection, product-specific drafting
   opportunity-decision.ts      independent opportunity approval + Gmail handoff
@@ -119,7 +118,6 @@ lib/
   slack.ts                      Block Kit card + edit modal
   approval-token.ts             ties a Slack or dashboard click to one run
   db/                           Drizzle schema and persistence helpers
-workflows/maintenance/          weekly customer-proof refresh workflow
 tests/                          deterministic and isolated behavior tests
   assertions.ts                 catalog and scoring assertions
   e2e.ts                        isolated account → opportunity → approval test
@@ -166,7 +164,6 @@ npx workflow web                  # inspect workflow runs locally
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN` | Gmail drafts | Optional; see Gmail drafts below. |
 | `REP_NAME` | drafts | Required sender name written directly into every draft sign-off. |
 | `RUN_SECRET` | prod | Required to start runs and approve from the dashboard. |
-| `CRON_SECRET` | prod | Set by Vercel Cron and required by the weekly proof refresh route. |
 | `APP_URL` | Slack links | Defaults to the Vercel production URL. |
 
 ### Slack
@@ -218,6 +215,9 @@ git push origin main              # CI runs; Vercel builds and deploys
 - Add a reviewed catalog-audit workflow and review surface that compares official Vercel
   product changes with the code-owned catalog. It must never change scoring rules,
   approved claims, or product eligibility automatically.
+- Add a small, human-reviewed customer-proof and competitive-context library when reps
+  need supporting precedent. Prefer curated records with explicit product mappings over
+  an automatic weekly search, and keep this context out of scoring and generated claims.
 
 ## License
 

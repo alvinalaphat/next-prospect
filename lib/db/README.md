@@ -16,12 +16,8 @@ storage.
 - `prospects`: latest account-level workflow state, shared research, detection,
   performance, evidence, and summary score.
 - `opportunities`: product-specific angle, score, evidence IDs, buyer and
-  attributable public activity, selected proof/context IDs, draft, approval
-  state, and Slack/Gmail metadata.
+  attributable public activity, draft, approval state, and Slack/Gmail metadata.
 - `psi_cache`: cached PageSpeed responses to reduce quota use.
-- `maintenance_runs`: durable status and results for the weekly proof job.
-- `proof_records`: refreshed Vercel customer proof and competitor context;
-  these records never contribute scoring points.
 
 The opportunity is the unit of review. The prospect status is a dashboard-level
 summary and must remain consistent with child decisions.

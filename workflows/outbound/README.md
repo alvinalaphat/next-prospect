@@ -14,8 +14,7 @@ optional batch delay
   → plan and score up to three product opportunities
   → search people once and assign a buyer to each opportunity
   → research public activity once per unique buyer and tailor it per opportunity
-  → for each opportunity: attach customer proof and competitive context,
-    rescore, draft, request review
+  → for each opportunity: rescore, draft, request review
   → stop at awaiting approval
 ```
 
@@ -86,10 +85,8 @@ buyer-confidence points. Public activity is searched once per unique selected
 buyer and selected separately for each of that buyer's opportunities. It may
 add recent posts, blogs, talks, podcasts, or GitHub activity to drafting
 context, but it does not change product ranking or scoring.
-Relevant Vercel customer proof and competitor case studies are selected from
-the refreshed proof library and stored on the opportunity. Competitive context
-is never passed to drafting. Drafting receives only prospect/buyer evidence,
-the selected product context, and its approved catalog claims.
+Drafting receives only prospect and buyer evidence, the selected product
+context, and its approved catalog claims.
 The account remains in a running state while these opportunities are enriched
 and transitions once to `awaiting_approval` only after all of them are ready.
 That final transition is conditional on the account still being in a processing

@@ -8,8 +8,7 @@ import {
   Layers3,
   ShieldCheck,
   Sparkles,
-  UserRoundCheck,
-  Workflow
+  UserRoundCheck
 } from 'lucide-react';
 import { OPPORTUNITY_PRODUCTS, PRODUCTS } from '@/lib/catalog/products';
 
@@ -35,7 +34,7 @@ const FLOW = [
     icon: UserRoundCheck,
     label: 'Enrich',
     title: 'Build each opportunity',
-    body: 'Find a product-specific buyer, review their public activity, attach relevant proof, and draft grounded outreach.'
+    body: 'Find a product-specific buyer, review their public activity, and draft grounded outreach.'
   },
   {
     icon: ShieldCheck,
@@ -64,7 +63,6 @@ const OPPORTUNITY_CONTENTS = [
   ['Product motion', 'The Vercel product, sales angle, why now, and why Vercel.'],
   ['Score and evidence', 'A visible category breakdown with links back to public source receipts.'],
   ['Buyer context', 'A grounded person or target role, plus relevant public posts, blogs, talks, or GitHub activity.'],
-  ['Proof and competition', 'Relevant Vercel customer precedent and separately labeled internal-only competitor context.'],
   ['Review-ready draft', 'Concise outreach using prospect evidence and approved catalog claims only.']
 ] as const;
 
@@ -206,20 +204,6 @@ export default function About() {
         </div>
       </section>
 
-      <section aria-labelledby="maintenance-title">
-        <SectionIntro eyebrow="Weekly maintenance" title="Customer proof stays current" id="maintenance-title">
-          Vercel Cron starts one authenticated, durable refresh every Monday. Public findings are stored for review, not
-          allowed to change scoring or approved claims on their own.
-        </SectionIntro>
-
-        <div className="mt-8 max-w-2xl">
-          <MaintenanceCard icon={Workflow} time="Monday · 15:00 UTC" title="Customer-proof refresh">
-            Refreshes Vercel, Cloudflare, and Railway case studies. Vercel proof supports review; competitor stories remain
-            internal-only. Neither contributes scoring points.
-          </MaintenanceCard>
-        </div>
-      </section>
-
       <section aria-labelledby="boundaries-title">
         <SectionIntro eyebrow="Boundaries" title="The model proposes. Code enforces." id="boundaries-title">
           Language models interpret public evidence and write concise copy. Deterministic code owns the decisions that must
@@ -286,29 +270,6 @@ function Fact({ value, label, detail }: { value: string; label: string; detail: 
 
 function Pill({ children }: { children: React.ReactNode }) {
   return <span className="rounded-full border px-3 py-1.5">{children}</span>;
-}
-
-function MaintenanceCard({
-  icon: Icon,
-  time,
-  title,
-  children
-}: {
-  icon: typeof Workflow;
-  time: string;
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-xl bg-hover p-5 sm:p-6">
-      <div className="flex items-center justify-between gap-4">
-        <Icon className="text-muted-foreground size-4" aria-hidden />
-        <span className="text-muted-foreground font-mono text-xs">{time}</span>
-      </div>
-      <h3 className="mt-5 font-semibold tracking-tight">{title}</h3>
-      <p className="text-muted-foreground mt-2 text-sm leading-6">{children}</p>
-    </div>
-  );
 }
 
 function Responsibility({ icon: Icon, title, children }: { icon: typeof Sparkles; title: string; children: React.ReactNode }) {
