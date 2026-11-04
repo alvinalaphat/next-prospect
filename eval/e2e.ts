@@ -60,6 +60,17 @@ assert.equal(
   false
 );
 assert.equal((await getProspect(cancelledDomain))?.runId, 'replacement-run');
+await upsertProspect(cancelledDomain, { status: 'approved' });
+assert.equal(
+  await updateProspectForRun(
+    cancelledDomain,
+    'replacement-run',
+    { status: 'awaiting_approval' },
+    ['qualifying', 'researching', 'drafting']
+  ),
+  false
+);
+assert.equal((await getProspect(cancelledDomain))?.status, 'approved');
 
 const product = getProduct('ai-gateway')!;
 const scored = scoreOpportunity({
@@ -180,7 +191,7 @@ await completeMaintenanceRun('fixture-proof-refresh', {
 assert.equal((await getLatestMaintenanceRun('proof'))?.status, 'complete');
   console.log('✓ e2e: account → scored expansion opportunity → grounded draft → approval → parent status');
   console.log('✓ maintenance: proof upsert → durable refresh status');
-  console.log('✓ cancellation: cancelled and superseded runs cannot overwrite account state');
+  console.log('✓ cancellation: terminal decisions, cancelled runs, and superseded runs keep their state');
 }
 
 main().then(() => process.exit(0)).catch((error) => {

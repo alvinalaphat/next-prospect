@@ -339,7 +339,12 @@ export const stepRequestOpportunityApproval = async (
 export const stepFinishOpportunityPlanning = async (domain: string, runId: string) => {
   'use step';
 
-  await updateProspectForRun(domain, runId, { status: 'awaiting_approval' });
+  await updateProspectForRun(
+    domain,
+    runId,
+    { status: 'awaiting_approval' },
+    ['qualifying', 'researching', 'drafting']
+  );
 };
 
 async function isProspectRunActive(domain: string, runId: string) {

@@ -4,6 +4,7 @@ import { and, desc, eq, inArray, isNull, ne, or, sql } from 'drizzle-orm';
 import * as schema from './schema';
 import type { OpportunityRow, ProspectRow } from './schema';
 import type { CatalogAuditResult, MaintenanceKind, ProofRecord, ProofRefreshResult } from '@/lib/refresh/types';
+import type { ProspectStatus } from '@/lib/types';
 
 type DB = NeonHttpDatabase<typeof schema>;
 let _db: DB | null = null;
@@ -77,14 +78,20 @@ export async function claimProspectRun(domain: string, runId: string, patch: Pro
 }
 
 /** Persist step output only while this exact run still owns the account. */
-export async function updateProspectForRun(domain: string, runId: string, patch: ProspectPatch) {
+export async function updateProspectForRun(
+  domain: string,
+  runId: string,
+  patch: ProspectPatch,
+  allowedStatuses?: ProspectStatus[]
+) {
   const rows = await db()
     .update(schema.prospects)
     .set({ ...patch, updatedAt: sql`now()` })
     .where(and(
       eq(schema.prospects.domain, domain),
       eq(schema.prospects.runId, runId),
-      ne(schema.prospects.status, 'cancelled')
+      ne(schema.prospects.status, 'cancelled'),
+      allowedStatuses?.length ? inArray(schema.prospects.status, allowedStatuses) : undefined
     ))
     .returning({ domain: schema.prospects.domain });
   return rows.length > 0;

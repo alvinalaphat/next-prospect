@@ -80,6 +80,8 @@ is never passed to drafting. Drafting receives only prospect/buyer evidence,
 the selected product context, and its approved catalog claims.
 The account remains in a running state while these opportunities are enriched
 and transitions once to `awaiting_approval` only after all of them are ready.
+That final transition is conditional on the account still being in a processing
+state, so it cannot overwrite an `approved` or `rejected` decision.
 
 ### Request review
 
