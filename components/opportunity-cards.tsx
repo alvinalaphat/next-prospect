@@ -1,4 +1,4 @@
-import { ArrowUpRight, Mail, TriangleAlert } from 'lucide-react';
+import { ArrowUpRight, Mail } from 'lucide-react';
 import { LinkedInIcon } from '@/components/linkedin-icon';
 import { OpportunityApprovalBar } from '@/components/opportunity-approval-bar';
 import { OpportunityGmailButton } from '@/components/opportunity-gmail-button';
@@ -224,12 +224,6 @@ function DraftPreview({ opportunity, ledger }: { opportunity: OpportunityRow; le
             </div>
           )}
         </div>
-        {draft.warnings.length > 0 && (
-          <div className="text-warning mt-3 flex items-start gap-2 text-xs">
-            <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
-            <span>{draft.warnings.join(' · ')}</span>
-          </div>
-        )}
       </Disclosure>
     </section>
   );

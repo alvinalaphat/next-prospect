@@ -81,7 +81,8 @@ await upsertProspect(resetDomain, {
     news: [],
     whyNow: [],
     region: { group: 'unknown', label: 'Unknown', sourceUrl: null },
-    productSignals: []
+    productSignals: [],
+    precedents: []
   },
   evidence: [{ id: 'research.stale', source: 'research', label: 'Stale', value: 'Old evidence' }],
   error: 'Old run failed'

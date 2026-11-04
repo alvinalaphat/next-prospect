@@ -66,9 +66,13 @@ attempt, continue with empty performance evidence and an explanatory error.
 
 ### Research
 
-The research agent may use Exa results only. `researchEvidence` drops items
+The research agent may use Exa results only. `groundResearch` drops items
 whose URLs were not returned by tools. Missing or invalid Exa credentials
 continue without research.
+The same agent uses a domain-restricted tool to find up to three relevant
+official Vercel customer stories. These precedents are persisted with research
+and supplied to drafting, but `researchEvidence` intentionally excludes them
+from opportunity planning and scoring.
 
 ### Plan opportunities
 
@@ -87,8 +91,10 @@ activity is searched once per unique selected buyer and selected separately
 for each of that buyer's opportunities. It may
 add recent posts, blogs, talks, podcasts, or GitHub activity to drafting
 context, but it does not change product ranking or scoring.
-Drafting receives only prospect and buyer evidence, the selected product
-context, and its approved catalog claims.
+Drafting receives prospect and buyer evidence, clearly labeled customer
+precedent, the selected product context, and its approved catalog claims.
+Precedent outcomes must remain attributed to the referenced customer and may
+not be presented as expected prospect results.
 The account remains in a running state while these opportunities are enriched
 and transitions once to `awaiting_approval` only after all of them are ready.
 That final transition is conditional on the account still being in a processing

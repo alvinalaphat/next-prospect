@@ -1,7 +1,7 @@
 import { isStepCount, Output, ToolLoopAgent, tool } from 'ai';
 import { z } from 'zod';
 import { exa } from '@/lib/exa';
-import { groundResearch } from '@/lib/grounding';
+import { groundResearch, isOfficialVercelCustomerStory } from '@/lib/grounding';
 import { RESEARCH_INSTRUCTIONS } from '@/lib/prompts';
 import { type Detection, type Research, researchSchema } from '@/lib/types';
 
@@ -75,7 +75,35 @@ function researchTools(retrieved: Map<string, string>, state: { authFailed: bool
     }
   });
 
-  return { search, fetchUrl };
+  const searchVercelCustomerStories = tool({
+    description: 'Search only official Vercel customer stories for companies with a similar business model, industry, scale, or technical workload. Use this for supporting precedent, not prospect facts.',
+    inputSchema: z.object({
+      query: z.string().describe('A similarity-focused query based on what is known about the prospect')
+    }),
+    execute: async ({ query }) => {
+      const response = await logToolErrors('searchVercelCustomerStories', state, () =>
+        exa().search(query, {
+          numResults: 6,
+          type: 'auto',
+          includeDomains: ['vercel.com'],
+          contents: { highlights: true }
+        })
+      );
+      return response.results.flatMap((result) => {
+        if (!isOfficialVercelCustomerStory(result.url)) return [];
+        const highlights = (result.highlights ?? []).slice(0, 4);
+        record(result.url, result.title, ...highlights);
+        return [{
+          title: result.title,
+          url: result.url,
+          publishedDate: result.publishedDate ?? null,
+          highlights
+        }];
+      });
+    }
+  });
+
+  return { search, fetchUrl, searchVercelCustomerStories };
 }
 
 export class ResearchAuthError extends Error {}

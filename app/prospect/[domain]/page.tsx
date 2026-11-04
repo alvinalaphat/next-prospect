@@ -9,6 +9,7 @@ import { WorkflowRetryButton } from '@/components/workflow-retry-button';
 import { contactActivityEvidence } from '@/lib/contact-activity';
 import { getOpportunities, getProspect } from '@/lib/db';
 import { STATUS } from '@/lib/format';
+import { precedentEvidence } from '@/lib/grounding';
 import { buyerRegionEvidence } from '@/lib/region';
 import type { Research } from '@/lib/types';
 
@@ -25,6 +26,7 @@ export default async function ProspectPage({ params }: { params: Promise<{ domai
   const research = prospect.research;
   const ledger = [
     ...(prospect.evidence ?? []),
+    ...precedentEvidence(research),
     ...opportunities.flatMap((opportunity) => [
       ...contactActivityEvidence(opportunity.contactActivity ?? []),
       ...buyerRegionEvidence(opportunity.contact, opportunity.id)
@@ -89,7 +91,7 @@ export default async function ProspectPage({ params }: { params: Promise<{ domai
   );
 }
 function hasCompanyContext(research: Research) {
-  return Boolean(research.summary.text || research.sizeSignals.length || research.news.length || research.whyNow.length);
+  return Boolean(research.summary.text || research.sizeSignals.length || research.news.length || research.whyNow.length || research.precedents?.length);
 }
 
 function CompanyBackground({ research }: { research: Research }) {
@@ -111,6 +113,19 @@ function CompanyBackground({ research }: { research: Research }) {
           items={research.news.map((item) => ({ ...item, text: item.date ? `${item.date} — ${item.text}` : item.text }))}
         />
         <ResearchList title="Timing signals" items={research.whyNow} />
+        <ResearchList
+          title="Relevant Vercel customer precedent"
+          noun="story"
+          emptyText="No closely related Vercel customer story found."
+          items={(research.precedents ?? []).map((precedent) => ({
+            text: [
+              `${precedent.companyName} is relevant because ${precedent.similarity}`,
+              `Published outcome: ${precedent.outcome}`,
+              precedent.products.length ? `Vercel products named: ${precedent.products.join(', ')}.` : ''
+            ].filter(Boolean).join(' '),
+            sourceUrl: precedent.sourceUrl
+          }))}
+        />
       </div>
     </section>
   );
@@ -136,18 +151,28 @@ function Source({ url }: { url: string }) {
   );
 }
 
-function ResearchList({ title, items }: { title: string; items: { text: string; sourceUrl: string }[] }) {
+function ResearchList({
+  title,
+  items,
+  noun = 'signal',
+  emptyText = 'No public signals found.'
+}: {
+  title: string;
+  items: { text: string; sourceUrl: string }[];
+  noun?: string;
+  emptyText?: string;
+}) {
   if (items.length === 0) {
     return (
       <div className="rounded-lg bg-background px-4 py-4">
         <h3 className="text-sm font-medium">{title}</h3>
-        <p className="text-muted-foreground mt-1 text-sm">No public signals found.</p>
+        <p className="text-muted-foreground mt-1 text-sm">{emptyText}</p>
       </div>
     );
   }
   return (
     <div className="rounded-lg bg-background px-4 sm:px-5">
-      <Disclosure title={title} hint={`${items.length} ${items.length === 1 ? 'signal' : 'signals'}`}>
+      <Disclosure title={title} hint={`${items.length} ${noun}${items.length === 1 ? '' : 's'}`}>
         <ul className="space-y-4 text-sm">
           {items.map((item, index) => (
             <li key={index} className="leading-relaxed">

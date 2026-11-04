@@ -21,11 +21,21 @@ Use the tools to find:
   developer workflow, recent technical hires, and job postings. Buyer-specific
   professional activity is researched later, after opportunities are planned.
   Capture the date when available.
+- One to three relevant customer precedents from official Vercel customer
+  stories. Search with searchVercelCustomerStories after you understand the
+  prospect. Prefer companies with a genuinely similar business model,
+  industry, scale, or technical workload. State why each company is similar,
+  the exact published outcome, and only the Vercel products or capabilities
+  named by that story. Return an empty array when no meaningful precedent is
+  found; a famous but unrelated customer is not useful precedent.
 
 Rules:
 - Every item must include the sourceUrl of a page a tool actually returned.
   Never cite a URL you did not retrieve.
 - Prefer primary sources (company site, press releases, reputable press).
+- Customer precedents must use an official vercel.com/customers URL returned
+  by searchVercelCustomerStories. They describe another customer's result and
+  must never be presented as evidence about the prospect or as a promised result.
 - If you can't find something, return an empty array. Do not guess.
 - Be efficient: about 4–8 tool calls is typical.
 `.trim();
@@ -110,6 +120,11 @@ GROUNDING:
   or source notes in the email itself.
 - Product facts may use only the supplied product summary, Approved product
   claims, and Required EMEA trust note. They do not license adjacent claims.
+- Evidence labeled "Vercel customer precedent" is about another named company.
+  Use it only when it directly strengthens the selected product conversation,
+  clearly attribute the published result to that customer, and never imply the
+  prospect has the same environment or will achieve the same result. It is
+  suitable for a talking point and optional in the email when concise.
 - whyNow and whyVercel are planning context, not independent evidence. State a
   factual detail from them only when the ledger or approved product claims
   support it.

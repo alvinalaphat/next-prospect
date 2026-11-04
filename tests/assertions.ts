@@ -5,7 +5,7 @@ import { contactActivityEvidence, contactActivityId, containsFullName } from '@/
 import { placeClosingNoteBeforeSignoff, stripEmDashes } from '@/lib/email-text';
 import { presentEvidence, salesLanguage } from '@/lib/evidence-presentation';
 import { relativeTime } from '@/lib/format';
-import { latestEvidenceDate, researchEvidence } from '@/lib/grounding';
+import { isOfficialVercelCustomerStory, latestEvidenceDate, precedentEvidence, researchEvidence } from '@/lib/grounding';
 import { buyerRegionEvidence, opportunityRegion } from '@/lib/region';
 import { freshnessMultiplier, scoreOpportunity } from '@/lib/scoring';
 import { enforceEmailIdentity, stripCitationLeaks } from '@/lib/services';
@@ -66,12 +66,41 @@ const datedResearchEvidence = researchEvidence({
   news: [{ text: 'Introducing Linear Agent', date: '2026-03-24', sourceUrl: 'https://linear.app/changelog/linear-agent' }],
   whyNow: [],
   region: { group: 'americas', label: 'San Francisco, United States', sourceUrl: 'https://linear.app/about' },
-  productSignals: [{ text: 'Linear Agent entered public beta', kind: 'launch', date: '2026-03-24', sourceUrl: 'https://linear.app/changelog/linear-agent' }]
+  productSignals: [{ text: 'Linear Agent entered public beta', kind: 'launch', date: '2026-03-24', sourceUrl: 'https://linear.app/changelog/linear-agent' }],
+  precedents: [{
+    companyName: 'Acme',
+    similarity: 'Both operate collaborative software products.',
+    outcome: 'Acme reported faster releases.',
+    products: ['Vercel Platform'],
+    sourceUrl: 'https://vercel.com/customers/acme'
+  }]
 });
 assert.equal(datedResearchEvidence.find((item) => item.id === 'research.news.0')?.observedAt, '2026-03-24');
 assert.equal(datedResearchEvidence.find((item) => item.id === 'research.signal.0')?.observedAt, '2026-03-24');
 assert.equal(latestEvidenceDate(['research.news.0', 'research.signal.0'], datedResearchEvidence), '2026-03-24');
 assert.equal(latestEvidenceDate(['research.region'], datedResearchEvidence), null);
+assert.equal(datedResearchEvidence.some((item) => item.id.startsWith('research.precedent.')), false, 'customer precedent must stay out of scoring evidence');
+assert.equal(precedentEvidence({
+  companyName: 'Linear',
+  summary: { text: '', sourceUrl: '' },
+  sizeSignals: [],
+  news: [],
+  whyNow: [],
+  region: { group: 'unknown', label: 'Unknown', sourceUrl: null },
+  productSignals: [],
+  precedents: [{
+    companyName: 'Acme',
+    similarity: 'Both operate collaborative software products.',
+    outcome: 'Acme reported faster releases.',
+    products: ['Vercel Platform'],
+    sourceUrl: 'https://vercel.com/customers/acme'
+  }]
+})[0]?.id, 'research.precedent.0');
+assert.equal(isOfficialVercelCustomerStory('https://vercel.com/customers/acme'), true);
+assert.equal(isOfficialVercelCustomerStory('https://www.vercel.com/customers/acme'), true);
+assert.equal(isOfficialVercelCustomerStory('https://example.com/customers/acme'), false);
+assert.equal(isOfficialVercelCustomerStory('https://customer.vercel.com/customers/acme'), false);
+assert.equal(isOfficialVercelCustomerStory('https://vercel.com/blog/acme'), false);
 
 const draftWithoutTrust = 'Hi Taylor,\n\nA relevant product point.\n\nOpen to a short conversation?\n\nFixture Rep';
 const draftWithTrust = placeClosingNoteBeforeSignoff(draftWithoutTrust, EMEA_TRUST_NOTE);

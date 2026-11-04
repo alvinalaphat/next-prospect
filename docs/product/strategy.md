@@ -33,6 +33,8 @@ For each submitted domain, NextProspect:
 
 - observes the public website, hosting signals, and performance;
 - researches public company, hiring, launch, regional, and timing signals;
+- finds relevant official Vercel customer stories as clearly attributed sales
+  precedent without treating another customer's result as prospect evidence;
 - evaluates grounded evidence against the full Vercel product catalog;
 - deterministically scores and ranks up to three distinct product motions;
 - identifies a product-specific named buyer whenever public results support a
@@ -110,6 +112,8 @@ Gmail draft. A human remains responsible for final review and sending.
   account-potential points unless public evidence supports meaningful digital
   scale or workload.
 - Approved product claims come from the catalog, not model memory.
+- Customer precedent may support the conversation and call preparation, but it
+  never changes the prospect score or promises the same outcome.
 
 ## Current non-goals
 

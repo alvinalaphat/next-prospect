@@ -24,6 +24,14 @@ The ledger is the factual boundary:
 
 Do not loosen these checks to make a draft look more complete.
 
+Official Vercel customer stories are researched separately as supporting
+precedent. Each record names the referenced customer, explains the meaningful
+similarity, and retains only a published outcome from a retrieved
+`vercel.com/customers` page. Precedent is deliberately excluded from the
+planning ledger, so another customer's result cannot increase product fit,
+timing, or account potential. It may enter the drafting ledger only as clearly
+attributed context and never as a prediction or promise for the prospect.
+
 ## Division of responsibility
 
 | Concern | Model | Deterministic code |
