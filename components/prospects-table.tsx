@@ -428,7 +428,7 @@ export function ProspectsTable({ items, renderedAt }: { items: ProspectListItem[
               {header('domain', 'Company')}
               <th className="px-3 py-3 font-medium">Best sales pitch</th>
               {header('fitScore', 'Score', 'text-right')}
-              {header('status', 'Status')}
+              {header('status', 'Status', 'pl-6')}
               {header('updatedAt', 'Updated', 'text-right')}
               <th><span className="sr-only">Actions</span></th>
             </tr>
@@ -463,7 +463,7 @@ export function ProspectsTable({ items, renderedAt }: { items: ProspectListItem[
                 <td className="overflow-hidden px-3 py-3 text-right">
                   <Score value={i.fitScore} thresholds={[35, 60]} className="justify-end" />
                 </td>
-                <td className="overflow-hidden px-3 py-3">
+                <td className="overflow-hidden py-3 pr-3 pl-6">
                   <StatusBadge status={i.status} />
                 </td>
                 <td className="text-muted-foreground overflow-hidden px-3 py-3 text-right text-xs whitespace-nowrap">
