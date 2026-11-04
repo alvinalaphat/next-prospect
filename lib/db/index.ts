@@ -62,6 +62,7 @@ export async function resetProspectForNewRun(domain: string, batch: string) {
     perfScore: null,
     fitScore: null,
     angle: null,
+    planningComplete: false,
     detection: null,
     perf: null,
     research: null,
@@ -208,20 +209,62 @@ export async function getOpportunities(domain: string, runId?: string | null) {
     .orderBy(desc(schema.opportunities.score), desc(schema.opportunities.createdAt));
 }
 
-/** Move persisted opportunity checkpoints under a replacement durable run. */
-export async function transferOpportunitiesToRun(
+/** Atomically claim a retry and move the failed run's opportunity checkpoints. */
+export async function claimRetryRunWithOpportunities(
   domain: string,
   failedRunId: string,
   retryRunId: string
 ) {
-  return db()
-    .update(schema.opportunities)
-    .set({ runId: retryRunId, updatedAt: sql`now()` })
+  await db().execute(sql`
+    with claimed as (
+      update prospects
+      set run_id = ${retryRunId}, status = 'queued', error = null, updated_at = now()
+      where domain = ${domain}
+        and (
+          run_id = ${retryRunId}
+          or (status = 'queued' and run_id is null)
+        )
+      returning domain
+    ), transferred as (
+      update opportunities
+      set run_id = ${retryRunId}, updated_at = now()
+      where domain = ${domain}
+        and run_id = ${failedRunId}
+        and exists (select 1 from claimed)
+      returning id
+    )
+    select
+      (select count(*) from claimed) as claimed_count,
+      (select count(*) from transferred) as transferred_count
+  `);
+  const prospect = await getProspect(domain);
+  return prospect?.runId === retryRunId;
+}
+
+/** Remove a partial planner write before retrying that stage. */
+export async function clearIncompleteOpportunityPlanning(domain: string, runId: string) {
+  const prospect = await getProspect(domain);
+  if (prospect?.runId !== runId || prospect.planningComplete) return false;
+  const planningIsIncomplete = db()
+    .select({ value: sql`1` })
+    .from(schema.prospects)
+    .where(and(
+      eq(schema.prospects.domain, domain),
+      eq(schema.prospects.runId, runId),
+      eq(schema.prospects.planningComplete, false)
+    ));
+  await db()
+    .delete(schema.opportunities)
     .where(and(
       eq(schema.opportunities.domain, domain),
-      eq(schema.opportunities.runId, failedRunId)
-    ))
-    .returning();
+      eq(schema.opportunities.runId, runId),
+      exists(planningIsIncomplete)
+    ));
+  return updateProspectForRun(domain, runId, {
+    planningComplete: false,
+    fitScore: null,
+    angle: null
+  });
 }
 
 export async function expireOpportunities(domain: string) {

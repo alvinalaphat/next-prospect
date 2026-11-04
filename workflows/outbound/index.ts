@@ -86,14 +86,17 @@ export const workflowRetryOutbound = async (domain: string, failedRunId: string)
     }
 
     let research = checkpoint.research;
-    if (!checkpoint.opportunities.length && !research) {
+    if (!checkpoint.planningComplete && !research) {
       const researched = await stepResearch(domain, workflowRunId, detection);
       research = researched.research;
       evidence = replaceEvidence(evidence, 'research', researched.evidence);
     }
 
     let opportunities = checkpoint.opportunities;
-    if (!opportunities.length) {
+    if (checkpoint.planningComplete && !opportunities.length) {
+      return { domain, stopped: 'no_opportunities' };
+    }
+    if (!checkpoint.planningComplete) {
       const opportunityIds = await stepPlanOpportunities(domain, workflowRunId, evidence);
       if (!opportunityIds.length) return { domain, stopped: 'no_opportunities' };
       opportunities = opportunityIds.map((id) => ({

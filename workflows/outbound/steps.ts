@@ -2,11 +2,12 @@ import { FatalError, getStepMetadata, RetryableError } from 'workflow';
 import { detect, detectionEvidence } from '@/lib/detect';
 import {
   claimProspectRun,
+  claimRetryRunWithOpportunities,
+  clearIncompleteOpportunityPlanning,
   getOpportunities,
   getOpportunity,
   getProspect,
   insertOpportunity,
-  transferOpportunitiesToRun,
   updateOpportunityForRun,
   updateProspectForRun
 } from '@/lib/db';
@@ -186,10 +187,9 @@ export const stepResumeOutbound = async (
 ) => {
   'use step';
 
-  if (!(await claimProspectRun(domain, retryRunId, { status: 'queued', error: null }))) {
+  if (!(await claimRetryRunWithOpportunities(domain, failedRunId, retryRunId))) {
     return { stop: true as const };
   }
-  await transferOpportunitiesToRun(domain, failedRunId, retryRunId);
   const prospect = await getProspect(domain);
   if (!prospect || prospect.runId !== retryRunId) return { stop: true as const };
   const opportunities = await getOpportunities(domain, retryRunId);
@@ -200,7 +200,9 @@ export const stepResumeOutbound = async (
     ...(prospect.research ? researchEvidence(prospect.research) : [])
   ];
   await updateProspectForRun(domain, retryRunId, {
-    status: opportunities.length ? 'researching' : prospect.detection ? 'qualifying' : 'detecting',
+    status: prospect.planningComplete
+      ? opportunities.length ? 'researching' : 'disqualified'
+      : prospect.detection ? 'qualifying' : 'detecting',
     error: null
   });
   return {
@@ -208,6 +210,7 @@ export const stepResumeOutbound = async (
     detection: prospect.detection,
     perf: prospect.perf,
     research: prospect.research,
+    planningComplete: prospect.planningComplete,
     evidence,
     opportunities: opportunities.map((opportunity) => ({
       id: opportunity.id,
@@ -226,6 +229,11 @@ export const stepPlanOpportunities = async (
 ) => {
   'use step';
 
+  const existing = await getProspect(domain);
+  if (existing?.runId === runId && existing.planningComplete) {
+    return (await getOpportunities(domain, runId)).map((opportunity) => opportunity.id);
+  }
+  if (!(await clearIncompleteOpportunityPlanning(domain, runId))) return [];
   if (!(await updateProspectForRun(domain, runId, { status: 'qualifying', evidence }))) return [];
   const prospect = await getProspect(domain);
   if (!prospect?.detection) throw new FatalError(`Prospect ${domain} is missing detection`);
@@ -263,6 +271,7 @@ export const stepPlanOpportunities = async (
     status: rows.length ? 'researching' : 'disqualified',
     fitScore: top?.score ?? 0,
     angle: top?.angle ?? null,
+    planningComplete: true,
     // Candidate-level suppression is expected planner behavior, not an
     // account failure. Keep the error field reserved for stepFail so the UI
     // never renders discarded product ideas as fatal errors.

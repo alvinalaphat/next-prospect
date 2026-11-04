@@ -28,6 +28,10 @@ opportunities are reused rather than repeated. A missing Slack receipt is
 republished without regenerating its draft, while already-decided opportunities
 stay final and determine the restored account status. This is application-level
 checkpoint recovery: Workflow SDK terminal runs themselves are not reopened.
+The account claim and opportunity transfer happen in one database statement,
+so a failed handoff cannot split checkpoint ownership across runs. Planning has
+an explicit completion marker; partial planner writes are cleared and replanned
+before enrichment instead of being mistaken for a completed product set.
 
 ## Durable execution rules
 
@@ -37,7 +41,8 @@ checkpoint recovery: Workflow SDK terminal runs themselves are not reopened.
 - Make each step retry-safe. A retry must converge on the same prospect or
   opportunity state rather than duplicate externally visible work.
 - A replacement retry run must claim the account before it can publish, and
-  unfinished opportunities must move to that run before enrichment resumes.
+  unfinished opportunities must move to that run atomically before enrichment
+  resumes.
 - Starting a brand-new run clears every prior account-stage checkpoint; only a
   replacement retry run may adopt the failed run's persisted checkpoints.
 - Persist a status before or with meaningful work so the dashboard explains

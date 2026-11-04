@@ -23,17 +23,19 @@ await migrationClient.close();
 const { approvalToken } = await import('@/lib/approval-token');
 const {
   claimProspectRun,
+  claimRetryRunWithOpportunities,
+  clearIncompleteOpportunityPlanning,
   completeMaintenanceRun,
   getLatestMaintenanceRun,
   insertOpportunity,
   getOpportunity,
+  getOpportunities,
   getProspect,
   listActiveProofRecords,
   resetProspectForNewRun,
   reserveProspectRetry,
   restoreProspectRetry,
   startMaintenanceRun,
-  transferOpportunitiesToRun,
   updateOpportunity,
   updateOpportunityForRun,
   updateProspectForRun,
@@ -107,6 +109,7 @@ assert.equal(resetProspect?.research, null);
 assert.equal(resetProspect?.evidence, null);
 assert.equal(resetProspect?.fitScore, null);
 assert.equal(resetProspect?.error, null);
+assert.equal(resetProspect?.planningComplete, false);
 
 const product = getProduct('ai-gateway')!;
 const scored = scoreOpportunity({
@@ -202,28 +205,76 @@ assert.equal(
 );
 assert.equal((await getProspect(retryDomain))?.status, 'error');
 assert.equal(await reserveProspectRetry(retryDomain, failedRunId), true);
-assert.equal(await claimProspectRun(retryDomain, retryRunId, { status: 'queued' }), true);
+assert.equal(await claimRetryRunWithOpportunities(retryDomain, failedRunId, retryRunId), true);
 await updateProspectForRun(retryDomain, retryRunId, { status: 'error', error: 'Fast retry failure' });
 assert.equal(await claimProspectRun(retryDomain, retryRunId, {}), true);
 assert.equal((await getProspect(retryDomain))?.status, 'error');
 assert.equal((await getProspect(retryDomain))?.error, 'Fast retry failure');
-await transferOpportunitiesToRun(retryDomain, failedRunId, retryRunId);
 assert.equal((await getOpportunity(retryOpportunityId))?.runId, retryRunId);
+assert.equal(await reserveProspectRetry(retryDomain, retryRunId), true);
+assert.equal(await claimRetryRunWithOpportunities(retryDomain, retryRunId, 'second-retry-run'), true);
+assert.equal((await getProspect(retryDomain))?.runId, 'second-retry-run');
+assert.equal((await getOpportunity(retryOpportunityId))?.runId, 'second-retry-run');
+await updateProspectForRun(retryDomain, 'second-retry-run', { status: 'queued' });
+assert.equal(await reserveProspectRetry(retryDomain, retryRunId), false);
+
+const partialPlanningDomain = 'partial-planning.example';
+const partialPlanningRunId = 'partial-planning-run';
+const partialOpportunityId = crypto.randomUUID();
+await upsertProspect(partialPlanningDomain, {
+  status: 'qualifying',
+  runId: partialPlanningRunId,
+  fitScore: 72,
+  angle: 'Incomplete planner result',
+  planningComplete: false
+});
+await insertOpportunity({
+  ...reviewableOpportunity,
+  id: partialOpportunityId,
+  domain: partialPlanningDomain,
+  runId: partialPlanningRunId,
+  status: 'candidate',
+  decision: null,
+  approvalToken: null
+});
+assert.equal(await clearIncompleteOpportunityPlanning(partialPlanningDomain, partialPlanningRunId), true);
+assert.equal((await getOpportunities(partialPlanningDomain, partialPlanningRunId)).length, 0);
+assert.equal((await getProspect(partialPlanningDomain))?.fitScore, null);
+assert.equal((await getProspect(partialPlanningDomain))?.planningComplete, false);
+
+await updateProspectForRun(partialPlanningDomain, partialPlanningRunId, {
+  planningComplete: true,
+  fitScore: 72,
+  angle: 'Complete planner result'
+});
+await insertOpportunity({
+  ...reviewableOpportunity,
+  id: crypto.randomUUID(),
+  domain: partialPlanningDomain,
+  runId: partialPlanningRunId,
+  status: 'candidate',
+  decision: null,
+  approvalToken: null
+});
+assert.equal(await clearIncompleteOpportunityPlanning(partialPlanningDomain, partialPlanningRunId), false);
+assert.equal((await getOpportunities(partialPlanningDomain, partialPlanningRunId)).length, 1);
+
+const activeRetryRunId = 'second-retry-run';
 assert.equal(
   await updateOpportunityForRun(retryOpportunityId, { status: 'awaiting_approval' }) !== null,
   true
 );
-const retryApprovalToken = approvalToken(retryOpportunityId, retryRunId, 'opportunity');
+const retryApprovalToken = approvalToken(retryOpportunityId, activeRetryRunId, 'opportunity');
 await stepRequestOpportunityApproval(retryOpportunityId, retryApprovalToken);
 assert.equal((await getOpportunity(retryOpportunityId))?.status, 'awaiting_approval');
 assert.equal((await getOpportunity(retryOpportunityId))?.approvalToken, retryApprovalToken);
 await updateOpportunity(retryOpportunityId, { status: 'rejected' });
-await updateProspectForRun(retryDomain, retryRunId, { status: 'researching', error: null });
-assert.equal(await stepFinishOpportunityPlanning(retryDomain, retryRunId), 'rejected');
+await updateProspectForRun(retryDomain, activeRetryRunId, { status: 'researching', error: null });
+assert.equal(await stepFinishOpportunityPlanning(retryDomain, activeRetryRunId), 'rejected');
 assert.equal((await getProspect(retryDomain))?.status, 'rejected');
 await updateOpportunity(retryOpportunityId, { status: 'approved' });
-await updateProspectForRun(retryDomain, retryRunId, { status: 'researching', error: null });
-assert.equal(await stepFinishOpportunityPlanning(retryDomain, retryRunId), 'approved');
+await updateProspectForRun(retryDomain, activeRetryRunId, { status: 'researching', error: null });
+assert.equal(await stepFinishOpportunityPlanning(retryDomain, activeRetryRunId), 'approved');
 assert.equal((await getProspect(retryDomain))?.status, 'approved');
 
 const result = await applyOpportunityDecision(token, {
