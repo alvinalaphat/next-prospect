@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { getProduct, productIndexForPrompt } from '@/lib/catalog/products';
 import { containsFullName } from '@/lib/contact-activity';
 import { exa } from '@/lib/exa';
-import { findPublishedEmail, formatLedger, normalizeId, unknownCitations, unverifiedNumbers } from '@/lib/grounding';
+import { findPublishedEmail, formatLedger, latestEvidenceDate, normalizeId, unknownCitations, unverifiedNumbers } from '@/lib/grounding';
 import { stripEmDashes } from '@/lib/email-text';
 import { DRAFT_INSTRUCTIONS } from '@/lib/prompts';
 import { configuredRepName, enforceEmailIdentity, MODEL, stripCitationLeaks } from '@/lib/services';
@@ -23,7 +23,6 @@ const signalMatchSchema = z.object({
   ruleId: z.string(),
   evidenceIds: z.array(z.string()).min(1),
   confidence: z.enum(['high', 'medium', 'low']),
-  observedAt: z.string().nullable(),
   explanation: z.string()
 });
 
@@ -118,10 +117,14 @@ export async function planOpportunities(
       warnings.push(`Dropped unknown or non-opportunity product: ${candidate.productId}`);
       continue;
     }
-    const matches: SignalMatch[] = candidate.matches.map((match) => ({
-      ...match,
-      evidenceIds: [...new Set(match.evidenceIds.map(normalizeId).filter((id) => knownEvidence.has(id)))]
-    })).filter((match) => match.evidenceIds.length > 0);
+    const matches: SignalMatch[] = candidate.matches.map((match) => {
+      const evidenceIds = [...new Set(match.evidenceIds.map(normalizeId).filter((id) => knownEvidence.has(id)))];
+      return {
+        ...match,
+        evidenceIds,
+        observedAt: latestEvidenceDate(evidenceIds, ledger)
+      };
+    }).filter((match) => match.evidenceIds.length > 0);
     const result = scoreOpportunity({ product, matches, usesVercel });
     // Keep every grounded product-fit candidate, even when the evidence is
     // weak. The score communicates confidence; a cutoff would hide the very

@@ -74,6 +74,11 @@ runs use only the positive sales-fit account tiers above.
 The planner keeps grounded product-fit candidates even when their total is
 weak. `productFit === 0` is the hard suppression boundary.
 
+Freshness dates come from the cited evidence receipts, not from a date repeated
+by the planning model. When a match cites several dated receipts, deterministic
+code uses the newest valid date. Undated trigger evidence continues to score
+zero rather than being presented as recent.
+
 ## Catalog rules
 
 `lib/catalog/products.ts` defines products, supporting capabilities, target

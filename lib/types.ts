@@ -18,6 +18,7 @@ export type EvidenceItem = {
   label: string;
   value: string;
   url?: string;
+  observedAt?: string | null;
 };
 
 /**

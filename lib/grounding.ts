@@ -91,7 +91,7 @@ export function researchEvidence(r: Research): EvidenceItem[] {
     items.push({ id: `research.size.${i}`, source: 'research', label: 'Size / funding signal', value: s.text, url: s.sourceUrl })
   );
   r.news.forEach((s, i) =>
-    items.push({ id: `research.news.${i}`, source: 'research', label: `News${s.date ? ` (${s.date})` : ''}`, value: s.text, url: s.sourceUrl })
+    items.push({ id: `research.news.${i}`, source: 'research', label: `News${s.date ? ` (${s.date})` : ''}`, value: s.text, url: s.sourceUrl, observedAt: s.date })
   );
   r.whyNow.forEach((s, i) =>
     items.push({ id: `research.whynow.${i}`, source: 'research', label: 'Why now', value: s.text, url: s.sourceUrl })
@@ -102,7 +102,8 @@ export function researchEvidence(r: Research): EvidenceItem[] {
       source: 'research',
       label: `${s.kind}${s.date ? ` (${s.date})` : ''}`,
       value: s.text,
-      url: s.sourceUrl
+      url: s.sourceUrl,
+      observedAt: s.date
     })
   );
   if (r.region && r.region.group !== 'unknown') {
@@ -115,6 +116,19 @@ export function researchEvidence(r: Research): EvidenceItem[] {
     });
   }
   return items;
+}
+
+/** Select the newest valid date carried by the cited evidence receipts. */
+export function latestEvidenceDate(ids: string[], ledger: EvidenceItem[]): string | null {
+  const requested = new Set(ids);
+  let latest: { value: string; timestamp: number } | null = null;
+  for (const evidence of ledger) {
+    if (!requested.has(evidence.id) || !evidence.observedAt) continue;
+    const timestamp = new Date(evidence.observedAt).getTime();
+    if (!Number.isFinite(timestamp)) continue;
+    if (!latest || timestamp > latest.timestamp) latest = { value: evidence.observedAt, timestamp };
+  }
+  return latest?.value ?? null;
 }
 
 /**
