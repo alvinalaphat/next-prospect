@@ -19,6 +19,8 @@ await migrationClient.close();
 
 const { approvalToken } = await import('@/lib/approval-token');
 const {
+  cancelProspectRun,
+  claimProspectRun,
   completeMaintenanceRun,
   getLatestMaintenanceRun,
   insertOpportunity,
@@ -27,6 +29,7 @@ const {
   listActiveProofRecords,
   startMaintenanceRun,
   updateOpportunity,
+  updateProspectForRun,
   upsertProofRecords,
   upsertProspect
 } = await import('@/lib/db');
@@ -39,6 +42,24 @@ const domain = 'fixture.example';
 const runId = 'fixture-run';
 const id = crypto.randomUUID();
 await upsertProspect(domain, { status: 'awaiting_approval', runId, host: 'vercel' });
+
+const cancelledDomain = 'cancelled.example';
+await upsertProspect(cancelledDomain, { status: 'queued', runId: null });
+assert.equal(await claimProspectRun(cancelledDomain, 'cancelled-run', { status: 'detecting' }), true);
+assert.equal(await cancelProspectRun(cancelledDomain, 'cancelled-run'), true);
+assert.equal(
+  await updateProspectForRun(cancelledDomain, 'cancelled-run', { status: 'researching' }),
+  false
+);
+assert.equal((await getProspect(cancelledDomain))?.status, 'cancelled');
+
+await upsertProspect(cancelledDomain, { status: 'queued', runId: null });
+assert.equal(await claimProspectRun(cancelledDomain, 'replacement-run', { status: 'detecting' }), true);
+assert.equal(
+  await updateProspectForRun(cancelledDomain, 'cancelled-run', { status: 'researching' }),
+  false
+);
+assert.equal((await getProspect(cancelledDomain))?.runId, 'replacement-run');
 
 const product = getProduct('ai-gateway')!;
 const scored = scoreOpportunity({
@@ -159,6 +180,7 @@ await completeMaintenanceRun('fixture-proof-refresh', {
 assert.equal((await getLatestMaintenanceRun('proof'))?.status, 'complete');
   console.log('✓ e2e: account → scored expansion opportunity → grounded draft → approval → parent status');
   console.log('✓ maintenance: proof upsert → durable refresh status');
+  console.log('✓ cancellation: cancelled and superseded runs cannot overwrite account state');
 }
 
 main().then(() => process.exit(0)).catch((error) => {

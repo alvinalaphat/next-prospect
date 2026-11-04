@@ -5,6 +5,7 @@ import {
   stepDraft,
   stepEnrichOpportunity,
   stepFail,
+  stepFinishOpportunityPlanning,
   stepPerf,
   stepQualify,
   stepRequestApproval,
@@ -36,8 +37,8 @@ export const workflowOutbound = async (domain: string, startDelaySeconds = 0) =>
     const detected = await stepDetect(domain, workflowRunId);
     if (detected.stop) return { domain, stopped: 'detect' };
 
-    const perf = await stepPerf(domain, detected.detection);
-    const researched = await stepResearch(domain, detected.detection);
+    const perf = await stepPerf(domain, workflowRunId, detected.detection);
+    const researched = await stepResearch(domain, workflowRunId, detected.detection);
 
     const evidence = [...detected.evidence, ...perf.evidence, ...researched.evidence];
     const opportunityIds = await stepPlanOpportunities(domain, workflowRunId, evidence);
@@ -50,9 +51,10 @@ export const workflowOutbound = async (domain: string, startDelaySeconds = 0) =>
         approvalToken(opportunityId, workflowRunId, 'opportunity')
       );
     }
+    await stepFinishOpportunityPlanning(domain, workflowRunId);
     return { domain, stopped: 'awaiting_approval', opportunities: opportunityIds.length };
   } catch (err) {
-    await stepFail(domain, err instanceof Error ? err.message : String(err));
+    await stepFail(domain, workflowRunId, err instanceof Error ? err.message : String(err));
     throw err;
   }
 };

@@ -1,6 +1,6 @@
 import { neon } from '@neondatabase/serverless';
 import { drizzle as drizzleNeon, type NeonHttpDatabase } from 'drizzle-orm/neon-http';
-import { and, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull, ne, or, sql } from 'drizzle-orm';
 import * as schema from './schema';
 import type { OpportunityRow, ProspectRow } from './schema';
 import type { CatalogAuditResult, MaintenanceKind, ProofRecord, ProofRefreshResult } from '@/lib/refresh/types';
@@ -57,6 +57,47 @@ export async function getProspect(domain: string) {
     .where(eq(schema.prospects.domain, domain))
     .limit(1);
   return rows[0] ?? null;
+}
+
+/** Claim a queued account for a run without reviving a cancelled run. */
+export async function claimProspectRun(domain: string, runId: string, patch: ProspectPatch) {
+  const rows = await db()
+    .update(schema.prospects)
+    .set({ ...patch, runId, updatedAt: sql`now()` })
+    .where(and(
+      eq(schema.prospects.domain, domain),
+      ne(schema.prospects.status, 'cancelled'),
+      or(
+        eq(schema.prospects.runId, runId),
+        and(eq(schema.prospects.status, 'queued'), isNull(schema.prospects.runId))
+      )
+    ))
+    .returning({ domain: schema.prospects.domain });
+  return rows.length > 0;
+}
+
+/** Persist step output only while this exact run still owns the account. */
+export async function updateProspectForRun(domain: string, runId: string, patch: ProspectPatch) {
+  const rows = await db()
+    .update(schema.prospects)
+    .set({ ...patch, updatedAt: sql`now()` })
+    .where(and(
+      eq(schema.prospects.domain, domain),
+      eq(schema.prospects.runId, runId),
+      ne(schema.prospects.status, 'cancelled')
+    ))
+    .returning({ domain: schema.prospects.domain });
+  return rows.length > 0;
+}
+
+/** Mark only the run that was actually cancelled, never a replacement run. */
+export async function cancelProspectRun(domain: string, runId: string) {
+  const rows = await db()
+    .update(schema.prospects)
+    .set({ status: 'cancelled', error: null, updatedAt: sql`now()` })
+    .where(and(eq(schema.prospects.domain, domain), eq(schema.prospects.runId, runId)))
+    .returning({ domain: schema.prospects.domain });
+  return rows.length > 0;
 }
 
 type OpportunityInsert = typeof schema.opportunities.$inferInsert;

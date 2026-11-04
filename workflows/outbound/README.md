@@ -33,8 +33,10 @@ decisions after the durable run reaches `awaiting_approval`.
   evidence.
 - Reserve account status `error` and the `error` field for unexpected failure.
   A product candidate being suppressed is normal planner behavior.
-- A user-cancelled in-flight run ends with account status `cancelled`. Cancellation
-  is terminal for that run; the account can be re-run explicitly later.
+- A user-cancelled in-flight run ends with account status `cancelled`.
+  Cancellation is terminal for that run. Every step write is scoped to the
+  owning `runId`, so a finishing step or superseded run cannot overwrite it.
+  The account can be re-run explicitly later.
 - Keep batch staggering unless quota and concurrency behavior is deliberately
   redesigned and tested.
 
@@ -76,6 +78,8 @@ Relevant Vercel customer proof and competitor case studies are selected from
 the refreshed proof library and stored on the opportunity. Competitive context
 is never passed to drafting. Drafting receives only prospect/buyer evidence,
 the selected product context, and its approved catalog claims.
+The account remains in a running state while these opportunities are enriched
+and transitions once to `awaiting_approval` only after all of them are ready.
 
 ### Request review
 
