@@ -5,6 +5,7 @@ import { useMemo, useRef, useState, type DragEvent } from 'react';
 import { FileUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { authHeaders, secretCheckMessage, useRunSecret } from '@/lib/client-secret';
 import { parseDomains } from '@/lib/domains';
 import { cn } from '@/lib/utils';
@@ -82,7 +83,7 @@ export function RunPanel() {
     <div className="space-y-4">
       <div
         className={cn(
-          'flex flex-col rounded-lg border sm:flex-row sm:items-stretch',
+          'flex flex-col rounded-lg border transition-[border-color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/30 sm:flex-row sm:items-stretch',
           dragging && 'border-foreground bg-hover'
         )}
         onDragEnter={(e) => {
@@ -163,7 +164,7 @@ export function RunPanel() {
         </p>
         {secretField.show && (
           <div data-secret-slot className="w-full sm:w-40">
-            <input
+            <Input
               type="password"
               value={secretField.secret}
               onChange={(e) => secretField.update(e.target.value)}
@@ -175,10 +176,7 @@ export function RunPanel() {
               autoComplete="off"
               aria-label="Run secret"
               aria-invalid={secretField.invalid || undefined}
-              className={cn(
-                'bg-background h-11 w-full rounded-lg border px-3 text-sm',
-                secretField.invalid && 'border-error'
-              )}
+              className="h-11"
             />
             {secretField.invalid && <p className="text-error mt-1 text-xs">Doesn't match.</p>}
           </div>

@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { authHeaders, secretCheckMessage, useRunSecret } from '@/lib/client-secret';
 import type { Draft } from '@/lib/types';
 
@@ -53,7 +55,7 @@ export function OpportunityApprovalBar({ opportunityId, draft }: { opportunityId
         <div className="flex w-full flex-col gap-3 sm:ml-auto sm:w-auto">
           {secretField.show && (
             <div data-secret-slot>
-              <input
+              <Input
                 type="password"
                 value={secretField.secret}
                 onChange={(event) => secretField.update(event.target.value)}
@@ -62,7 +64,7 @@ export function OpportunityApprovalBar({ opportunityId, draft }: { opportunityId
                 autoComplete="off"
                 aria-label="Run secret"
                 aria-invalid={secretField.invalid || undefined}
-                className={`bg-background w-full rounded-lg border px-3 py-2 text-xs sm:w-40 ${secretField.invalid ? 'border-error' : ''}`}
+                className="w-full text-xs sm:w-40"
               />
               {secretField.invalid && <p className="text-error mt-1 text-xs">Doesn&apos;t match.</p>}
             </div>
@@ -76,8 +78,8 @@ export function OpportunityApprovalBar({ opportunityId, draft }: { opportunityId
       </div>
       {editing && (
         <div className="space-y-4">
-          <input value={subject} onChange={(event) => setSubject(event.target.value)} className="bg-background w-full rounded-lg border px-4 py-3 text-sm" />
-          <textarea value={body} onChange={(event) => setBody(event.target.value)} rows={8} className="bg-background w-full rounded-lg border px-4 py-3 text-sm" />
+          <Input value={subject} onChange={(event) => setSubject(event.target.value)} aria-label="Email subject" />
+          <Textarea value={body} onChange={(event) => setBody(event.target.value)} rows={8} aria-label="Email body" />
         </div>
       )}
     </div>
