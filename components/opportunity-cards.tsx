@@ -4,6 +4,7 @@ import { OpportunityApprovalBar } from '@/components/opportunity-approval-bar';
 import { OpportunityGmailButton } from '@/components/opportunity-gmail-button';
 import { Score } from '@/components/badges';
 import { CopyButton } from '@/components/copy-button';
+import { Disclosure } from '@/components/disclosure';
 import type { OpportunityRow } from '@/lib/db/schema';
 import { presentEvidence, salesLanguage } from '@/lib/evidence-presentation';
 import type { ScoredSignal } from '@/lib/scoring';
@@ -199,34 +200,33 @@ function formatSourceDate(value: string) {
 
 function DraftPreview({ opportunity, ledger }: { opportunity: OpportunityRow; ledger: EvidenceItem[] }) {
   const draft = opportunity.draft!;
+  const recipient = draft.to?.name
+    ? `To ${draft.to.name}${draft.to.title ? `, ${draft.to.title}` : ''}`
+    : `For ${opportunity.targetRole}`;
   return (
-    <section aria-label={`Draft for ${opportunity.productName}`}>
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h4 className="text-sm font-semibold">Draft outreach</h4>
-          <p className="text-muted-foreground mt-1 text-xs">
-            {draft.to?.name ? `To ${draft.to.name}${draft.to.title ? `, ${draft.to.title}` : ''}` : `For ${opportunity.targetRole}`}
-          </p>
+    <section aria-label={`Draft for ${opportunity.productName}`} className="rounded-lg border bg-hover/60 px-4 sm:px-5">
+      <Disclosure title="Email draft" hint={`${recipient} · ${draft.subject}`}>
+        <div className="flex justify-end">
+          <CopyButton text={`Subject: ${draft.subject}\n\n${draft.body}`} />
         </div>
-        <CopyButton text={`Subject: ${draft.subject}\n\n${draft.body}`} />
-      </div>
-      <div className="mt-4 rounded-lg bg-hover p-4 sm:p-5">
-        <p className="text-muted-foreground text-xs">Subject</p>
-        <p className="mt-1 text-sm font-medium">{draft.subject}</p>
-        <div className="mt-5 whitespace-pre-wrap text-sm leading-6">{draft.body}</div>
-        {draft.emailCitations.length > 0 && (
-          <div className="mt-5 border-t pt-4">
-            <p className="text-muted-foreground text-xs font-medium uppercase tracking-wider">Evidence used in this draft</p>
-            <EvidenceFacts ids={draft.emailCitations} ledger={ledger} className="mt-3" />
+        <div className="mt-3 rounded-lg bg-background p-4 sm:p-5">
+          <p className="text-muted-foreground text-xs">Subject</p>
+          <p className="mt-1 text-sm font-medium">{draft.subject}</p>
+          <div className="mt-5 whitespace-pre-wrap text-sm leading-6">{draft.body}</div>
+          {draft.emailCitations.length > 0 && (
+            <div className="mt-5 border-t pt-4">
+              <p className="text-muted-foreground text-xs font-medium uppercase tracking-wider">Evidence used in this draft</p>
+              <EvidenceFacts ids={draft.emailCitations} ledger={ledger} className="mt-3" />
+            </div>
+          )}
+        </div>
+        {draft.warnings.length > 0 && (
+          <div className="text-warning mt-3 flex items-start gap-2 text-xs">
+            <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
+            <span>{draft.warnings.join(' · ')}</span>
           </div>
         )}
-      </div>
-      {draft.warnings.length > 0 && (
-        <div className="text-warning mt-3 flex items-start gap-2 text-xs">
-          <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
-          <span>{draft.warnings.join(' · ')}</span>
-        </div>
-      )}
+      </Disclosure>
     </section>
   );
 }
