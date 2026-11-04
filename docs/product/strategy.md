@@ -45,8 +45,10 @@ For each submitted domain, NextProspect:
 ### Recommend conversations, not data dumps
 
 Research exists to support a decision. The account page should lead with the
-company context and ranked product pitches. Technical details and source
-receipts belong behind progressive disclosure.
+company context and ranked product pitches. Evidence should be translated into
+plain sales language and shown with the opportunity and score category it
+supports. Internal receipt IDs and raw implementation details stay out of the
+rep-facing experience.
 
 ### Product and buyer are inseparable
 

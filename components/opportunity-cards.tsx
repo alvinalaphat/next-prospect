@@ -3,10 +3,10 @@ import { LinkedInIcon } from '@/components/linkedin-icon';
 import { OpportunityApprovalBar } from '@/components/opportunity-approval-bar';
 import { OpportunityGmailButton } from '@/components/opportunity-gmail-button';
 import { Score } from '@/components/badges';
-import { Sources } from '@/components/citations';
 import { CopyButton } from '@/components/copy-button';
-import { Disclosure } from '@/components/disclosure';
 import type { OpportunityRow } from '@/lib/db/schema';
+import { presentEvidence, salesLanguage } from '@/lib/evidence-presentation';
+import type { ScoredSignal } from '@/lib/scoring';
 import type { EvidenceItem } from '@/lib/types';
 
 const statusLabel: Record<OpportunityRow['status'], string> = {
@@ -63,14 +63,19 @@ export function OpportunityCards({
 
               <Buyer opportunity={opportunity} />
 
-              <div className="rounded-lg bg-hover px-4 sm:px-5">
-                <Disclosure
-                  title={`Why this opportunity scored ${opportunity.score}`}
-                  hint={`${scoreAssessment(opportunity.score).label} · ${scoreDriverSummary(opportunity)}`}
-                >
-                  <ScoreExplanation opportunity={opportunity} ledger={ledger} />
-                </Disclosure>
-              </div>
+              <section
+                aria-label={`Why ${opportunity.productName} scored ${opportunity.score}`}
+                className="rounded-lg border bg-hover/60 p-4 sm:p-5"
+              >
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <p className="text-muted-foreground text-xs font-medium uppercase tracking-wider">Score and evidence</p>
+                    <h4 className="mt-1 text-base font-semibold">Why this opportunity scored {opportunity.score}</h4>
+                  </div>
+                  <p className="text-muted-foreground text-sm">{scoreAssessment(opportunity.score).label}</p>
+                </div>
+                <ScoreExplanation opportunity={opportunity} ledger={ledger} />
+              </section>
 
               {opportunity.draft && <DraftPreview opportunity={opportunity} ledger={ledger} />}
             </div>
@@ -209,7 +214,12 @@ function DraftPreview({ opportunity, ledger }: { opportunity: OpportunityRow; le
         <p className="text-muted-foreground text-xs">Subject</p>
         <p className="mt-1 text-sm font-medium">{draft.subject}</p>
         <div className="mt-5 whitespace-pre-wrap text-sm leading-6">{draft.body}</div>
-        <Sources ids={draft.emailCitations} ledger={ledger} />
+        {draft.emailCitations.length > 0 && (
+          <div className="mt-5 border-t pt-4">
+            <p className="text-muted-foreground text-xs font-medium uppercase tracking-wider">Evidence used in this draft</p>
+            <EvidenceFacts ids={draft.emailCitations} ledger={ledger} className="mt-3" />
+          </div>
+        )}
       </div>
       {draft.warnings.length > 0 && (
         <div className="text-warning mt-3 flex items-start gap-2 text-xs">
@@ -227,94 +237,188 @@ function scoreAssessment(score: number) {
   return { label: 'Early opportunity', takeaway: 'Review the evidence and validate the gaps before prioritizing outreach.' };
 }
 
-function scoreDriverSummary(opportunity: OpportunityRow) {
-  const breakdown = opportunity.scoreBreakdown;
-  const drivers = [
-    breakdown.productFit > 0 && 'product fit',
-    breakdown.trigger > 0 && 'timing',
-    breakdown.accountValue > 0 && 'account potential',
-    breakdown.buyerQuality > 0 && 'buyer confidence'
-  ].filter(Boolean) as string[];
-  if (drivers.length === 0) return 'No positive scoring signals yet';
-  if (drivers.length === 1) return `${drivers[0]} is the main score driver`;
-  return `${drivers.slice(0, -1).join(', ')} and ${drivers.at(-1)} drive the score`;
-}
-
 function ScoreExplanation({ opportunity, ledger }: { opportunity: OpportunityRow; ledger: EvidenceItem[] }) {
   const breakdown = opportunity.scoreBreakdown;
   const assessment = scoreAssessment(opportunity.score);
-  const positive = [
-    { label: 'Product fit', value: breakdown.productFit, description: 'Public evidence connects this Vercel product to a specific need.' },
-    { label: 'Timing', value: breakdown.trigger, description: 'A recent event creates a reason to start the conversation now.' },
-    { label: 'Account potential', value: breakdown.accountValue, description: 'The company profile matches the accounts Vercel sales should prioritize.' },
-    { label: 'Buyer confidence', value: breakdown.buyerQuality, description: 'A relevant person was identified for this product conversation.' }
-  ].filter((item) => item.value > 0);
-  const missing = [
-    breakdown.trigger === 0 && 'a timely trigger',
-    breakdown.accountValue === 0 && 'a qualifying account profile',
-    breakdown.buyerQuality === 0 && 'a verified buyer'
-  ].filter(Boolean) as string[];
+  const categories = [
+    { label: 'Product fit', value: breakdown.productFit, cap: 45 },
+    { label: 'Timing', value: breakdown.trigger, cap: 20 },
+    { label: 'Account potential', value: breakdown.accountValue, cap: 20 },
+    { label: 'Buyer confidence', value: breakdown.buyerQuality, cap: 15 }
+  ];
 
   return (
-    <div className="pb-1">
-      <div className="grid gap-6 sm:grid-cols-[11rem_1fr] sm:gap-8">
-        <div>
-          <p className="text-muted-foreground text-xs font-medium uppercase tracking-wider">Overall assessment</p>
-          <p className="mt-2 font-mono text-2xl tabular-nums">{opportunity.score}<span className="text-muted-foreground text-sm">/100</span></p>
-          <p className="mt-1 text-sm font-medium">{assessment.label}</p>
+    <div className="mt-5">
+      <dl aria-label="Score calculation" className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+        {categories.map((category) => (
+          <div key={category.label} className="rounded-lg border bg-background p-3">
+            <dt className="text-muted-foreground text-xs">{category.label}</dt>
+            <dd className="mt-1 font-mono text-lg tabular-nums">+{category.value}<span className="text-muted-foreground text-xs">/{category.cap}</span></dd>
+          </div>
+        ))}
+        <div className="col-span-2 rounded-lg bg-foreground p-3 text-background sm:col-span-1">
+          <dt className="text-xs opacity-70">Total</dt>
+          <dd className="mt-1 font-mono text-lg tabular-nums">{opportunity.score}<span className="text-xs opacity-70">/100</span></dd>
         </div>
-        <div>
-          <p className="text-sm font-medium">Sales takeaway</p>
-          <p className="text-muted-foreground mt-1 text-sm leading-6">{assessment.takeaway}</p>
-        </div>
+      </dl>
+
+      <p className="mt-4 text-sm leading-6">{assessment.takeaway}</p>
+
+      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        <ScoreCategory
+          label="Product fit"
+          value={breakdown.productFit}
+          cap={45}
+          empty="No product-fit evidence contributed points."
+          signals={opportunity.matchedSignals.filter((signal) => signal.category === 'product_fit')}
+          ledger={ledger}
+        />
+        <ScoreCategory
+          label="Timing"
+          value={breakdown.trigger}
+          cap={20}
+          empty="No dated event added a timely reason to reach out."
+          signals={opportunity.matchedSignals.filter((signal) => signal.category === 'trigger')}
+          ledger={ledger}
+        />
+        <ScoreCategory
+          label="Account potential"
+          value={breakdown.accountValue}
+          cap={20}
+          empty="Public company signals did not support a priority account tier."
+          signals={opportunity.matchedSignals.filter((signal) => signal.category === 'account_value')}
+          ledger={ledger}
+          expansion={opportunity.salesMotion === 'expansion'}
+        />
+        <BuyerScore opportunity={opportunity} />
       </div>
 
-      <div className="mt-6 border-t pt-5">
-        <h4 className="text-sm font-medium">What raised the score</h4>
-        <dl className="mt-3 grid gap-3 sm:grid-cols-2">
-          {positive.map((item) => <ScoreDriver key={item.label} {...item} />)}
-        </dl>
-      </div>
-
-      <div className="mt-5 grid gap-4 text-sm sm:grid-cols-2">
-        <div>
-          <p className="font-medium">Still unproven</p>
-          <p className="text-muted-foreground mt-1 leading-6">
-            {missing.length > 0 ? `No points yet for ${joinList(missing)}.` : 'The major scoring areas all contributed to the score.'}
-          </p>
-        </div>
-        <div>
-          <p className="font-medium">Account profile</p>
-          <p className="text-muted-foreground mt-1 leading-6">
-            {breakdown.accountValue > 0
-              ? 'Account-potential points reflect the highest supported sales-fit tier and any observed Vercel expansion context.'
-              : 'No target-account tier was supported; traditional SMB and professional-services profiles do not receive account-potential points by default.'}
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-5 border-t pt-4">
-        <p className="text-muted-foreground text-xs">The score is deterministic and based only on the evidence collected for this opportunity.</p>
-        <Sources ids={opportunity.evidenceIds} ledger={ledger} />
-      </div>
+      <p className="text-muted-foreground mt-4 text-xs leading-5">
+        The score is calculated in code from the points shown above. Evidence is displayed in sales language; source links open the original public record.
+      </p>
     </div>
   );
 }
 
-function ScoreDriver({ label, value, description }: { label: string; value: number; description: string }) {
+function ScoreCategory({
+  label,
+  value,
+  cap,
+  empty,
+  signals,
+  ledger,
+  expansion = false
+}: {
+  label: string;
+  value: number;
+  cap: number;
+  empty: string;
+  signals: ScoredSignal[];
+  ledger: EvidenceItem[];
+  expansion?: boolean;
+}) {
+  const signalPoints = signals.reduce((total, signal) => total + signal.points, 0);
+  const expansionPoints = expansion ? Math.max(0, value - Math.min(cap, signalPoints)) : 0;
+  const rawPoints = signalPoints + (expansion ? 5 : 0);
   return (
-    <div className="rounded-lg bg-background p-3.5">
+    <section className="rounded-lg border bg-background p-4">
       <div className="flex items-baseline justify-between gap-3">
-        <dt className="text-sm font-medium">{label}</dt>
-        <dd className="text-positive font-mono text-sm tabular-nums">+{value}</dd>
+        <h5 className="text-sm font-semibold">{label}</h5>
+        <span className="text-positive font-mono text-sm tabular-nums">+{value}/{cap}</span>
       </div>
-      <p className="text-muted-foreground mt-1 text-xs leading-5">{description}</p>
-    </div>
+      {signals.length === 0 && expansionPoints === 0 ? (
+        <p className="text-muted-foreground mt-3 text-sm leading-6">{empty}</p>
+      ) : (
+        <ul className="mt-3 space-y-4">
+          {signals.map((signal) => (
+            <li key={signal.ruleId}>
+              <div className="flex items-start justify-between gap-3 text-sm">
+                <p className="font-medium leading-5">{salesLanguage(signal.explanation)}</p>
+                <span className="text-positive shrink-0 font-mono text-xs tabular-nums">+{signal.points}</span>
+              </div>
+              <p className="text-muted-foreground mt-1 text-xs leading-5">{signalContext(signal)}</p>
+              <EvidenceFacts ids={signal.evidenceIds} ledger={ledger} className="mt-2" />
+            </li>
+          ))}
+          {expansionPoints > 0 && (
+            <li>
+              <div className="flex items-start justify-between gap-3 text-sm">
+                <p className="font-medium leading-5">The inspected site already runs on Vercel, creating expansion context.</p>
+                <span className="text-positive shrink-0 font-mono text-xs tabular-nums">+{expansionPoints}</span>
+              </div>
+              <EvidenceFacts ids={vercelEvidenceIds(ledger)} ledger={ledger} className="mt-2" />
+            </li>
+          )}
+        </ul>
+      )}
+      {rawPoints > cap && (
+        <p className="text-muted-foreground mt-3 border-t pt-3 text-xs leading-5">
+          Supported signals reached +{rawPoints}, but this category contributes at most +{cap}.
+        </p>
+      )}
+    </section>
   );
 }
 
-function joinList(items: string[]) {
-  if (items.length < 2) return items[0] ?? '';
-  if (items.length === 2) return `${items[0]} or ${items[1]}`;
-  return `${items.slice(0, -1).join(', ')}, or ${items.at(-1)}`;
+function BuyerScore({ opportunity }: { opportunity: OpportunityRow }) {
+  const value = opportunity.scoreBreakdown.buyerQuality;
+  const contact = opportunity.contact;
+  return (
+    <section className="rounded-lg border bg-background p-4">
+      <div className="flex items-baseline justify-between gap-3">
+        <h5 className="text-sm font-semibold">Buyer confidence</h5>
+        <span className="text-positive font-mono text-sm tabular-nums">+{value}/15</span>
+      </div>
+      <p className="mt-3 text-sm font-medium leading-5">
+        {contact?.name
+          ? `${contact.name} was verified as a relevant buyer for this conversation.`
+          : `The target role is ${opportunity.targetRole}, but no named buyer was verified.`}
+      </p>
+      {contact?.rationale && <p className="text-muted-foreground mt-1 text-xs leading-5">{contact.rationale}</p>}
+      {contact?.sourceUrl && (
+        <a href={contact.sourceUrl} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-foreground mt-2 inline-flex items-center gap-1 text-xs underline decoration-dotted underline-offset-2">
+          Verify buyer <ArrowUpRight className="size-3" aria-hidden />
+        </a>
+      )}
+    </section>
+  );
+}
+
+function EvidenceFacts({ ids, ledger, className = '' }: { ids: string[]; ledger: EvidenceItem[]; className?: string }) {
+  const byId = new Map(ledger.map((evidence) => [evidence.id, evidence]));
+  const evidence = [...new Set(ids)].map((id) => byId.get(id)).filter((item): item is EvidenceItem => Boolean(item));
+  if (evidence.length === 0) return null;
+  return (
+    <ul className={`${className} space-y-2`}>
+      {evidence.map((item) => <EvidenceFact key={item.id} evidence={item} />)}
+    </ul>
+  );
+}
+
+function EvidenceFact({ evidence }: { evidence: EvidenceItem }) {
+  const presented = presentEvidence(evidence);
+  return (
+    <li className="border-l-2 pl-3 text-xs leading-5">
+      <p className="text-muted-foreground font-medium">{presented.label}</p>
+      <p className="mt-0.5">{presented.statement}</p>
+      {evidence.url && presented.sourceLabel && (
+        <a href={evidence.url} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-foreground mt-1 inline-flex items-center gap-1 underline decoration-dotted underline-offset-2">
+          {presented.sourceLabel} <ArrowUpRight className="size-3" aria-hidden />
+        </a>
+      )}
+    </li>
+  );
+}
+
+function signalContext(signal: ScoredSignal) {
+  const confidence = `${signal.confidence[0].toUpperCase()}${signal.confidence.slice(1)}-confidence match`;
+  const date = signal.observedAt ? ` · observed ${formatSourceDate(signal.observedAt)}` : '';
+  const adjustment = signal.points < signal.basePoints ? ` · adjusted from +${signal.basePoints}` : '';
+  return `${confidence}${date}${adjustment}`;
+}
+
+function vercelEvidenceIds(ledger: EvidenceItem[]) {
+  return ledger
+    .filter((evidence) => evidence.id.startsWith('detect.host.') && /vercel/i.test(`${evidence.label} ${evidence.value}`))
+    .map((evidence) => evidence.id);
 }
