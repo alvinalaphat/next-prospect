@@ -4,6 +4,7 @@ import { approvalToken, parseApprovalToken } from '@/lib/approval-token';
 import { contactActivityEvidence, contactActivityId, containsFullName } from '@/lib/contact-activity';
 import { presentEvidence, salesLanguage } from '@/lib/evidence-presentation';
 import { relativeTime } from '@/lib/format';
+import { buyerRegionEvidence, opportunityRegion } from '@/lib/region';
 import { freshnessMultiplier, scoreOpportunity } from '@/lib/scoring';
 
 const ids = PRODUCTS.map((product) => product.id);
@@ -54,6 +55,29 @@ assert.notEqual(
   contactActivityId({ sourceUrl: 'https://example.com/post', text: 'First summary', relevance: 'AI' }),
   contactActivityId({ sourceUrl: 'https://example.com/post', text: 'Second summary', relevance: 'AI' })
 );
+
+const emeaHeadquarters = { group: 'emea' as const, label: 'London, United Kingdom', sourceUrl: 'https://example.com/about' };
+const americasHeadquarters = { group: 'americas' as const, label: 'San Francisco, United States', sourceUrl: 'https://example.com/about' };
+const emeaBuyer = { group: 'emea' as const, label: 'Paris, France', sourceUrl: 'https://example.com/buyer' };
+const americasBuyer = { group: 'americas' as const, label: 'New York, United States', sourceUrl: 'https://example.com/buyer' };
+assert.equal(opportunityRegion(emeaHeadquarters, americasBuyer), emeaHeadquarters, 'EMEA headquarters must take precedence');
+assert.equal(opportunityRegion(americasHeadquarters, emeaBuyer), emeaBuyer, 'an EMEA buyer must expand EMEA coverage');
+assert.equal(opportunityRegion(americasHeadquarters, undefined), americasHeadquarters);
+assert.deepEqual(buyerRegionEvidence({
+  name: 'Taylor Example',
+  title: 'Head of AI',
+  linkedinUrl: null,
+  email: null,
+  sourceUrl: 'https://example.com/buyer',
+  region: emeaBuyer,
+  rationale: 'Owns the AI product.'
+}), [{
+  id: 'research.buyer-region',
+  source: 'research',
+  label: 'Buyer work location',
+  value: 'Taylor Example: Paris, France',
+  url: 'https://example.com/buyer'
+}]);
 
 const plainSpeed = presentEvidence({
   id: 'psi.mobile.field.lcp',

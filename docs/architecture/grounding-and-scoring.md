@@ -110,6 +110,9 @@ people search covers the union of their target roles, and the model assigns a
 buyer to each opportunity. A named contact is accepted only when
 the selected name is present in retrieved content. Published emails are used
 only when found in retrieved public text; addresses are never constructed.
+Buyer region is retained only when the retrieved public result explicitly
+connects the selected person to that work location or a regional role. A
+company merely having an office in a region is not buyer-location evidence.
 
 When no person is sufficiently supported, store null contact fields and retain
 the explicit target role. That is a valid, honest result.
@@ -131,8 +134,9 @@ A first-touch email should contain:
 
 1. a public trigger or observation that explains why the timing is relevant;
 2. why the selected Vercel product is relevant to the recipient's work;
-3. for EMEA accounts, a product-specific privacy, governance, or data-control
-   strength only when approved catalog claims support it; and
+3. when the company headquarters or verified buyer work location is in EMEA,
+   a product-specific privacy, governance, or data-control strength only when
+   approved catalog claims support it; and
 4. a short meeting or demo request about that product.
 
 Drafts do not default to a hosting migration. Hosting migration language is

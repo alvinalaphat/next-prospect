@@ -12,8 +12,9 @@ Use the tools to find:
 - Recent news from the last ~12 months: launches, funding, replatforming,
   notable engineering hires.
 - "Why now" reasons to reach out this quarter.
-- The best-supported company region (Americas, EMEA, APAC, or unknown). Use a
-  public source; do not infer it from a top-level domain alone.
+- The best-supported company headquarters region (Americas, EMEA, APAC, or
+  unknown). Use a public source; do not substitute the location of an office
+  or infer it from a top-level domain alone.
 - Public product signals relevant to ANY Vercel offering, not only hosting:
   AI or agent launches, model/platform work, backend or compute changes,
   reliability and observability needs, security or bot pressure, analytics,
@@ -51,7 +52,8 @@ EMAIL STRUCTURE:
    the connection to the buyer without stating their title or responsibilities
    as facts unless the evidence supports them. Do not broaden an approved claim
    or pitch a different product.
-3. EMEA: when Region is EMEA, fold one product-specific privacy, governance,
+3. EMEA: when Region is EMEA because the company is headquartered there or the
+   selected buyer has a verified EMEA work location, fold one product-specific privacy, governance,
    or data-control strength into the relevance paragraph only when it appears
    in Approved product claims or EMEA guidance. If no such approved claim is
    supplied, omit it rather than inventing a compliance or residency claim.

@@ -14,6 +14,7 @@ import { researchEvidence } from '@/lib/grounding';
 import { findOpportunityContacts, planOpportunities, writeOpportunityDraft } from '@/lib/opportunity-services';
 import { contactActivityEvidence, researchContactActivities } from '@/lib/contact-activity';
 import { emptyPerfResult, perfEvidence, PsiRateLimitError, runPsi } from '@/lib/psi';
+import { buyerRegionEvidence, opportunityRegion } from '@/lib/region';
 import { scoreOpportunity } from '@/lib/scoring';
 import { getProduct } from '@/lib/catalog/products';
 import { research, ResearchAuthError } from '@/lib/services';
@@ -200,6 +201,7 @@ export const stepResearchOpportunityBuyers = async (
     linkedinUrl: null,
     email: null,
     sourceUrl: null,
+    region: null,
     rationale: `No named person was verified. Target ${targetRole}.`
   });
   if (!process.env.EXA_API_KEY) {
@@ -274,6 +276,7 @@ export const stepEnrichOpportunity = async (
   if (!product) throw new FatalError(`Unknown product ${opportunity.productId}`);
   const activity = buyerResearch.activity;
   const activityEvidence = contactActivityEvidence(activity);
+  const regionEvidence = buyerRegionEvidence(contact);
   const rescored = scoreOpportunity({
     product,
     matches: opportunity.matchedSignals,
@@ -281,7 +284,7 @@ export const stepEnrichOpportunity = async (
     buyerQuality: contact.name ? 15 : 5
   });
   const selectedEvidence = evidence.filter((item) => opportunity.evidenceIds.includes(item.id));
-  selectedEvidence.push(...activityEvidence);
+  selectedEvidence.push(...activityEvidence, ...regionEvidence);
 
   if (!(await isProspectRunCurrent(opportunity.domain, opportunity.runId))) {
     return { opportunityId, score: rescored.score };
@@ -304,7 +307,7 @@ export const stepEnrichOpportunity = async (
     evidence: selectedEvidence,
     contact,
     salesMotion: opportunity.salesMotion,
-    region: researchResult?.region
+    region: opportunityRegion(researchResult?.region, contact.region)
   });
   if (!(await isProspectRunCurrent(opportunity.domain, opportunity.runId))) {
     return { opportunityId, score: rescored.score };

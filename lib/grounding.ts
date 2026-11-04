@@ -109,7 +109,7 @@ export function researchEvidence(r: Research): EvidenceItem[] {
     items.push({
       id: 'research.region',
       source: 'research',
-      label: 'Company region',
+      label: 'Company headquarters',
       value: `${r.region.group}: ${r.region.label}`,
       url: r.region.sourceUrl ?? undefined
     });

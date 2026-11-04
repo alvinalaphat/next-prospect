@@ -125,7 +125,7 @@ await insertOpportunity({
   scoreBreakdown: scored.breakdown,
   matchedSignals: scored.signals,
   evidenceIds: ['research.signal.0', 'research.size.0'],
-  contact: { name: 'Taylor Example', title: 'Head of AI', linkedinUrl: null, email: null, sourceUrl: 'https://example.com/team', rationale: 'Owns the AI product.' },
+  contact: { name: 'Taylor Example', title: 'Head of AI', linkedinUrl: null, email: null, sourceUrl: 'https://example.com/team', region: null, rationale: 'Owns the AI product.' },
   draft: {
     subjectOptions: ['your new agent', 'building on vercel', 'the next AI layer'],
     subject: 'your new agent',

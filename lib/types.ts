@@ -115,6 +115,14 @@ const sourced = z.object({
   sourceUrl: z.string().describe('URL returned by a search/fetch tool call')
 });
 
+export const regionSchema = z.object({
+  group: z.enum(['americas', 'emea', 'apac', 'unknown']),
+  label: z.string(),
+  sourceUrl: z.string().nullable()
+});
+
+export type Region = z.infer<typeof regionSchema>;
+
 export const researchSchema = z.object({
   companyName: z.string(),
   summary: sourced.describe('What the company does, one or two sentences'),
@@ -130,13 +138,8 @@ export const researchSchema = z.object({
     .describe('Recent (last ~12 months) news, launches, hires, funding'),
   whyNow: z.array(sourced).describe('Time-sensitive reasons to reach out now')
   ,
-  region: z
-    .object({
-      group: z.enum(['americas', 'emea', 'apac', 'unknown']),
-      label: z.string(),
-      sourceUrl: z.string().nullable()
-    })
-    .describe('Best-supported company region; unknown when public evidence is insufficient'),
+  region: regionSchema
+    .describe('Best-supported company headquarters region; unknown when public evidence is insufficient'),
   productSignals: z
     .array(
       sourced.extend({
@@ -222,6 +225,11 @@ export const opportunityContactSchema = z.object({
   linkedinUrl: z.string().nullable(),
   email: z.string().nullable(),
   sourceUrl: z.string().nullable(),
+  region: z.object({
+    group: z.enum(['americas', 'emea', 'apac']),
+    label: z.string(),
+    sourceUrl: z.string()
+  }).nullable(),
   rationale: z.string()
 });
 
