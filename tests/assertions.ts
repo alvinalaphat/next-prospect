@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { OPPORTUNITY_PRODUCTS, PRODUCTS, getProduct } from '@/lib/catalog/products';
 import { approvalToken, parseApprovalToken } from '@/lib/approval-token';
-import { isCronAuthorized } from '@/lib/auth';
 import { contactActivityEvidence, contactActivityId, containsFullName } from '@/lib/contact-activity';
 import { relativeTime } from '@/lib/format';
 import { freshnessMultiplier, scoreOpportunity } from '@/lib/scoring';
@@ -35,13 +34,6 @@ assert.equal(
   '1m ago',
   'relative time should be deterministic when the render timestamp is supplied'
 );
-
-process.env.CRON_SECRET = 'fixture-cron-secret';
-assert.equal(isCronAuthorized(new Request('https://example.com/api/cron', {
-  headers: { authorization: 'Bearer fixture-cron-secret' }
-})), true);
-assert.equal(isCronAuthorized(new Request('https://example.com/api/cron')), false);
-delete process.env.CRON_SECRET;
 
 const undatedActivity = contactActivityEvidence([{
   id: 'research.buyer-activity.fixture',

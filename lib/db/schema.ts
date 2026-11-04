@@ -1,8 +1,7 @@
-import { boolean, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
+import { boolean, index, integer, jsonb, pgTable, primaryKey, text, timestamp } from 'drizzle-orm/pg-core';
 import type { GmailDraft } from '@/lib/gmail';
 import type { ProductCategory } from '@/lib/catalog/types';
 import type { ScoreBreakdown, ScoredSignal } from '@/lib/scoring';
-import type { MaintenanceKind, MaintenanceStatus, ProofRefreshResult, ProofUsage, ProofVendor } from '@/lib/refresh/types';
 import type {
   Approval,
   ContactActivity,
@@ -88,8 +87,6 @@ export const opportunities = pgTable(
 
     contact: jsonb('contact').$type<OpportunityContact>(),
     contactActivity: jsonb('contact_activity').$type<ContactActivity[]>(),
-    proofIds: jsonb('proof_ids').$type<string[]>(),
-    competitiveContextIds: jsonb('competitive_context_ids').$type<string[]>(),
     draft: jsonb('draft').$type<Draft>(),
     decision: jsonb('decision').$type<Approval>(),
     approvalToken: text('approval_token'),
@@ -108,51 +105,5 @@ export const opportunities = pgTable(
   ]
 );
 
-/** Durable history for the weekly customer-proof refresh workflow. */
-export const maintenanceRuns = pgTable(
-  'maintenance_runs',
-  {
-    id: text('id').primaryKey(),
-    kind: text('kind').$type<MaintenanceKind>().notNull(),
-    status: text('status').$type<MaintenanceStatus>().notNull().default('running'),
-    result: jsonb('result').$type<ProofRefreshResult>(),
-    error: text('error'),
-    startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
-    finishedAt: timestamp('finished_at', { withTimezone: true }),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
-  },
-  (t) => [index('maintenance_runs_kind_created_idx').on(t.kind, t.createdAt)]
-);
-
-/** Refreshed customer proof and competitive context. Never used for scoring. */
-export const proofRecords = pgTable(
-  'proof_records',
-  {
-    id: text('id').primaryKey(),
-    vendor: text('vendor').$type<ProofVendor>().notNull(),
-    usage: text('usage').$type<ProofUsage>().notNull(),
-    company: text('company').notNull(),
-    title: text('title').notNull(),
-    sourceUrl: text('source_url').notNull(),
-    summary: text('summary').notNull(),
-    productIds: jsonb('product_ids').$type<string[]>().notNull(),
-    industries: jsonb('industries').$type<string[]>().notNull(),
-    workloads: jsonb('workloads').$type<string[]>().notNull(),
-    candidateClaims: jsonb('candidate_claims').$type<string[]>().notNull(),
-    publishedAt: text('published_at'),
-    lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).notNull(),
-    active: boolean('active').notNull().default(true),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
-  },
-  (t) => [
-    uniqueIndex('proof_records_source_url_idx').on(t.sourceUrl),
-    index('proof_records_vendor_idx').on(t.vendor),
-    index('proof_records_active_idx').on(t.active)
-  ]
-);
-
 export type ProspectRow = typeof prospects.$inferSelect;
 export type OpportunityRow = typeof opportunities.$inferSelect;
-export type MaintenanceRunRow = typeof maintenanceRuns.$inferSelect;
-export type ProofRecordRow = typeof proofRecords.$inferSelect;

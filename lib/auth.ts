@@ -11,11 +11,6 @@ export function isAuthorized(request: Request): boolean {
   return hasBearerToken(request, secret, cleanSecret);
 }
 
-export function isCronAuthorized(request: Request): boolean {
-  const secret = process.env.CRON_SECRET ?? '';
-  return Boolean(secret) && hasBearerToken(request, secret);
-}
-
 function hasBearerToken(
   request: Request,
   secret: string,
@@ -42,6 +37,3 @@ export const unauthorized = () =>
     { error: 'Wrong or missing RUN_SECRET. Paste the value from .env.local (without "RUN_SECRET=").' },
     { status: 401 }
   );
-
-export const cronUnauthorized = () =>
-  Response.json({ error: 'Unauthorized' }, { status: 401 });

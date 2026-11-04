@@ -6,7 +6,7 @@ import { Score } from '@/components/badges';
 import { Sources } from '@/components/citations';
 import { CopyButton } from '@/components/copy-button';
 import { Disclosure } from '@/components/disclosure';
-import type { OpportunityRow, ProofRecordRow } from '@/lib/db/schema';
+import type { OpportunityRow } from '@/lib/db/schema';
 import type { EvidenceItem } from '@/lib/types';
 
 const statusLabel: Record<OpportunityRow['status'], string> = {
@@ -22,15 +22,12 @@ const statusLabel: Record<OpportunityRow['status'], string> = {
 
 export function OpportunityCards({
   opportunities,
-  ledger,
-  proofRecords
+  ledger
 }: {
   opportunities: OpportunityRow[];
   ledger: EvidenceItem[];
-  proofRecords: ProofRecordRow[];
 }) {
   if (!opportunities.length) return null;
-  const proofById = new Map(proofRecords.map((record) => [record.id, record]));
   return (
     <section aria-labelledby="recommended-opportunities-title" className="max-w-5xl space-y-5">
       <div>
@@ -65,11 +62,6 @@ export function OpportunityCards({
               </dl>
 
               <Buyer opportunity={opportunity} />
-
-              <SalesContext
-                customerProof={(opportunity.proofIds ?? []).flatMap((id) => proofById.get(id) ?? [])}
-                competitiveContext={(opportunity.competitiveContextIds ?? []).flatMap((id) => proofById.get(id) ?? [])}
-              />
 
               <div className="rounded-lg bg-hover px-4 sm:px-5">
                 <Disclosure
@@ -172,54 +164,6 @@ function Buyer({ opportunity }: { opportunity: OpportunityRow }) {
         </div>
       )}
     </section>
-  );
-}
-
-function SalesContext({
-  customerProof,
-  competitiveContext
-}: {
-  customerProof: ProofRecordRow[];
-  competitiveContext: ProofRecordRow[];
-}) {
-  if (!customerProof.length && !competitiveContext.length) return null;
-  return (
-    <section aria-label="Customer proof and competitive context" className="grid gap-3 sm:grid-cols-2">
-      {customerProof.length > 0 && (
-        <div className="rounded-lg bg-hover p-4 sm:p-5">
-          <p className="text-muted-foreground text-xs font-medium uppercase tracking-wider">Relevant Vercel precedent</p>
-          <p className="text-muted-foreground mt-1 text-xs">Supporting context for the rep, not a scoring signal.</p>
-          <ProofList records={customerProof} />
-        </div>
-      )}
-      {competitiveContext.length > 0 && (
-        <div className="rounded-lg border border-dashed p-4 sm:p-5">
-          <p className="text-muted-foreground text-xs font-medium uppercase tracking-wider">Competitive context</p>
-          <p className="text-muted-foreground mt-1 text-xs">Internal only. Never included in draft outreach.</p>
-          <ProofList records={competitiveContext} />
-        </div>
-      )}
-    </section>
-  );
-}
-
-function ProofList({ records }: { records: ProofRecordRow[] }) {
-  return (
-    <ul className="mt-4 space-y-4">
-      {records.map((record) => (
-        <li key={record.id}>
-          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-            <p className="text-sm font-medium">{record.company}</p>
-            <span className="text-muted-foreground text-xs capitalize">{record.vendor}</span>
-          </div>
-          <p className="mt-1 text-sm leading-6">{record.summary}</p>
-          <p className="text-muted-foreground mt-1 text-xs">
-            {record.publishedAt ? `${formatSourceDate(record.publishedAt)} · ` : ''}
-            <SourceLink url={record.sourceUrl} label={record.title} />
-          </p>
-        </li>
-      ))}
-    </ul>
   );
 }
 

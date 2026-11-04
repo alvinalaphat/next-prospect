@@ -14,7 +14,6 @@ single deployment owner prevents duplicate builds and mismatched artifacts.
 - Framework: Next.js with `withWorkflow` from `workflow/next`.
 - Database: Neon Postgres through `DATABASE_URL`.
 - Durable runs: Vercel Workflow endpoints generated under `.well-known`.
-- Weekly maintenance: Vercel Cron starts the durable customer-proof workflow.
 - Primary public alias: `https://nextprospect.vercel.app`.
 - Production branch: `main`.
 
@@ -53,9 +52,6 @@ prompts.
 - Vercel has separate development, preview, and production values.
 - Changing Vercel environment variables requires a new deployment before the
   running application sees them.
-- `CRON_SECRET` is required in production. Vercel Cron sends it as the bearer
-  token to the proof refresh route; requests without the exact token receive
-  `401 Unauthorized`.
 - Pulling or overwriting env files is a state-changing operation. Preserve
   local-only values and confirm the intended Vercel target first.
 

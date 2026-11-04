@@ -45,7 +45,6 @@ opportunities so stale approval actions cannot remain live.
 | Decisions and Gmail handoff | `lib/opportunity-decision.ts`, `lib/gmail.ts` |
 | Slack cards and interactions | `lib/slack.ts`, `app/api/slack/route.ts` |
 | Persistence | `lib/db/`, `drizzle/` |
-| Weekly customer-proof maintenance | `workflows/maintenance/`, `lib/refresh/` |
 | Test fixtures and scripts | `tests/` |
 
 ## Server and client boundaries
@@ -73,12 +72,9 @@ changes relative to older training data.
 
 `prospects` stores the latest account-level run state and shared evidence.
 `opportunities` stores product-specific recommendations, contacts and their
-attributable public activity, scores, selected proof/context IDs, drafts,
-review state, and Slack/Gmail metadata. The opportunity review surface shows
-buyer activity and Vercel precedent alongside each pitch, while labeling
-competitor material as internal-only. `psi_cache` prevents redundant PageSpeed
-work. `maintenance_runs` records weekly refresh outcomes, while `proof_records`
-stores non-scoring customer proof and competitive context.
+attributable public activity, scores, drafts, review state, and Slack/Gmail
+metadata. The opportunity review surface shows buyer activity alongside each
+pitch. `psi_cache` prevents redundant PageSpeed work.
 
 The account status is a summary for dashboard filtering. Each opportunity has
 its own decision lifecycle and is the authoritative unit of review.
