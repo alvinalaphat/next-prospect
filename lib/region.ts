@@ -14,10 +14,10 @@ export function opportunityRegion(
   return companyRegion ?? buyerRegion ?? undefined;
 }
 
-export function buyerRegionEvidence(contact: OpportunityContact): EvidenceItem[] {
-  if (!contact.name || !contact.region) return [];
+export function buyerRegionEvidence(contact: OpportunityContact | null | undefined, opportunityId: string): EvidenceItem[] {
+  if (!contact?.name || !contact.region) return [];
   return [{
-    id: 'research.buyer-region',
+    id: `research.buyer-region.${opportunityId}`,
     source: 'research',
     label: 'Buyer work location',
     value: `${contact.name}: ${contact.region.label}`,

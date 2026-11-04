@@ -9,6 +9,7 @@ import { WorkflowRetryButton } from '@/components/workflow-retry-button';
 import { contactActivityEvidence } from '@/lib/contact-activity';
 import { getOpportunities, getProspect } from '@/lib/db';
 import { STATUS } from '@/lib/format';
+import { buyerRegionEvidence } from '@/lib/region';
 import type { Research } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -24,7 +25,10 @@ export default async function ProspectPage({ params }: { params: Promise<{ domai
   const research = prospect.research;
   const ledger = [
     ...(prospect.evidence ?? []),
-    ...opportunities.flatMap((opportunity) => contactActivityEvidence(opportunity.contactActivity ?? []))
+    ...opportunities.flatMap((opportunity) => [
+      ...contactActivityEvidence(opportunity.contactActivity ?? []),
+      ...buyerRegionEvidence(opportunity.contact, opportunity.id)
+    ])
   ].filter((item, index, items) => items.findIndex((candidate) => candidate.id === item.id) === index);
   const running = STATUS[prospect.status].group === 'running';
   const topScore = opportunities[0]?.score ?? prospect.fitScore;

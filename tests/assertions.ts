@@ -86,8 +86,8 @@ assert.deepEqual(buyerRegionEvidence({
   sourceUrl: 'https://example.com/buyer',
   region: emeaBuyer,
   rationale: 'Owns the AI product.'
-}), [{
-  id: 'research.buyer-region',
+}, 'opportunity-123'), [{
+  id: 'research.buyer-region.opportunity-123',
   source: 'research',
   label: 'Buyer work location',
   value: 'Taylor Example: Paris, France',

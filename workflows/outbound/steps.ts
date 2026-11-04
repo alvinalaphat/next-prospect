@@ -276,7 +276,7 @@ export const stepEnrichOpportunity = async (
   if (!product) throw new FatalError(`Unknown product ${opportunity.productId}`);
   const activity = buyerResearch.activity;
   const activityEvidence = contactActivityEvidence(activity);
-  const regionEvidence = buyerRegionEvidence(contact);
+  const regionEvidence = buyerRegionEvidence(contact, opportunityId);
   const rescored = scoreOpportunity({
     product,
     matches: opportunity.matchedSignals,

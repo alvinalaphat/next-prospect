@@ -98,7 +98,7 @@ export function presentEvidence(evidence: EvidenceItem): PresentedEvidence {
   if (evidence.id.startsWith('research.buyer-activity.')) {
     return research(evidence, 'Buyer activity');
   }
-  if (evidence.id === 'research.buyer-region') return research(evidence, 'Buyer work location');
+  if (evidence.id.startsWith('research.buyer-region.')) return research(evidence, 'Buyer work location');
   if (evidence.id === 'research.summary') return research(evidence, 'Company background');
   if (evidence.id.startsWith('research.size.')) return research(evidence, 'Account potential');
   if (evidence.id.startsWith('research.news.') || evidence.id.startsWith('research.whynow.')) {
