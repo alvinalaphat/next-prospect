@@ -40,18 +40,6 @@ export default async function Dashboard() {
   });
   });
 
-  const count = (f: (i: ProspectListItem) => boolean) => items.filter(f).length;
-  const stats = [
-    { label: 'Accounts', hint: 'Companies researched', value: items.length },
-    {
-      label: 'Opportunities',
-      hint: 'Current product conversations',
-      value: currentOpportunities.length
-    },
-    { label: 'Expansion', hint: 'Existing Vercel footprint', value: currentOpportunities.filter((o) => o.salesMotion === 'expansion').length },
-    { label: 'Needs review', hint: 'Drafts waiting on you', value: currentOpportunities.filter((o) => o.status === 'awaiting_approval').length },
-    { label: 'Approved', hint: 'Product opportunities accepted', value: currentOpportunities.filter((o) => o.status === 'approved').length }
-  ];
   const running = items.some((i) => STATUS[i.status].group === 'running');
 
   return (
@@ -66,19 +54,6 @@ export default async function Dashboard() {
         </div>
         <RunPanel />
       </div>
-
-      <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-3 xl:grid-cols-5">
-        {stats.map((s, index) => (
-          <div
-            key={s.label}
-            className={`bg-background px-4 py-4 ${index === stats.length - 1 ? 'col-span-2 sm:col-span-2 xl:col-span-1' : ''}`}
-          >
-            <dt className="text-sm font-medium">{s.label}</dt>
-            <dd className="mt-2 font-mono text-2xl tabular-nums">{s.value}</dd>
-            <p className="text-muted-foreground mt-1 text-xs leading-normal">{s.hint}</p>
-          </div>
-        ))}
-      </dl>
 
       <ProspectsTable items={items} renderedAt={renderedAt} />
     </div>
