@@ -11,3 +11,12 @@ export function stripEmDashes(text: string): string {
     return '. ';
   });
 }
+
+/** Insert an approved sentence before the meeting ask and sign-off when omitted. */
+export function ensureSentenceBeforeClose(body: string, sentence: string): string {
+  if (body.includes(sentence)) return body;
+  const paragraphs = body.trim().split(/\n\s*\n/);
+  const insertAt = Math.max(1, paragraphs.length - 2);
+  paragraphs.splice(insertAt, 0, sentence);
+  return paragraphs.join('\n\n');
+}

@@ -1,8 +1,9 @@
 # Vercel product catalog
 
 `products.ts` is the source of truth for the product surface NextProspect can
-sell against. Prompts and UI should consume the catalog rather than maintain
-their own product lists.
+sell against and for approved platform-level sales claims shared across
+products. Prompts and UI should consume the catalog rather than maintain their
+own product lists or claims.
 
 ## Definition shape
 

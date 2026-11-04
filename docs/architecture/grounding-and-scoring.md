@@ -140,8 +140,8 @@ A first-touch email should contain:
 1. a public trigger or observation that explains why the timing is relevant;
 2. why the selected Vercel product is relevant to the recipient's work;
 3. when the company headquarters or verified buyer work location is in EMEA,
-   a product-specific privacy, governance, or data-control strength only when
-   approved catalog claims support it; and
+   the approved Vercel platform trust statement covering GDPR, independently
+   audited security controls, and the Data Processing Addendum; and
 4. a short meeting or demo request about that product.
 
 Drafts do not default to a hosting migration. Hosting migration language is
@@ -156,3 +156,6 @@ buyer name is verified, the draft uses `Hi there,` and warns the reviewer.
 Keep the email concise, plain text, and reviewable. Do not include internal
 scores, evidence IDs, implementation notes, or sensitive information. Regional
 tone may change structure, but it never changes the evidence requirement.
+The EMEA trust statement is mandatory and supplied by deterministic code. If
+the model omits it during generation and repair, code inserts the approved
+sentence before the meeting ask rather than allowing an EMEA draft without it.

@@ -82,10 +82,10 @@ EMEA outreach should favor a direct why-you, why-now structure. An opportunity
 is treated as EMEA when public evidence places either the company headquarters
 or the selected buyer's work location there. A buyer location expands EMEA
 coverage; it never overrides an EMEA headquarters. An office location alone is
-insufficient unless public evidence connects the buyer to it. Privacy,
-governance, or data-control language is used only when public evidence and the
-selected product's approved claims support it. Location is never a license to
-invent a compliance concern.
+insufficient unless public evidence connects the buyer to it. Every EMEA draft
+must include the approved, concise Vercel platform statement covering GDPR,
+independently audited security controls, and the Data Processing Addendum.
+Location is never a license to invent any additional compliance concern.
 
 ### Human review is permanent
 
