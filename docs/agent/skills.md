@@ -40,7 +40,7 @@ relevant to this repository:
 | Environment variables | Vercel environment-variable guidance |
 | Neon schema or query change | Repo-local `neon-postgres` skill |
 | Neon platform operation | Repo-local `neon` skill |
-| Significant UI redesign | A design-engineering skill, followed by real Chrome QA |
+| Significant UI redesign | Read `docs/design/interface.md`, then use a design-engineering skill when available, followed by real Chrome QA |
 | Browser interaction testing | The available Chrome/browser automation skill |
 
 ## Selection rules
