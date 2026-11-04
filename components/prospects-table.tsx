@@ -25,6 +25,7 @@ type SortKey = 'domain' | 'fitScore' | 'status' | 'updatedAt';
 
 const ACTION_STATUSES = new Set<ProspectStatus>(['awaiting_approval', 'error']);
 const REVIEWED_STATUSES = new Set<ProspectStatus>(['approved', 'rejected']);
+const MAX_BULK_SELECTION = 250;
 
 const VIEWS = {
   action: {
@@ -147,6 +148,10 @@ export function ProspectsTable({ items, renderedAt }: { items: ProspectListItem[
   const someVisibleSelected = rows.some((row) => selected.has(row.domain));
 
   function toggleDomain(domain: string) {
+    if (!selected.has(domain) && selected.size >= MAX_BULK_SELECTION) {
+      toast.error(`Select up to ${MAX_BULK_SELECTION} accounts at a time`);
+      return;
+    }
     setSelected((current) => {
       const next = new Set(current);
       if (next.has(domain)) next.delete(domain);
@@ -156,10 +161,25 @@ export function ProspectsTable({ items, renderedAt }: { items: ProspectListItem[
   }
 
   function toggleVisible() {
+    const selectedVisible = rows.filter((row) => selected.has(row.domain));
+    if (selectedVisible.length > 0) {
+      setSelected((current) => {
+        const next = new Set(current);
+        rows.forEach((row) => next.delete(row.domain));
+        return next;
+      });
+      return;
+    }
+
+    const available = MAX_BULK_SELECTION - selected.size;
+    if (rows.length > available) {
+      toast.error(available > 0
+        ? `Selected the first ${available} shown accounts · ${MAX_BULK_SELECTION} max`
+        : `Selection is already at the ${MAX_BULK_SELECTION}-account maximum`);
+    }
     setSelected((current) => {
       const next = new Set(current);
-      if (rows.every((row) => next.has(row.domain))) rows.forEach((row) => next.delete(row.domain));
-      else rows.forEach((row) => next.add(row.domain));
+      rows.slice(0, available).forEach((row) => next.add(row.domain));
       return next;
     });
   }
@@ -263,7 +283,10 @@ export function ProspectsTable({ items, renderedAt }: { items: ProspectListItem[
       {selectedDomains.length > 0 && (
         <div className="flex flex-col gap-3 rounded-lg border bg-hover p-3 sm:flex-row sm:items-center">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">{selectedDomains.length} selected</span>
+            <span className="text-sm font-medium">
+              {selectedDomains.length} selected
+              <span className="text-muted-foreground font-normal"> · {MAX_BULK_SELECTION} max</span>
+            </span>
             <Button
               type="button"
               variant="ghost"
@@ -330,9 +353,9 @@ export function ProspectsTable({ items, renderedAt }: { items: ProspectListItem[
             checked={allVisibleSelected}
             indeterminate={someVisibleSelected && !allVisibleSelected}
             onChange={toggleVisible}
-            label="Select all shown accounts"
+            label={rows.length > MAX_BULK_SELECTION ? `Select up to ${MAX_BULK_SELECTION} shown accounts` : 'Select all shown accounts'}
           />
-          Select all shown
+          {rows.length > MAX_BULK_SELECTION ? `Select first ${MAX_BULK_SELECTION} shown` : 'Select all shown'}
         </label>
         <ul className="mt-3 space-y-3 lg:hidden">
           {rows.map((i) => (
@@ -396,7 +419,7 @@ export function ProspectsTable({ items, renderedAt }: { items: ProspectListItem[
                   checked={allVisibleSelected}
                   indeterminate={someVisibleSelected && !allVisibleSelected}
                   onChange={toggleVisible}
-                  label="Select all shown accounts"
+                  label={rows.length > MAX_BULK_SELECTION ? `Select up to ${MAX_BULK_SELECTION} shown accounts` : 'Select all shown accounts'}
                 />
               </th>
               {header('domain', 'Company')}
