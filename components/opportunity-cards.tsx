@@ -348,24 +348,26 @@ function ScoreCategory({
       {signals.length === 0 && expansionPoints === 0 ? (
         <p className="text-muted-foreground mt-3 text-sm leading-6">{empty}</p>
       ) : (
-        <ul className="mt-4 grid gap-x-8 gap-y-5 md:grid-cols-2">
+        <ul className="mt-5 grid gap-x-10 gap-y-6 md:grid-cols-2">
           {signals.map((signal) => (
-            <li key={signal.ruleId} className="border-l-2 pl-4">
+            <li key={signal.ruleId} className="relative pl-5">
+              <span aria-hidden className="absolute top-2 left-0 size-1.5 rounded-full bg-foreground" />
               <div className="flex items-start justify-between gap-3 text-sm">
                 <p className="font-medium leading-5">{salesLanguage(signal.explanation)}</p>
                 <span className="text-positive shrink-0 font-mono text-xs tabular-nums">+{signal.points}</span>
               </div>
               <p className="text-muted-foreground mt-1 text-xs leading-5">{signalContext(signal)}</p>
-              <EvidenceFacts ids={signal.evidenceIds} ledger={ledger} className="mt-2" />
+              <EvidenceFacts ids={signal.evidenceIds} ledger={ledger} className="mt-3" />
             </li>
           ))}
           {expansionPoints > 0 && (
-            <li className="border-l-2 pl-4">
+            <li className="relative pl-5">
+              <span aria-hidden className="absolute top-2 left-0 size-1.5 rounded-full bg-foreground" />
               <div className="flex items-start justify-between gap-3 text-sm">
                 <p className="font-medium leading-5">The inspected site already runs on Vercel, creating expansion context.</p>
                 <span className="text-positive shrink-0 font-mono text-xs tabular-nums">+{expansionPoints}</span>
               </div>
-              <EvidenceFacts ids={vercelEvidenceIds(ledger)} ledger={ledger} className="mt-2" />
+              <EvidenceFacts ids={vercelEvidenceIds(ledger)} ledger={ledger} className="mt-3" />
             </li>
           )}
         </ul>
@@ -450,7 +452,7 @@ function EvidenceFacts({ ids, ledger, className = '' }: { ids: string[]; ledger:
   const evidence = [...new Set(ids)].map((id) => byId.get(id)).filter((item): item is EvidenceItem => Boolean(item));
   if (evidence.length === 0) return null;
   return (
-    <ul className={`${className} space-y-2`}>
+    <ul className={`${className} space-y-3`}>
       {evidence.map((item) => <EvidenceFact key={item.id} evidence={item} />)}
     </ul>
   );
@@ -459,7 +461,8 @@ function EvidenceFacts({ ids, ledger, className = '' }: { ids: string[]; ledger:
 function EvidenceFact({ evidence }: { evidence: EvidenceItem }) {
   const presented = presentEvidence(evidence);
   return (
-    <li className="border-l-2 pl-3 text-xs leading-5">
+    <li className="relative pl-4 text-xs leading-5">
+      <span aria-hidden className="bg-muted-foreground absolute top-2 left-0 size-1 rounded-full" />
       <p className="text-muted-foreground font-medium">{presented.label}</p>
       <p className="mt-0.5">{presented.statement}</p>
       {evidence.url && presented.sourceLabel && (
