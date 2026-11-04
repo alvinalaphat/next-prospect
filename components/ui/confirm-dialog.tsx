@@ -43,6 +43,7 @@ export function ConfirmDialog({
       }}
       onClose={() => onOpenChange(false)}
       onClick={(event) => {
+        event.stopPropagation();
         if (event.target === event.currentTarget && !busy) onOpenChange(false);
       }}
       className="m-auto w-[calc(100%-2rem)] max-w-md rounded-lg border bg-background p-0 text-foreground shadow-geist backdrop:bg-overlay backdrop:backdrop-blur-[2px]"
