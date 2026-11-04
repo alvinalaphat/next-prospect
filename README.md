@@ -1,225 +1,422 @@
 # Next Prospect ▲
 
-**Next Prospect** is an account-level outbound opportunity planner for Vercel. It researches a
-company, evaluates the evidence against Vercel's full product catalog, ranks up to three
-product-specific conversations, finds the right buyer for each, and drafts personalized,
-fully cited outreach for **human approval**.
+**Next Prospect** is an account-level outbound planning tool for Vercel. It turns
+public company evidence into up to three timely, product-specific sales angles,
+identifies the right buyer for each, and drafts grounded first-touch outreach for
+human review.
 
-It's [vercel-labs/lead-agent](https://github.com/vercel-labs/lead-agent) pointed at outbound.
-It uses the same stack and patterns (Workflow DevKit, AI SDK + AI Gateway, the Agent
-class, Exa, Slack Bolt on Vercel) and the git history starts from an unmodified import
-of lead-agent, so every change is reviewable as a diff.
+The core question is not simply whether an account is worth contacting. It is:
 
-> Nothing is ever sent. "Approve" only marks a draft approved.
+> Which Vercel products fit this company now, what distinct conversations could
+> a rep lead with, and who is most likely to own each problem?
 
-> **Working with an AI agent?** Start with [AGENTS.md](./AGENTS.md). It is the
-> table of contents for product intent, architecture boundaries, workflow and
-> database guides, verification, deployment, and task-specific skills.
+Approval can optionally create a Gmail draft. A person still reviews and sends it.
 
-## What it does
+> **Working with an AI agent?** Start with [AGENTS.md](./AGENTS.md). It links to
+> the product, architecture, workflow, database, verification, and deployment
+> guides that govern changes to this repository.
 
-For each domain in a CSV, one durable workflow:
+## Product objective
 
-1. **Detect**: one polite homepage fetch (robots.txt respected, identifying UA, timeouts,
-   no headless browser) plus DNS. It scores Next.js confidence from `__NEXT_DATA__`,
-   `self.__next_f`, `/_next/static`, `x-powered-by`, `x-nextjs-*` and `Vary: RSC`, and
-   identifies the host (Vercel, Netlify, Cloudflare, AWS/CloudFront/Amplify, Fastly,
-   Akamai, GCP, Azure, Render, Fly, …). Existing Vercel hosting becomes expansion context;
-   it suppresses only an incorrect hosting-migration opportunity.
-2. **Measure**: PageSpeed Insights for mobile and desktop. Lighthouse lab LCP/CLS/TTFB/TBT
-   and CrUX real-user p75 LCP/INP/CLS/TTFB are kept separate. Cached for 24h.
-3. **Research**: an Exa research agent collects company, region, launches, hiring, job,
-   technical, social, and timing signals. Every item must cite a URL a tool returned.
-4. **Route and score**: the model matches grounded evidence to known catalog signal rules;
-   code applies deterministic confidence, freshness, category caps, and one evidence-backed
-   account-potential tier.
-5. **Choose a buyer**: each selected product opportunity gets its own verified contact or
-   an explicit target role when no person can be grounded.
-6. **Draft**: each opportunity receives a 60–120 word email and rep brief using only its
-   selected evidence and approved product claims. Expansion drafts may build on an observed
-   Vercel hosting footprint without claiming private account knowledge.
-7. **Approve**: each opportunity independently ends at Needs review. Slack or the dashboard
-   records Approve / Edit / Reject. Nothing is automatically sent.
-8. **Gmail draft**: on approval, the final (possibly edited) email becomes a **draft in
-   the rep's Gmail**, linked from Slack and the brief. It uses the `gmail.compose` scope
-   and only calls `drafts.create`, so the rep still reviews it and clicks Send.
+Vercel's GTM organization can source a large number of prospects. The expensive
+part is turning scattered signals into outreach that is specific enough to be
+useful. A rep still needs to connect the company's current priorities to a
+relevant Vercel product, explain why the timing matters, and find the person who
+owns that problem.
 
-If a durable run exhausts its automatic retries, the account error banner offers a
-protected **Retry** action. It starts a replacement run and continues from the last
-persisted application checkpoint instead of repeating completed stages.
+Next Prospect does that planning before the rep writes from scratch. For every
+submitted domain, it can surface several independent sales approaches rather
+than forcing the account into one generic pitch.
 
-## Architecture
+### In scope
+
+- Public website, company, hiring, launch, regional, and timing research.
+- Evaluation against Vercel's full product and capability catalog.
+- Up to three distinct product opportunities per account.
+- A product-specific buyer and relevant public activity for each opportunity.
+- Region-aware drafting, including privacy context only when evidence and the
+  selected product support it.
+- Dashboard review, optional Slack review, and optional Gmail draft creation.
+
+### Not in scope
+
+- Connections to Vercel's internal CRMs or proprietary data sources.
+- Automatic sending or sequencing.
+- Multi-tenant authentication, authorization, and rep-level personalization.
+- Large-scale latency or concurrency optimization.
+- Inference about private product use, contracts, spend, or internal plans.
+
+## What it produces
+
+The unit of output is a **product opportunity**, not a generic contact or a data
+dump. Each opportunity owns:
+
+- the Vercel product and sales angle;
+- why the conversation is relevant now;
+- a deterministic score and cited signal breakdown;
+- the likely buyer or an explicit target role;
+- attributable public buyer activity;
+- relevant Vercel customer proof;
+- internal-only competitive context;
+- a concise email draft and rep brief; and
+- its own approval, edit, or rejection state.
+
+The account page leads with these ranked conversations. Raw research and source
+receipts remain available for verification without becoming the primary user
+experience.
+
+## System architecture
+
+Next Prospect is a Next.js App Router application with a durable Vercel Workflow
+for each normalized domain. Route handlers and pages stay thin; workflow steps
+and library modules own external work, persistence, scoring, and safety rules.
 
 ```mermaid
 flowchart TD
-    CSV[CSV / dashboard] -->|POST /api/run| RUN[start workflowOutbound × N<br/>staggered 4s apart]
-    RUN --> D
+    INPUT[Dashboard or CSV] --> API[POST /api/run]
+    API --> WF[workflowOutbound per domain]
 
-    subgraph WF["workflowOutbound(domain) — 'use workflow'"]
-        D["stepDetect<br/>robots.txt + 1 GET + DNS"] --> P["stepPerf<br/>PageSpeed Insights ×2"]
-        P --> R["stepResearch<br/>ToolLoopAgent + Exa search/fetch"]
-        R --> Q["stepPlanOpportunities<br/>full catalog routing + deterministic score"]
-        Q -->|no supported product fit| STOP2([stop])
-        Q --> B["stepEnrichOpportunity × up to 3<br/>buyer + rescore + draft"]
-        B --> H["stepRequestOpportunityApproval<br/>one Slack card per opportunity"]
-        H --> DONE([Needs review])
+    subgraph PIPELINE[Durable outbound workflow]
+        D[Detect site, framework, host, and DNS]
+        P[Measure mobile and desktop performance]
+        R[Research public company and timing signals]
+        PLAN[Match catalog rules and score opportunities]
+        ENRICH[Enrich each opportunity with buyer, activity, proof, and draft]
+        READY[Publish up to three opportunities for review]
+
+        D --> P --> R --> PLAN
+        PLAN -->|1 to 3 supported motions| ENRICH --> READY
+        PLAN -->|no grounded product fit| STOP([Stop without a pitch])
     end
 
-    D & P & R -.->|append| LEDGER[(Evidence ledger)]
-    LEDGER -.->|only citable ids| Q & B
+    D & P & R --> LEDGER[(Evidence ledger)]
+    CATALOG[Vercel product catalog and approved claims] --> PLAN
+    CATALOG --> ENRICH
+    PROOF[(Customer proof and competitive context)] --> ENRICH
+    LEDGER --> PLAN
+    LEDGER --> ENRICH
 
-    SLACK[Slack: Approve / Edit / Reject] --> DEC[record decision]
-    DASH[Dashboard: Approve / Edit / Reject] --> DEC
-    DEC -->|approved| GMAIL[Gmail draft]
-    DEC --> DB
+    READY --> DASH[Dashboard review]
+    READY --> SLACK[Optional Slack review]
+    DASH & SLACK --> DECISION[Approve, edit, or reject opportunity]
+    DECISION -->|approved and configured| GMAIL[Create Gmail draft]
 
-    WF --> DB[(Neon Postgres<br/>prospects + opportunities)]
-    DB --> UI["/ dashboard · /prospect/[domain] · /about"]
+    WF --> DB[(Neon Postgres or local PGlite)]
+    DECISION --> DB
+
+    CRON[Vercel Cron] --> MAINT[Weekly catalog and proof workflows]
+    MAINT --> PROOF
 ```
 
-### The evidence ledger (how "never invent facts" is enforced)
+One workflow run owns one account snapshot. Opportunity writes are scoped to the
+owning `runId`, so a stale or superseded run cannot overwrite the current account.
+Batches are staggered by four seconds to reduce PSI and Exa quota bursts.
 
-Every observation becomes an `EvidenceItem` with a stable id:
+## Workflow
 
+For each domain, the durable workflow runs these stages:
+
+1. **Detect**
+   - Fetches `robots.txt`, performs one bounded homepage request, and resolves DNS.
+   - Scores Next.js confidence and identifies the visible hosting/CDN provider.
+   - Does not use a headless browser.
+
+2. **Measure**
+   - Runs PageSpeed Insights for mobile and desktop in parallel.
+   - Keeps Lighthouse lab data separate from CrUX real-user data.
+   - Caches results for 24 hours and degrades cleanly when quota is unavailable.
+
+3. **Research**
+   - Uses Exa to collect public company, hiring, launch, region, technical, social,
+     and timing evidence.
+   - Drops research items whose source URL was not returned by a tool call.
+
+4. **Plan opportunities**
+   - The model proposes matches between evidence and known catalog signal rules.
+   - Deterministic code validates, scores, deduplicates, sorts, and keeps up to
+     three products with grounded product fit.
+
+5. **Enrich each opportunity**
+   - Finds a product-specific buyer or records an explicit target role.
+   - Collects attributable public activity for the selected buyer.
+   - Selects Vercel customer proof and separately labeled competitive context.
+   - Drafts using prospect evidence and approved catalog claims only.
+
+6. **Request review**
+   - Publishes each opportunity independently to the dashboard and optional Slack.
+   - The durable run finishes at `awaiting_approval`; decision routes handle the
+     later approval lifecycle.
+
+## Evidence and grounding
+
+Detection, performance, and research become `EvidenceItem` records with stable
+IDs. Planning and drafting may cite only those IDs.
+
+```text
+[detect.host.x-amz-cf-id]  CloudFront header observed on the public site
+[psi.mobile.field.ttfb]    Mobile real-user TTFB at p75: 1840 ms
+[research.launch.0]        Product launch with date and retrieved source URL
 ```
-[detect.host.x-amz-cf-id]  x-amz-cf-id header (CloudFront) → aws: x-amz-cf-id: MQ4R…
-[psi.mobile.field.ttfb]    Real-user TTFB, field p75 (mobile): 1840 ms
-[research.news.0]          News (2026-06-12): Acme raises $40M Series B (source: https://…)
+
+`lib/grounding.ts` enforces the boundary:
+
+- Research URLs must come from returned tool results.
+- Unknown evidence IDs receive one repair pass, then the unsupported claim is
+  removed.
+- Draft numbers must resolve to the evidence ledger.
+- Internal evidence IDs and scoring mechanics are removed from customer-facing
+  copy.
+- The UI links every visible citation back to its source receipt.
+
+## Catalog and scoring
+
+`lib/catalog/products.ts` is the source of truth for the Vercel product surface.
+Each standalone product defines target buyers, observable public signal rules,
+approved claims, and whether it can create an independent opportunity.
+Capabilities roll up to a parent product instead of creating repetitive pitches.
+
+The model interprets evidence and proposes matches. Code owns the numeric score:
+
+| Category | Maximum |
+| --- | ---: |
+| Product fit | 45 |
+| Timing trigger | 20 |
+| Account potential | 20 |
+| Buyer confidence | 15 |
+| **Total** | **100** |
+
+Confidence and freshness affect individual signals. Only the strongest supported
+account tier contributes. A candidate with no grounded product-fit points is
+suppressed.
+
+Observed Vercel hosting suppresses only an invalid Vercel Platform migration
+motion. It remains useful expansion context for other products such as AI Gateway,
+Workflow, security, or analytics.
+
+## Model and code boundaries
+
+| Model-assisted | Code-controlled |
+| --- | --- |
+| Research public sources | Validate retrieved URLs and evidence IDs |
+| Propose catalog rule matches | Apply weights, caps, confidence, and freshness |
+| Select a product-specific buyer | Enforce product-fit and suppression rules |
+| Summarize buyer activity | Keep competitor context out of drafting |
+| Draft concise outreach | Validate approval tokens and state transitions |
+
+Approved product claims come from the catalog, not model memory. Customer proof
+can support review but does not add scoring points. Competitive case studies are
+stored for internal context and are never passed into the outreach prompt.
+
+## Persistence model
+
+Drizzle uses one schema with Neon in hosted environments and PGlite locally.
+
+```mermaid
+erDiagram
+    PROSPECTS ||--o{ OPPORTUNITIES : contains
+
+    PROSPECTS {
+        text domain PK
+        text run_id
+        text status
+        jsonb detection
+        jsonb perf
+        jsonb research
+        jsonb evidence
+    }
+
+    OPPORTUNITIES {
+        text id PK
+        text domain FK
+        text run_id
+        text product_id
+        text angle
+        text why_now
+        integer score
+        jsonb contact
+        jsonb draft
+        text status
+    }
+
+    PSI_CACHE {
+        text url PK
+        text strategy PK
+        jsonb result
+        timestamp fetched_at
+    }
+
+    MAINTENANCE_RUNS {
+        text id PK
+        text kind
+        text status
+        jsonb result
+    }
+
+    PROOF_RECORDS {
+        text id PK
+        text vendor
+        text usage
+        text source_url
+        jsonb product_ids
+        boolean active
+    }
 ```
 
-- `lib/grounding.ts` **drops research items** whose `sourceUrl` wasn't returned by a tool call.
-- Qualification and draft claims must cite ledger ids. Unknown ids trigger **one repair
-  pass**, then the claims are pruned.
-- Numbers in the email that don't appear in the ledger are retried once, then shown to the
-  reviewer as warnings.
-- The UI renders every citation as a chip that jumps to the ledger row.
+`prospects` stores the latest account state and shared evidence. `opportunities`
+stores the independently reviewable product angles. The opportunity is the
+authoritative decision unit; the prospect status is a dashboard summary.
 
-### Differences from lead-agent
+## Retry and failure behavior
 
-| lead-agent | Next Prospect |
-|---|---|
-| Form → `start(workflowInbound)` | CSV / dashboard → `start(workflowOutbound)` per domain |
-| Research agent returns free text | Same agent + Exa tools, **structured output**, grounded URLs |
-| `techStackAnalysis` tool is a stub | Real detector + eval |
-| `generateObject` category | `Output.object`: fit score, angle, cited claims |
-| Slack post, then the workflow ends; buttons don't reach the run | Workflow ends at Needs review; Slack and the dashboard record the decision |
-| No storage | Neon Postgres (Marketplace) / PGlite locally |
-| `workflow@4.0.1-beta`, `ai@5` | `workflow@4.8`, `ai@7` (`ToolLoopAgent`, `Output.object`) |
+External stages degrade when optional data is unavailable instead of inventing
+facts. PSI quota exhaustion continues without metrics. Missing or invalid Exa
+credentials continue without research. Unexpected failures persist a bounded
+account error and fail the durable run.
+
+The dashboard exposes a protected **Retry** action for failed accounts. Retry
+starts a replacement workflow on the latest deployment and resumes from the last
+persisted application checkpoint. Completed detection, performance, research,
+planning, drafts, and reviewable opportunities are reused instead of repeated.
+
+This is application-level recovery. A terminal Workflow SDK run is not reopened.
+
+## Weekly maintenance
+
+Vercel Cron starts two authenticated durable workflows every Monday:
+
+- **14:00 UTC:** audit official Vercel documentation, changelog entries, and
+  announcements for possible catalog changes.
+- **15:00 UTC:** refresh Vercel, Cloudflare, and Railway customer stories.
+
+Maintenance never edits the active catalog or scoring rules automatically.
+Catalog changes still require a reviewed code change. Refreshed competitor stories
+remain internal-only.
 
 ## Project structure
 
-```
+```text
 app/
-  page.tsx                      dashboard (sortable/filterable, live-refreshing)
-  prospect/[domain]/page.tsx    full brief: evidence, CWV, research, reasoning, draft
-  about/page.tsx                pitch write-up
-  api/run/route.ts              POST CSV/list → one workflow per domain
-  api/secret/route.ts           check RUN_SECRET without starting a run
-  api/slack/route.ts            Approve / Edit (modal) / Reject
-  api/prospects/[domain]/decision/route.ts   dashboard approvals
-workflows/outbound/
-  index.ts                      the durable workflow
-  steps.ts                      'use step' functions (persist each stage)
+  page.tsx                                account dashboard
+  prospect/[domain]/page.tsx              account brief and opportunities
+  about/page.tsx                          product and architecture overview
+  api/run/route.ts                        start one workflow per domain
+  api/prospects/[domain]/retry/route.ts   protected checkpoint retry
+  api/opportunities/[id]/decision/route.ts
+  api/opportunities/[id]/gmail-draft/route.ts
+  api/slack/route.ts                      optional Slack interactions
+  api/cron/                               authenticated maintenance triggers
+
+workflows/
+  outbound/index.ts                       workflow orchestration and retry
+  outbound/steps.ts                       retry-safe persisted stages
+  maintenance/                            weekly catalog and proof workflows
+
 lib/
-  catalog/                      full product/capability catalog and signal rules
-  refresh/                      catalog audit and case-study refresh services
-  scoring.ts                    deterministic signal scoring and caps
-  opportunity-services.ts      routing, buyer selection, product-specific drafting
-  opportunity-decision.ts      independent opportunity approval + Gmail handoff
-  detect/                       fetch (robots, caps), nextjs + host rules, DNS
-  psi.ts                        PageSpeed Insights + cache + CWV thresholds
-  services.ts                   research agent, qualify, draft
-  prompts.ts                    the rep playbook — tune behaviour here
-  grounding.ts                  evidence ledger enforcement
-  slack.ts                      Block Kit card + edit modal
-  decision.ts                   record a decision and create the Gmail draft
-  approval-token.ts             ties a Slack or dashboard click to one run
-  db/                           Drizzle schema (prospects, psi_cache)
-workflows/maintenance/          weekly catalog and proof refresh workflows
-eval/                           15 labelled domains + precision/recall script
-  run.ts                        catalog and deterministic scoring checks
-  e2e.ts                        isolated account → opportunity → approval test
-  detect.ts                     detector precision/recall checks
+  catalog/                                product definitions and signal rules
+  detect/                                 website, Next.js, host, and DNS detection
+  db/                                     Drizzle schema and data access
+  refresh/                                catalog and proof refresh services
+  opportunity-services.ts                planning, buyer selection, and drafting
+  opportunity-decision.ts                decisions and Gmail handoff
+  scoring.ts                              deterministic scoring and caps
+  grounding.ts                            evidence validation and citation repair
+  psi.ts                                  PageSpeed collection and cache
+  slack.ts                                Block Kit review cards
+  gmail.ts                                Gmail draft creation
+
+eval/
+  run.ts                                  catalog and scoring checks
+  detect.ts                               labelled detector evaluation
+  e2e.ts                                  isolated account-to-approval fixture
 ```
 
-## Run it
+## Local development
 
-Prerequisites: Node 22.17+, pnpm 11.10.
+Prerequisites: Node 22.17+ and pnpm 11.10.
 
 ```bash
 pnpm install
-cp .env.example .env.local        # fill in keys (see below)
-pnpm db:migrate                   # Neon if DATABASE_URL is set, else local PGlite
+cp .env.example .env.local
+pnpm db:migrate
 pnpm dev
 ```
 
-Start a batch by pasting domains on the dashboard, or from the CLI:
+With `DATABASE_URL`, migrations and runtime data use Neon. Without it in local
+development, the app uses embedded PGlite at `./.pglite`.
+
+Start a batch from the dashboard or CLI:
 
 ```bash
 pnpm run:csv data/seed.csv
 ```
 
-Other scripts:
-
-```bash
-pnpm verify                       # typecheck + catalog eval + isolated E2E + build
-pnpm detect nike.com linear.app   # detector only, no keys needed
-pnpm eval                         # catalog and deterministic scoring
-pnpm eval:detect                  # detection precision/recall
-pnpm test:e2e                     # isolated account → opportunity → approval
-npx workflow web                  # inspect workflow runs locally
-```
-
 ### Environment
 
-| Var | Needed for | Notes |
-|---|---|---|
-| `AI_GATEWAY_API_KEY` | qualify, draft, research | Optional on Vercel / after `vercel env pull` (OIDC). The team needs a card on file to unlock AI Gateway's free credits. |
-| `AI_MODEL` | — | Any Gateway model id; default `openai/gpt-5` (lead-agent's). |
-| `EXA_API_KEY` | research | If unset, research is skipped and qualification uses detection + perf only. |
-| `PSI_API_KEY` | performance | Keyless quota is effectively zero. After retries the run continues without perf. |
-| `DATABASE_URL` | storage | Added by the Neon Marketplace integration. Falls back to PGlite in dev. |
-| `SLACK_BOT_TOKEN`, `SLACK_SIGNING_SECRET`, `SLACK_CHANNEL_ID` | Slack approvals | Optional; the dashboard can approve too. |
-| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN` | Gmail drafts | Optional; see Gmail drafts below. |
-| `REP_NAME` | drafts | Required sender name written directly into every draft sign-off. |
-| `RUN_SECRET` | prod | Required to start runs and approve from the dashboard. |
-| `CRON_SECRET` | prod | Set by Vercel Cron and required by the weekly catalog/proof refresh routes. |
-| `APP_URL` | Slack links | Defaults to the Vercel production URL. |
+| Variable | Used for | Notes |
+| --- | --- | --- |
+| `AI_GATEWAY_API_KEY` | Research, planning, buyer selection, drafting | Optional on Vercel or after `vercel env pull` when OIDC is available. |
+| `AI_MODEL` | AI Gateway model | Defaults to `openai/gpt-5`. |
+| `EXA_API_KEY` | Public research | Missing credentials degrade to detection and performance evidence. |
+| `PSI_API_KEY` | PageSpeed Insights | Recommended because keyless quota is effectively unavailable. |
+| `DATABASE_URL` | Hosted persistence | Supplied by the Neon Marketplace integration. |
+| `RUN_SECRET` | Privileged dashboard writes | Required in production for runs, retries, and decisions. |
+| `CRON_SECRET` | Maintenance routes | Added to Vercel Cron requests as a bearer token. |
+| `REP_NAME` | Draft greeting/sign-off context | Written directly into generated drafts. |
+| `SLACK_*` | Optional Slack review | Dashboard review works without Slack. |
+| `GOOGLE_*`, `GMAIL_REFRESH_TOKEN` | Optional Gmail drafts | Uses the `gmail.compose` scope and `drafts.create`. |
+| `APP_URL` | Public Slack links | Defaults to the production Vercel URL. |
 
-### Slack
+## Optional integrations
 
-1. Create an app **from manifest** using `manifest.json`, and set the interactivity URL to
-   `https://<your-deployment>/api/slack`.
-2. Install to your workspace, invite the bot to a channel, and set the three `SLACK_*` vars.
-3. Qualified prospects are posted as a card with **Approve / Edit / Reject**. Edit opens a
-   modal; submitting it saves the edit and approves.
+### Slack review
+
+1. Create the app from [manifest.json](./manifest.json).
+2. Set the interactivity URL to `https://<deployment>/api/slack`.
+3. Configure `SLACK_BOT_TOKEN`, `SLACK_SIGNING_SECRET`, and `SLACK_CHANNEL_ID`.
+4. Invite the bot to the review channel.
+
+Each opportunity gets its own Approve, Edit, and Reject actions. Slack is an
+optional review surface; the dashboard remains authoritative.
 
 ### Gmail drafts
 
-1. In Google Cloud console: enable the **Gmail API**. Under **OAuth consent screen**, choose
-   External, add yourself as a test user, and add the `gmail.compose` scope.
-2. **Credentials → Create credentials → OAuth client ID → Desktop app.** Put the ID and
-   secret in `.env.local` as `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`.
-3. `pnpm gmail:auth` opens Google's consent screen and saves `GMAIL_REFRESH_TOKEN` to
-   `.env.local`.
-4. Add all three to Vercel, then redeploy.
+1. Enable the Gmail API in Google Cloud.
+2. Create a Desktop OAuth client with the `gmail.compose` scope.
+3. Add the client ID and secret to `.env.local`.
+4. Run `pnpm gmail:auth` to create `GMAIL_REFRESH_TOKEN`.
 
-While the OAuth app is in *Testing* mode, Google expires refresh tokens after 7 days. When
-that happens, briefs show "re-run `pnpm gmail:auth`". Drafts have no recipient unless the
-stakeholder's email was published on a retrieved page.
+On approval, the app may call `drafts.create`. It does not call a send endpoint.
+Recipient addresses are included only when published evidence provides one; the
+app never guesses an email address.
 
-### Deploy
+## Verification
 
-GitHub Actions verifies every pull request and push to `main`. Vercel's Git
-integration creates previews for branches and publishes `main`; CI does not
-hold deployment credentials or run a second deploy command.
+```bash
+pnpm typecheck       # TypeScript and server/client import boundaries
+pnpm eval            # Catalog and deterministic scoring expectations
+pnpm eval:detect     # Labelled Next.js and host detector sanity check
+pnpm test:e2e        # Isolated account -> opportunity -> decision path
+pnpm build           # Production Next.js and Workflow build
+pnpm verify          # Complete non-browser gate used by CI
+```
 
-First-time project setup:
+The detector dataset contains 15 hand-labelled domains and is a sanity check,
+not an unbiased benchmark. Browser QA remains required for interface changes.
+
+## Deployment
+
+GitHub Actions runs `pnpm verify` on pull requests and pushes to `main`. Vercel's
+Git integration creates branch previews and deploys `main` after the configured
+checks pass.
+
+First-time setup:
 
 ```bash
 vercel link
-vercel integration add neon --plan free_v3    # free Postgres, sets DATABASE_URL
-vercel env add EXA_API_KEY / PSI_API_KEY / RUN_SECRET / SLACK_*
+vercel integration add neon --plan free_v3
+vercel env add EXA_API_KEY
+vercel env add PSI_API_KEY
+vercel env add RUN_SECRET
 pnpm db:migrate
 ```
 
@@ -227,65 +424,19 @@ Normal release:
 
 ```bash
 pnpm verify
-git push origin main              # CI runs; Vercel builds and deploys
+git push origin main
 ```
 
-## Results
+See [docs/shipping/deployment.md](./docs/shipping/deployment.md) for migration,
+release verification, and rollback guidance.
 
-### Detection eval (`pnpm eval`)
+## Origin
 
-15 domains hand-labelled in a real browser (JS executed; DOM checked for
-`#__NEXT_DATA__` / `self.__next_f` / `/_next/` scripts; headers from a same-origin fetch).
-The detector only gets **one plain GET**.
-
-| Metric | Result |
-|---|---|
-| Next.js precision / recall | **100% / 90%** (tp 9, fp 0, fn 1) |
-| On-Vercel precision / recall | **100% / 75%** (tp 3, fp 0, fn 1) |
-| Host accuracy | **93%** (14/15) |
-
-The single miss (openai.com) is a Cloudflare bot challenge in front of a Next.js site on
-Vercel: the plain GET only sees the challenge page. The pipeline marks that as
-`blocked` and doesn't draft, so the miss can't turn into outreach to an existing
-customer. Caveat: most eval domains are well-known sites, so treat this as a sanity check
-rather than a benchmark (see `eval/README.md`).
-
-### Sample detections
-
-| Domain | Next.js | Host |
-|---|---|---|
-| mongodb.com | 0.98, Pages Router | AWS (CloudFront) |
-| nike.com | 0.95, Pages Router | Akamai |
-| ticketmaster.com | 0.95, Pages Router | Fastly |
-| zillow.com | 0.90, Pages Router | AWS (CloudFront) |
-| plaid.com | 0.90, Pages Router | AWS (ELB + CloudFront) |
-| linear.app | 0.86, App Router | Cloudflare |
-| supabase.com | 0.97, App Router | Vercel → skipped as customer |
-
-### End-to-end runs (seed batch, production)
-
-Run from `data/seed.csv` on https://nextprospect.vercel.app with `openai/gpt-5`
-(low reasoning effort) via AI Gateway, Exa research and PSI. Each qualified prospect was
-posted to Slack for approval.
-
-| Domain | Outcome | Fit | Strongest angle | Verified stakeholder |
-|---|---|---|---|---|
-| mongodb.com | Needs review | 90 | Real-user CWV pain on AWS-hosted Next.js (field LCP 7.9s mobile) | Lead, Web Experiences |
-| plaid.com | Needs review | 82 | Mobile real-user CWV SLOW on AWS/CloudFront | Head of Platform Engineering |
-| linear.app | Needs review | 82 | Slow real-user LCP/TTFB, App Router behind Cloudflare | Head of Engineering |
-| zillow.com | Needs review | 82 | Real-user TTFB on AWS CloudFront | SVP Engineering |
-| supabase.com | Skipped: already on Vercel | – | – | – |
-| ticketmaster.com | Skipped: bot-blocked from Vercel's IPs | – | – | – |
-
-All four drafts passed grounding with zero warnings: every citation resolved and every
-number was found in the ledger. Each stakeholder was confirmed via a LinkedIn result that
-names them. No published emails were found, which is expected, and addresses are never
-guessed.
-
-Things the first production run caught, now fixed:
-- The model echoed `[id]` ledger formatting, so valid citations were rejected. Citations are now normalized first.
-- An invalid Exa key made the agent loop on tool errors. It now fails fast and flags the brief.
-- Citation ids leaked into an email body. They're stripped, and the prompt forbids them.
+The repository began as an unmodified import of
+[vercel-labs/lead-agent](https://github.com/vercel-labs/lead-agent). The current
+implementation keeps its durable workflow and Vercel-native foundations while
+changing the product from one inbound lead summary into multiple independently
+reviewable outbound product opportunities.
 
 ## License
 
