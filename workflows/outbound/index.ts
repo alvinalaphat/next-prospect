@@ -96,14 +96,24 @@ export const workflowRetryOutbound = async (domain: string, failedRunId: string)
     if (!opportunities.length) {
       const opportunityIds = await stepPlanOpportunities(domain, workflowRunId, evidence);
       if (!opportunityIds.length) return { domain, stopped: 'no_opportunities' };
-      opportunities = opportunityIds.map((id) => ({ id, status: 'candidate' as const, hasDraft: false }));
+      opportunities = opportunityIds.map((id) => ({
+        id,
+        status: 'candidate' as const,
+        hasDraft: false,
+        hasSlack: false
+      }));
     }
 
     for (const opportunity of opportunities) {
-      if (!['candidate', 'researching_contact', 'drafting', 'error'].includes(opportunity.status)) {
+      const incomplete = ['candidate', 'researching_contact', 'drafting', 'error'].includes(
+        opportunity.status
+      );
+      const missingSlackPublication =
+        opportunity.status === 'awaiting_approval' && !opportunity.hasSlack;
+      if (!incomplete && !missingSlackPublication) {
         continue;
       }
-      if (!opportunity.hasDraft) {
+      if (incomplete && !opportunity.hasDraft) {
         await stepEnrichOpportunity(opportunity.id, evidence, research);
       }
       await stepRequestOpportunityApproval(
@@ -111,8 +121,8 @@ export const workflowRetryOutbound = async (domain: string, failedRunId: string)
         approvalToken(opportunity.id, workflowRunId, 'opportunity')
       );
     }
-    await stepFinishOpportunityPlanning(domain, workflowRunId);
-    return { domain, stopped: 'awaiting_approval', opportunities: opportunities.length };
+    const status = await stepFinishOpportunityPlanning(domain, workflowRunId);
+    return { domain, stopped: status, opportunities: opportunities.length };
   } catch (err) {
     await stepFail(domain, workflowRunId, err instanceof Error ? err.message : String(err));
     throw err;

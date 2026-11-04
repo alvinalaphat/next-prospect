@@ -33,7 +33,9 @@ export async function POST(
     const run = await start(workflowRetryOutbound, [domain, failedRunId], {
       deploymentId: 'latest'
     });
-    if (!(await claimProspectRun(domain, run.runId, { status: 'queued', error: null }))) {
+    // The workflow may already have advanced or failed by the time start()
+    // returns. Confirm ownership without rewinding its persisted state.
+    if (!(await claimProspectRun(domain, run.runId, {}))) {
       await run.cancel().catch(() => {});
       await restoreProspectRetry(domain, failedRunId, failedError);
       return Response.json({ error: 'The account changed before the retry could start' }, { status: 409 });

@@ -51,6 +51,32 @@ export async function upsertProspect(domain: string, patch: ProspectPatch) {
     });
 }
 
+/** Queue a brand-new run without retaining checkpoints produced by an older run. */
+export async function resetProspectForNewRun(domain: string, batch: string) {
+  await upsertProspect(domain, {
+    status: 'queued',
+    runId: null,
+    batch,
+    host: null,
+    nextjsConfidence: null,
+    perfScore: null,
+    fitScore: null,
+    angle: null,
+    detection: null,
+    perf: null,
+    research: null,
+    qualification: null,
+    draft: null,
+    evidence: null,
+    approval: null,
+    approvalToken: null,
+    slack: null,
+    gmailDraft: null,
+    gmailError: null,
+    error: null
+  });
+}
+
 export async function getProspect(domain: string) {
   const rows = await db()
     .select()

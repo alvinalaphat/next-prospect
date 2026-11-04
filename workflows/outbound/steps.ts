@@ -7,7 +7,6 @@ import {
   getProspect,
   insertOpportunity,
   transferOpportunitiesToRun,
-  updateOpportunity,
   updateOpportunityForRun,
   updateProspectForRun
 } from '@/lib/db';
@@ -213,7 +212,8 @@ export const stepResumeOutbound = async (
     opportunities: opportunities.map((opportunity) => ({
       id: opportunity.id,
       status: opportunity.status,
-      hasDraft: Boolean(opportunity.draft)
+      hasDraft: Boolean(opportunity.draft),
+      hasSlack: Boolean(opportunity.slack)
     }))
   };
 };
@@ -370,6 +370,9 @@ export const stepRequestOpportunityApproval = async (
 
   const current = await getOpportunity(opportunityId);
   if (!current) throw new FatalError(`Opportunity ${opportunityId} is missing`);
+  if (current.status === 'approved' || current.status === 'rejected' || current.slack) {
+    return current.slack;
+  }
   const opportunity = await updateOpportunityForRun(opportunityId, {
     status: 'awaiting_approval',
     approvalToken: token
@@ -380,20 +383,37 @@ export const stepRequestOpportunityApproval = async (
   const prospect = await getProspect(opportunity.domain);
   if (!prospect) throw new FatalError(`Prospect ${opportunity.domain} is missing`);
   const slack = await postOpportunityApprovalRequest(prospect, opportunity, token);
-  await updateOpportunity(opportunityId, { slack });
+  await updateOpportunityForRun(opportunityId, { slack });
   return slack;
 };
 
-/** Mark the account reviewable only after every planned opportunity is ready. */
+/** Derive the account summary from every planned opportunity after recovery. */
 export const stepFinishOpportunityPlanning = async (domain: string, runId: string) => {
   'use step';
 
+  const opportunities = await getOpportunities(domain, runId);
+  const allDecided = opportunities.length > 0 && opportunities.every(
+    (opportunity) => opportunity.status === 'approved' || opportunity.status === 'rejected'
+  );
+  if (allDecided) {
+    const status = opportunities.some((opportunity) => opportunity.status === 'approved')
+      ? 'approved'
+      : 'rejected';
+    await updateProspectForRun(
+      domain,
+      runId,
+      { status },
+      ['qualifying', 'researching', 'drafting', 'awaiting_approval']
+    );
+    return status;
+  }
   await updateProspectForRun(
     domain,
     runId,
     { status: 'awaiting_approval' },
     ['qualifying', 'researching', 'drafting']
   );
+  return 'awaiting_approval' as const;
 };
 
 async function isProspectRunCurrent(domain: string, runId: string) {
