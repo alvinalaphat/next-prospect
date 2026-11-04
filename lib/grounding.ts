@@ -18,6 +18,16 @@ export function normalizeUrl(u: string): string {
   }
 }
 
+export function isOfficialVercelCustomerStory(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.hostname.replace(/^www\./i, '').toLowerCase() === 'vercel.com'
+      && /^\/customers(?:\/|$)/i.test(parsed.pathname);
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Drop research items whose sourceUrl wasn't returned by a tool call.
  * `retrieved` maps each URL a tool returned to the text shown to the model.
@@ -29,8 +39,10 @@ export function groundResearch(
   const content = new Map([...retrieved].map(([u, t]) => [normalizeUrl(u), t]));
   const ok = (u: string | null | undefined) => !!u && content.has(normalizeUrl(u));
   const dropped: string[] = [];
+  const keepByUrl = <T extends { sourceUrl: string }>(items: T[], describe: (item: T) => string) =>
+    items.filter((item) => (ok(item.sourceUrl) ? true : (dropped.push(describe(item)), false)));
   const keep = <T extends { text: string; sourceUrl: string }>(items: T[]) =>
-    items.filter((i) => (ok(i.sourceUrl) ? true : (dropped.push(i.text), false)));
+    keepByUrl(items, (item) => item.text);
 
   const summaryOk = ok(research.summary.sourceUrl);
   if (!summaryOk) dropped.push(research.summary.text);
@@ -43,6 +55,11 @@ export function groundResearch(
       news: keep(research.news),
       whyNow: keep(research.whyNow),
       productSignals: keep(research.productSignals ?? []),
+      precedents: keepByUrl(research.precedents ?? [], (precedent) => `${precedent.companyName}: ${precedent.outcome}`).filter((precedent) => {
+        if (isOfficialVercelCustomerStory(precedent.sourceUrl)) return true;
+        dropped.push(`${precedent.companyName}: ${precedent.outcome}`);
+        return false;
+      }),
       region:
         research.region?.sourceUrl && ok(research.region.sourceUrl)
           ? research.region
@@ -116,6 +133,25 @@ export function researchEvidence(r: Research): EvidenceItem[] {
     });
   }
   return items;
+}
+
+/**
+ * Customer stories can support a rep's message, but they are deliberately
+ * kept out of the planning ledger so another company's result cannot increase
+ * this prospect's fit or timing score.
+ */
+export function precedentEvidence(r: Research | null | undefined): EvidenceItem[] {
+  return (r?.precedents ?? []).map((precedent, index) => ({
+    id: `research.precedent.${index}`,
+    source: 'research' as const,
+    label: `Vercel customer precedent: ${precedent.companyName}`,
+    value: [
+      `Why it is relevant: ${precedent.similarity}`,
+      `Published outcome for ${precedent.companyName}: ${precedent.outcome}`,
+      precedent.products.length ? `Vercel products named: ${precedent.products.join(', ')}` : ''
+    ].filter(Boolean).join(' '),
+    url: precedent.sourceUrl
+  }));
 }
 
 /** Select the newest valid date carried by the cited evidence receipts. */

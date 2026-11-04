@@ -25,8 +25,9 @@ For each domain in a CSV, one durable workflow:
 2. **Measure**: PageSpeed Insights for mobile and desktop. Lighthouse lab LCP/CLS/TTFB/TBT
    and CrUX real-user p75 LCP/INP/CLS/TTFB are kept separate. Cached for 24h.
 3. **Research**: an Exa research agent collects company, headquarters region, launches,
-   hiring, job, technical, social, and timing signals. Every item must cite a URL a tool
-   returned.
+   hiring, job, technical, social, and timing signals. It also looks for up to three
+   genuinely similar companies with official Vercel customer stories and records their
+   published outcomes as supporting precedent. Every item must cite a URL a tool returned.
 4. **Route and score**: the model matches grounded evidence to known catalog signal rules;
    code applies deterministic confidence, freshness, category caps, and one evidence-backed
    account-potential tier.
@@ -37,7 +38,9 @@ For each domain in a CSV, one durable workflow:
    buyer and tailored to each opportunity. A verified buyer work location can qualify the
    opportunity as EMEA; an EMEA headquarters qualifies it regardless of the buyer's location.
 6. **Draft**: each opportunity receives a 70–110 word email and rep brief using only its
-   selected evidence and approved catalog claims. Every EMEA-qualified email closes with
+   selected evidence, relevant customer precedent, and approved catalog claims. Precedent
+   is attributed to the referenced customer and never treated as prospect evidence or a
+   promised result. Every EMEA-qualified email closes with
    an approved, concise "By the way," note covering GDPR support, privacy and security
    commitments backed by independently audited controls, and the Data Processing Addendum.
    The note appears after the meeting ask and before the rep's sign-off. Expansion drafts
@@ -226,9 +229,9 @@ git push origin main              # CI runs; Vercel builds and deploys
 - Add a reviewed catalog-audit workflow and review surface that compares official Vercel
   product changes with the code-owned catalog. It must never change scoring rules,
   approved claims, or product eligibility automatically.
-- Add a small, human-reviewed customer-proof and competitive-context library when reps
-  need supporting precedent. Prefer curated records with explicit product mappings over
-  an automatic weekly search, and keep this context out of scoring and generated claims.
+- Add a review surface for pinning the strongest customer precedents and mapping them to
+  catalog products. Dynamic precedent research remains supporting context and must stay
+  out of scoring.
 
 ## License
 

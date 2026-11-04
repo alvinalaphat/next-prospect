@@ -105,6 +105,7 @@ export function presentEvidence(evidence: EvidenceItem): PresentedEvidence {
     return research(evidence, 'Why now');
   }
   if (evidence.id.startsWith('research.signal.')) return research(evidence, 'Public company signal');
+  if (evidence.id.startsWith('research.precedent.')) return research(evidence, 'Vercel customer precedent');
   if (evidence.id === 'research.region') return research(evidence, 'Company headquarters');
 
   return {

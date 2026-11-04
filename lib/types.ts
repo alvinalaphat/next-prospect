@@ -124,6 +124,16 @@ export const regionSchema = z.object({
 
 export type Region = z.infer<typeof regionSchema>;
 
+export const customerPrecedentSchema = z.object({
+  companyName: z.string().min(1),
+  similarity: z.string().min(1).describe('Why this Vercel customer is meaningfully similar to the prospect'),
+  outcome: z.string().min(1).describe('A concise, source-backed result reported in the customer story'),
+  products: z.array(z.string()).describe('Vercel products or capabilities explicitly named in the customer story'),
+  sourceUrl: z.string().min(1).describe('Official vercel.com/customers URL returned by the dedicated search tool')
+});
+
+export type CustomerPrecedent = z.infer<typeof customerPrecedentSchema>;
+
 export const researchSchema = z.object({
   companyName: z.string(),
   summary: sourced.describe('What the company does, one or two sentences'),
@@ -148,7 +158,11 @@ export const researchSchema = z.object({
         date: z.string().nullable()
       })
     )
-    .describe('Public signals that may support any Vercel product opportunity')
+    .describe('Public signals that may support any Vercel product opportunity'),
+  precedents: z
+    .array(customerPrecedentSchema)
+    .max(3)
+    .describe('Relevant official Vercel customer stories used as supporting precedent, never as prospect scoring evidence')
 });
 
 export type Research = z.infer<typeof researchSchema>;

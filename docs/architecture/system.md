@@ -15,7 +15,7 @@ flowchart TD
   PERF --> RESEARCH[Public company research]
   RESEARCH --> PLAN[Catalog routing and deterministic scoring]
   PLAN --> BUYERS[Shared buyer search and per-buyer activity]
-  BUYERS --> ENRICH[Proof selection, rescore, product-specific draft]
+  BUYERS --> ENRICH[Buyer enrichment, rescore, product-specific draft]
   ENRICH --> REVIEW[Dashboard and optional Slack review]
   REVIEW -->|approve| GMAIL[Optional Gmail draft]
   DETECT & PERF & RESEARCH --> LEDGER[(Evidence ledger)]

@@ -10,7 +10,7 @@ import {
   updateOpportunityForRun,
   updateProspectForRun
 } from '@/lib/db';
-import { researchEvidence } from '@/lib/grounding';
+import { precedentEvidence, researchEvidence } from '@/lib/grounding';
 import { findOpportunityContacts, planOpportunities, writeOpportunityDraft } from '@/lib/opportunity-services';
 import { contactActivityEvidence, researchContactActivities } from '@/lib/contact-activity';
 import { emptyPerfResult, perfEvidence, PsiRateLimitError, runPsi } from '@/lib/psi';
@@ -284,7 +284,7 @@ export const stepEnrichOpportunity = async (
     buyerQuality: contact.name ? 15 : 5
   });
   const selectedEvidence = evidence.filter((item) => opportunity.evidenceIds.includes(item.id));
-  selectedEvidence.push(...activityEvidence, ...regionEvidence);
+  selectedEvidence.push(...activityEvidence, ...regionEvidence, ...precedentEvidence(researchResult));
 
   if (!(await isProspectRunCurrent(opportunity.domain, opportunity.runId))) {
     return { opportunityId, score: rescored.score };
