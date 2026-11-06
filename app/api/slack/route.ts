@@ -28,7 +28,7 @@ if (slackApp && receiver) {
   slackApp.action(ACTIONS.reject, async ({ ack, body, action, logger }) => {
     await ack();
     if (action.type !== 'button' || !action.value) return;
-    await decide(action.value, { decision: 'rejected', by: body.user.name ?? body.user.id, via: 'slack' }, logger);
+    await decide(action.value, { decision: 'rejected', by: body.user.name ?? body.user.id, via: 'slack', rejectionReasons: [] }, logger);
   });
 
   slackApp.action(ACTIONS.edit, async ({ ack, body, action, client }) => {

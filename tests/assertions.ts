@@ -9,6 +9,15 @@ import { isOfficialVercelCustomerStory, latestEvidenceDate, precedentEvidence, r
 import { buyerRegionEvidence, opportunityRegion } from '@/lib/region';
 import { freshnessMultiplier, scoreOpportunity } from '@/lib/scoring';
 import { enforceEmailIdentity, stripCitationLeaks } from '@/lib/services';
+import { approvalSchema } from '@/lib/types';
+
+assert.equal(approvalSchema.safeParse({ decision: 'approved', by: 'rep', via: 'dashboard' }).success, true);
+assert.equal(approvalSchema.safeParse({
+  decision: 'rejected', by: 'rep', via: 'dashboard', rejectionReasons: ['wrong_recipient', 'missing_evidence'], rejectionContext: 'Try the engineering lead.'
+}).success, true);
+assert.equal(approvalSchema.safeParse({
+  decision: 'rejected', by: 'rep', via: 'dashboard', rejectionReasons: ['not_a_reason']
+}).success, false);
 
 const ids = PRODUCTS.map((product) => product.id);
 assert.deepEqual(parseApprovalToken(approvalToken('opportunity-id', 'run-id')), {
