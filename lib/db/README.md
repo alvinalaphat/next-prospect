@@ -17,6 +17,8 @@ storage.
   performance, evidence, and summary score.
 - `opportunities`: product-specific angle, score, evidence IDs, buyer and
   attributable public activity, draft, approval state, and Slack/Gmail metadata.
+  The JSONB `decision` stores the discriminated approval or rejection record;
+  dashboard rejections include selected reason codes and optional context.
 - `psi_cache`: cached PageSpeed responses to reduce quota use.
 
 The opportunity is the unit of review. The prospect status is a dashboard-level

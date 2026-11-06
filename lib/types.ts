@@ -216,14 +216,32 @@ export type Draft = z.infer<typeof draftSchema> & {
  * ------------------------------------------------------------
  */
 
-export const approvalSchema = z.object({
-  decision: z.enum(['approved', 'rejected']),
-  by: z.string(),
-  via: z.enum(['slack', 'dashboard']),
-  editedDraft: z
-    .object({ subject: z.string(), body: z.string() })
-    .optional()
-});
+export const rejectionReasons = [
+  { value: 'inaccurate_claim', label: 'Inaccurate claim' },
+  { value: 'weak_relevance', label: 'Weak relevance' },
+  { value: 'wrong_recipient', label: 'Wrong recipient' },
+  { value: 'poor_timing', label: 'Poor timing' },
+  { value: 'tone_or_wording', label: 'Tone or wording' },
+  { value: 'missing_evidence', label: 'Missing evidence' }
+] as const;
+
+export const rejectionReasonSchema = z.enum(rejectionReasons.map((reason) => reason.value));
+
+export const approvalSchema = z.discriminatedUnion('decision', [
+  z.object({
+    decision: z.literal('approved'),
+    by: z.string().trim().min(1),
+    via: z.enum(['slack', 'dashboard']),
+    editedDraft: z.object({ subject: z.string(), body: z.string() }).optional()
+  }),
+  z.object({
+    decision: z.literal('rejected'),
+    by: z.string().trim().min(1),
+    via: z.enum(['slack', 'dashboard']),
+    rejectionReasons: z.array(rejectionReasonSchema).default([]),
+    rejectionContext: z.string().trim().max(2000).optional()
+  })
+]);
 
 export type Approval = z.infer<typeof approvalSchema>;
 

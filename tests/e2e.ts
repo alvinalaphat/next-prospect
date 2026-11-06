@@ -292,6 +292,42 @@ assert.equal(result.applied, true);
 assert.equal((await getOpportunity(id))?.status, 'approved');
 assert.equal((await getProspect(domain))?.status, 'approved');
 
+const rejectionDomain = 'rejection.example';
+const rejectionId = crypto.randomUUID();
+const rejectionToken = approvalToken(rejectionId, runId);
+await upsertProspect(rejectionDomain, { status: 'awaiting_approval', runId });
+await insertOpportunity({
+  ...reviewableOpportunity,
+  id: rejectionId,
+  domain: rejectionDomain,
+  status: 'awaiting_approval',
+  decision: null,
+  approvalToken: rejectionToken
+});
+const rejection = {
+  decision: 'rejected',
+  by: 'e2e-test',
+  via: 'dashboard',
+  rejectionReasons: ['wrong_recipient', 'missing_evidence'],
+  rejectionContext: 'The buyer does not own this product.'
+};
+process.env.RUN_SECRET = 'decision-test-secret';
+const { POST: postDecision } = await import('@/app/api/opportunities/[id]/decision/route');
+const decisionRequest = (body: object) => new Request(`https://example.com/api/opportunities/${rejectionId}/decision`, {
+  method: 'POST',
+  headers: { authorization: 'Bearer decision-test-secret', 'content-type': 'application/json' },
+  body: JSON.stringify(body)
+});
+const decisionContext = { params: Promise.resolve({ id: rejectionId }) };
+assert.equal((await postDecision(decisionRequest({ decision: 'rejected', by: 'e2e-test' }), decisionContext)).status, 400);
+assert.equal((await postDecision(decisionRequest({ ...rejection, rejectionReasons: ['unknown'] }), decisionContext)).status, 400);
+assert.equal((await getOpportunity(rejectionId))?.status, 'awaiting_approval');
+assert.equal((await postDecision(decisionRequest(rejection), decisionContext)).status, 200);
+delete process.env.RUN_SECRET;
+assert.deepEqual((await getOpportunity(rejectionId))?.decision, rejection);
+assert.equal((await getOpportunity(rejectionId))?.status, 'rejected');
+assert.equal((await getProspect(rejectionDomain))?.status, 'rejected');
+
 await updateOpportunity(id, {
   contactActivity: [{
     id: 'research.buyer-activity.fixture',
