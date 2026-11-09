@@ -5,6 +5,7 @@ import { AutoRefresh } from '@/components/auto-refresh';
 import { Score, StatusBadge } from '@/components/badges';
 import { Disclosure } from '@/components/disclosure';
 import { OpportunityCards } from '@/components/opportunity-cards';
+import { ProspectAsk } from '@/components/prospect-ask';
 import { WorkflowRetryButton } from '@/components/workflow-retry-button';
 import { contactActivityEvidence } from '@/lib/contact-activity';
 import { getOpportunities, getProspect } from '@/lib/db';
@@ -85,6 +86,8 @@ export default async function ProspectPage({ params }: { params: Promise<{ domai
       </header>
 
       {research && hasCompanyContext(research) && <CompanyBackground research={research} />}
+
+      <ProspectAsk domain={prospect.domain} />
 
       <OpportunityCards opportunities={opportunities} ledger={ledger} />
     </div>

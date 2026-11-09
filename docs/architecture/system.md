@@ -20,6 +20,7 @@ flowchart TD
   REVIEW -->|approve| GMAIL[Optional Gmail draft]
   DETECT & PERF & RESEARCH --> LEDGER[(Evidence ledger)]
   LEDGER --> PLAN & ENRICH
+  LEDGER --> ASK[Prospect evidence Q&A]
   WF & REVIEW --> DB[(Neon or local PGlite)]
 ```
 
@@ -63,6 +64,9 @@ changes relative to older training data.
 
 - `POST /api/run` starts paid or quota-consuming work and requires
   `RUN_SECRET` outside development.
+- `POST /api/prospects/[domain]/ask` answers from the saved account evidence
+  ledger only. It invokes a paid model, requires `RUN_SECRET` outside
+  development, and stores no question or answer history.
 - Decision and Gmail-draft routes are privileged and validate the applicable
   run or opportunity token.
 - Read pages are public for the demo. This is not sufficient authorization for

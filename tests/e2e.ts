@@ -306,6 +306,24 @@ await updateOpportunity(id, {
 const enrichedOpportunity = await getOpportunity(id);
 assert.equal(enrichedOpportunity?.contactActivity?.length, 1);
 process.env.RUN_SECRET = 'bulk-action-secret';
+const { POST: askProspect } = await import('@/app/api/prospects/[domain]/ask/route');
+const askContext = { params: Promise.resolve({ domain: supersededDomain }) };
+const askRequest = (question: string, authorized = true) => new Request('https://example.com/api/prospects/superseded.example/ask', {
+  method: 'POST',
+  headers: {
+    ...(authorized ? { authorization: 'Bearer bulk-action-secret' } : {}),
+    'content-type': 'application/json'
+  },
+  body: JSON.stringify({ question })
+});
+assert.equal((await askProspect(askRequest('What is known? ', false), askContext)).status, 401);
+assert.equal((await askProspect(askRequest(' '), askContext)).status, 400);
+const noEvidenceResponse = await askProspect(askRequest('What is known?'), askContext);
+assert.equal(noEvidenceResponse.status, 200);
+assert.deepEqual(await noEvidenceResponse.json(), {
+  answer: 'no evidence found to answer this question',
+  evidence: []
+});
 const { DELETE: deleteProspects } = await import('@/app/api/prospects/route');
 const deleteResponse = await deleteProspects(new Request('https://example.com/api/prospects', {
   method: 'DELETE',

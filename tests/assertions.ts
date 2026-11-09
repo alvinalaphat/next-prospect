@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { answerFromSelection, NO_EVIDENCE_ANSWER } from '@/lib/prospect-qa';
 import { EMEA_TRUST_NOTE, OPPORTUNITY_PRODUCTS, PRODUCTS, getProduct } from '@/lib/catalog/products';
 import { approvalToken, parseApprovalToken } from '@/lib/approval-token';
 import { contactActivityEvidence, contactActivityId, containsFullName } from '@/lib/contact-activity';
@@ -357,6 +358,34 @@ const proofCannotScore = scoreOpportunity({
 });
 assert.equal(proofCannotScore.score, 0);
 assert.match(proofCannotScore.suppressedReason ?? '', /No grounded product-fit signal/);
+
+const questionEvidence = [{
+  id: 'research.news.0',
+  source: 'research' as const,
+  label: 'Company news',
+  value: 'Clay opened a London office in 2026.',
+  url: 'https://example.com/news'
+}];
+assert.deepEqual(answerFromSelection({ excerpts: [{
+  evidenceId: 'research.news.0',
+  text: 'opened a London office in 2026'
+}] }, questionEvidence), {
+  answer: 'opened a London office in 2026',
+  evidence: [{ text: 'opened a London office in 2026', label: 'Company news', url: 'https://example.com/news' }]
+});
+for (const excerpts of [
+  [],
+  [{ evidenceId: 'research.unknown', text: 'opened a London office in 2026' }],
+  [{ evidenceId: 'research.news.0', text: 'opened a Paris office in 2026' }]
+]) {
+  assert.deepEqual(answerFromSelection({ excerpts }, questionEvidence), {
+    answer: NO_EVIDENCE_ANSWER,
+    evidence: []
+  });
+}
+assert.equal(answerFromSelection({ excerpts: [{
+  evidenceId: 'research.news.0', text: 'opened a London office in 2026'
+}] }, [{ ...questionEvidence[0], url: 'javascript:alert(1)' }]).answer, NO_EVIDENCE_ANSWER);
 
 console.log(`✓ catalog: ${PRODUCTS.length} entries, ${OPPORTUNITY_PRODUCTS.length} independent sales motions`);
 console.log('✓ scoring: 100-point caps, unique rules, one sales-fit account tier, freshness, expansion, and suppression');
